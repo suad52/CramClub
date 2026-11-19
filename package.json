@@ -1,0 +1,28 @@
+{
+  "name": "ovr",
+  "private": true,
+  "description": "OVR \u2014 a cozy multiplayer virtual library to study together.",
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @ovr/web --filter @ovr/game-server dev",
+    "dev:web": "pnpm --filter @ovr/web dev",
+    "dev:server": "pnpm --filter @ovr/game-server dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
+    "avatar:build": "\"${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}\" -b --factory-startup --python-exit-code 1 --python art/avatars/scripts/build_kit.py && pnpm avatar:pack",
+    "avatar:pack": "gltf-transform meshopt art/avatars/build/avatar-kit.raw.glb apps/web/public/models/avatars/avatar-kit.glb --level medium"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "4.5.1",
+    "prettier": "^3.10.1",
+    "typescript": "~6.0.3"
+  }
+}

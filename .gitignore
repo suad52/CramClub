@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+
+# builds
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# tests
+coverage/
+
+# env — never commit real secrets; .env.example holds placeholders
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# deploy tooling
+.vercel
+
+# generated: MediaPipe wasm copied from node_modules (apps/web/scripts/copy-assets.mjs)
+apps/web/public/mediapipe/
+# generated: single-line font copied from node_modules (apps/web/scripts/copy-assets.mjs)
+apps/web/public/fonts/ems-tech.svg
+
+# Blender auto-backups
+*.blend1

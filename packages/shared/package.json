@@ -1,0 +1,21 @@
+{
+  "name": "@ovr/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Types, constants, avatar catalog and world layout shared by the OVR web client and game server.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@ovr/config": "workspace:*",
+    "eslint": "^9.39.0",
+    "typescript": "~6.0.3",
+    "vitest": "~5.1.0"
+  }
+}

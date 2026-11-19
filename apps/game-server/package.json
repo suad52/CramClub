@@ -1,0 +1,30 @@
+{
+  "name": "@ovr/game-server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "OVR real-time server (Colyseus): public library rooms, matchmaking and live player state.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "build": "tsup",
+    "start": "node --env-file-if-exists=.env dist/index.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@colyseus/core": "^0.18.10",
+    "@colyseus/schema": "5.0.48",
+    "@colyseus/ws-transport": "^0.18.5",
+    "@ovr/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@ovr/config": "workspace:*",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.39.0",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "vitest": "~5.1.0"
+  }
+}

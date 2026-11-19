@@ -1,0 +1,178 @@
+@import "tailwindcss";
+
+@theme {
+  --color-parchment: #f5ede0;
+  --color-cream: #fbf7ef;
+  --color-ink: #2d2420;
+  --color-ink-soft: #66574c;
+  --color-wood: #9a6a43;
+  --color-wood-dark: #6e4a33;
+  --color-sage: #6f8f6a;
+  --color-sage-dark: #56734f;
+  --color-ember: #c8743f;
+  --color-lamp: #ffd99a;
+
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: var(--color-parchment);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Keyboard keycap used in the HUD and guides. */
+.kbd {
+  display: inline-flex;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.45rem;
+  border-radius: 0.45rem;
+  border: 1px solid rgb(45 36 32 / 0.18);
+  border-bottom-width: 3px;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Character studio + title screen                                     */
+/* ------------------------------------------------------------------ */
+
+.studio-bg {
+  background:
+    radial-gradient(ellipse 55% 60% at 50% 42%, rgb(255 236 200 / 0.95), transparent 70%),
+    radial-gradient(ellipse 90% 50% at 50% 105%, rgb(122 82 54 / 0.35), transparent 70%),
+    repeating-linear-gradient(90deg, rgb(110 74 51 / 0.05) 0 2px, transparent 2px 46px),
+    linear-gradient(180deg, #efe1c8 0%, #e3cfae 60%, #cfb38c 100%);
+}
+
+.studio-range {
+  appearance: none;
+  height: 1.4rem;
+  background: transparent;
+  cursor: pointer;
+}
+.studio-range::-webkit-slider-runnable-track {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-sage), var(--color-lamp), var(--color-ember));
+}
+.studio-range::-moz-range-track {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-sage), var(--color-lamp), var(--color-ember));
+}
+.studio-range::-webkit-slider-thumb {
+  appearance: none;
+  margin-top: -0.45rem;
+  height: 1.3rem;
+  width: 1.3rem;
+  border-radius: 999px;
+  background: var(--color-cream);
+  border: 3px solid var(--color-ink);
+  box-shadow: 0 3px 8px rgb(45 36 32 / 0.3);
+}
+.studio-range::-moz-range-thumb {
+  height: 1rem;
+  width: 1rem;
+  border-radius: 999px;
+  background: var(--color-cream);
+  border: 3px solid var(--color-ink);
+}
+.studio-range:focus-visible {
+  outline: 3px solid var(--color-ember);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+@keyframes studio-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes studio-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+@keyframes studio-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) rotate(-4deg) scale(0.96);
+  }
+}
+@keyframes studio-toast {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  12%,
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.studio-fade-in {
+  animation: studio-fade-in 0.45s ease-out both;
+}
+.studio-slide-in {
+  animation: studio-slide-in 0.28s ease-out both;
+}
+.studio-card-in {
+  animation: studio-card-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.studio-toast {
+  animation: studio-toast 2.6s ease-out both;
+}
+
+@keyframes title-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+    filter: blur(6px);
+  }
+}
+@keyframes title-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.title-rise {
+  animation: title-rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.title-glow {
+  animation: title-glow 2.4s ease-in-out infinite;
+}
