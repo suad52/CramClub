@@ -35,6 +35,7 @@ import {
 import { PomodoroLayer } from "./Pomodoro";
 import { LibrarianOverlay } from "./LibrarianOverlay";
 import { ProgressOverlay } from "./ProgressOverlay";
+import { librarianPresence } from "@/lib/librarian/presence";
 
 // Stable reference: R3F re-applies renderer props whenever this object changes identity.
 // Neutral tone mapping keeps the stylized palette true; post-processing uses the same curve.
@@ -133,6 +134,7 @@ export default function LibraryExperience() {
         whiteboard: useWhiteboardStore,
         boardLessons: useBoardLessons,
         pomodoro: usePomodoro,
+        librarian: librarianPresence,
       };
     }
     return () => {

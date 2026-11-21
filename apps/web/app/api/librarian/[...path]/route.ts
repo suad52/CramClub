@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { z } from "zod";
 import { clientKey, createRateLimiter, readJson } from "@/lib/ai/http";
 import { db } from "@/lib/learning/server/db";
+import { synthesize } from "@/lib/learning-studio/server";
 import { learnerFor } from "@/lib/learning/server/identity";
 import {
   type Defer,
@@ -47,6 +48,7 @@ const Bodies = {
     minutesPerDay: z.number().int().min(10).max(600).optional(),
   }),
   lesson: z.object({ planItemId: z.uuid().optional() }),
+  speak: z.object({ text: z.string().trim().min(1).max(400) }),
   resource: z.object({ saved: z.boolean() }),
   item: z.object({
     action: z.enum(["complete", "skip", "reopen", "reschedule"]),
@@ -56,6 +58,62 @@ const Bodies = {
       .optional(),
   }),
 };
+
+/**
+ * Her voice: ELEVENLABS_LIBRARIAN_VOICE_ID, else a warm, mature British voice from ElevenLabs'
+ * premade set. If that voice isn't available to the account, the lesson narrator's voice is used.
+ */
+const LIBRARIAN_VOICE = process.env.ELEVENLABS_LIBRARIAN_VOICE_ID || "pFZP5JQG7iQjIQuC4Bku";
+
+async function librarianSpeech(text: string) {
+  try {
+    return await synthesize(text, LIBRARIAN_VOICE);
+  } catch (err) {
+    const status = (err as { status?: number }).status;
+    // Unknown voice, or one the plan can't use (402): fall back to the narrator's voice.
+    if (status !== 400 && status !== 402 && status !== 404) throw err;
+    return synthesize(text);
+  }
+}
+
+const MAX_AUDIO_BYTES = 6 * 1024 * 1024;
+
+/**
+ * Push-to-talk: a short recording → ElevenLabs Speech to Text (scribe_v2) → the words. The audio is
+ * forwarded and not kept.
+ */
+async function listen(request: Request, sql: NonNullable<ReturnType<typeof setup>>) {
+  const me = (await learnerFor(sql, request, true))!;
+  if (!allowWrite(me.id)) return fail("rate_limited", "Slow down a little.", 429);
+  const key = process.env.ELEVENLABS_API_KEY;
+  if (!key) return fail("not_configured", "Talking to her needs ELEVENLABS_API_KEY.", 503);
+  const form = await request.formData().catch(() => null);
+  const audio = form?.get("audio");
+  if (!(audio instanceof Blob) || audio.size < 1000 || audio.size > MAX_AUDIO_BYTES)
+    return fail("bad_request", "Send a short recording.", 400);
+  const out = new FormData();
+  out.append("model_id", "scribe_v2");
+  out.append("file", audio, "speech.webm");
+  out.append("tag_audio_events", "false");
+  try {
+    const res = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+      method: "POST",
+      headers: { "xi-api-key": key },
+      body: out,
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (res.status === 401 || res.status === 403)
+      return fail("not_configured", "Your ElevenLabs key needs Speech to Text access.", 503);
+    if (!res.ok) {
+      console.error("[librarian] speech-to-text", res.status, (await res.text()).slice(0, 200));
+      return fail("stt_failed", "She couldn't make that out. Try again?", 502);
+    }
+    const json = (await res.json()) as { text?: string };
+    return Response.json({ text: (json.text ?? "").trim().slice(0, 1500) });
+  } catch (error) {
+    return serverError("listen", error);
+  }
+}
 
 function fail(code: string, message: string, status: number) {
   return Response.json({ error: { code, message } }, { status });
@@ -108,6 +166,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const { path } = await params;
   const sql = setup();
   if (!sql) return NOT_CONFIGURED();
+  if (path[0] === "listen" && path.length === 1) return listen(request, sql);
   const body = (await readJson(request)) ?? {};
   try {
     const me = (await learnerFor(sql, request, true))!;
@@ -122,6 +181,15 @@ export async function POST(request: Request, { params }: Ctx) {
     const [head, id, action] = path;
     const validId = !!id && uuid.safeParse(id).success;
 
+    if (head === "speak" && path.length === 1) {
+      const b = Bodies.speak.safeParse(body);
+      if (!b.success) return bad();
+      if (!process.env.ELEVENLABS_API_KEY)
+        return respond(503, {
+          error: { code: "not_configured", message: "Her voice needs ELEVENLABS_API_KEY." },
+        });
+      return respond(200, await librarianSpeech(b.data.text));
+    }
     if (head === "tasks" && path.length === 1) {
       const b = Bodies.intake.safeParse(body);
       if (!b.success) return bad();

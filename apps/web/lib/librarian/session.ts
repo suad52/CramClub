@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { SPEAK_MS, librarianPresence } from "./presence";
 import type { LibrarianTask } from "./types";
+import { sayAloud } from "./voice";
 
 /**
  * The conversation with the Librarian in this browser tab: the request on the desk and what's
@@ -48,9 +49,10 @@ const message = (from: ChatMessage["from"], text: string, questions: string[] = 
 const replyOf = (task: LibrarianTask) =>
   message("librarian", task.reply, task.status === "awaiting_details" ? task.questions : []);
 
-/** She "says" a reply that just arrived (her jaw moves in the library). */
-function speak() {
+/** She says a reply that just arrived: aloud in her voice when there is one, else just her jaw. */
+function speak(text: string) {
   librarianPresence.speakUntil = performance.now() + SPEAK_MS;
+  void sayAloud(text);
 }
 
 export const useLibrarianSession = create<LibrarianSession>()((set) => ({
@@ -66,7 +68,7 @@ export const useLibrarianSession = create<LibrarianSession>()((set) => ({
       const lastReply = s.messages.findLast((m) => m.from === "librarian")?.text;
       // New when the student spoke last (even if she repeats herself), or when it's changed.
       const fresh = !!task.reply.trim() && (last?.from !== "librarian" || task.reply !== lastReply);
-      if (fresh) speak();
+      if (fresh) speak(task.reply);
       return {
         task,
         messages: fresh ? [...s.messages, replyOf(task)] : s.messages,
@@ -77,7 +79,7 @@ export const useLibrarianSession = create<LibrarianSession>()((set) => ({
     const messages = [message("student", task.request)];
     if (task.reply.trim()) {
       messages.push(replyOf(task));
-      speak();
+      speak(task.reply);
     }
     set({ task, messages, busySince: task.busy ? now : null });
   },

@@ -337,10 +337,13 @@ const TTS_CACHE_MAX = 200;
 export class TtsNotConfiguredError extends Error {}
 
 /** ElevenLabs narration with character timings, cached by text + voice + model. */
-export async function synthesize(text: string) {
+/** ElevenLabs speech (with word timings). `voiceId` overrides the narrator (e.g. the Librarian). */
+export async function synthesize(text: string, voiceId?: string) {
   const key = process.env.ELEVENLABS_API_KEY;
   if (!key) throw new TtsNotConfiguredError("ELEVENLABS_API_KEY is not set");
-  const voice = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
+  // Default narrator: "Sarah", a premade voice free plans can use through the API (library voices
+  // such as "Rachel" answer 402 paid_plan_required on a free plan).
+  const voice = voiceId || process.env.ELEVENLABS_VOICE_ID || "EXAVITQu4vr4xnSDxMaL";
   const model = process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
   const id = createHash("sha256").update(`${voice}|${model}|${text}`).digest("hex");
   const hit = ttsCache.get(id);

@@ -5,9 +5,18 @@
  *
  * - `open`: her panel is showing, so she keeps her eyes on you.
  * - `working`: a request is busy (researching, writing a plan or a lesson): she writes in her ledger.
- * - `speakUntil`: a `performance.now()` time; until then she's talking (a new reply just arrived).
+ * - `speakUntil`: a `performance.now()` time; until then she's talking (a new reply just arrived,
+ *   and there's no voice to follow).
+ * - `speaking` / `mouth`: her ElevenLabs voice is playing, and how loud it is right now (0–1),
+ *   which opens her jaw in time with the words.
  */
-export const librarianPresence = { open: false, working: false, speakUntil: 0 };
+export const librarianPresence = {
+  open: false,
+  working: false,
+  speakUntil: 0,
+  speaking: false,
+  mouth: 0,
+};
 
 /** How long she "says" each new reply. */
 export const SPEAK_MS = 2200;

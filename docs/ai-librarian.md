@@ -44,6 +44,32 @@ All of it is recorded in Tiger Data alongside the rest of your learning.
   data-grounded nudge from Tiger Data, such as your weakest first-try quiz accuracy or this week's
   focus time.
 
+## Her voice (ElevenLabs)
+
+With `ELEVENLABS_API_KEY` set, she **speaks her replies** and says hello the first time you
+open her on a visit, and her **jaw follows the audio's loudness** (Web Audio analyser). Without a
+key she mouths them as before. Only whole sentences up to about 320 characters are spoken (her
+replies, never long overviews), audio is cached on the server, and a **Voice on/off** toggle in
+her panel is remembered in the browser. Her voice is `ELEVENLABS_LIBRARIAN_VOICE_ID`, or a warm
+British premade voice by default; if that voice isn't on the account, the lesson narrator's voice
+(`ELEVENLABS_VOICE_ID`) is used. The same key gives every lesson (Learning Studio, whiteboards and
+the Librarian's lessons) ElevenLabs narration with word-timed captions instead of the browser voice.
+
+### Talking to her (push-to-talk)
+
+The 🎤 button next to Send: tap, speak, tap ■. The recording goes to `POST /api/librarian/listen`,
+which forwards it to ElevenLabs Speech to Text (`scribe_v2`) and returns the words. The audio isn't
+kept. What she heard goes into the message box so you can check it, then Enter sends it. The
+microphone is only on while recording, at most 30 s. The ElevenLabs key needs **Text to Speech**
+and **Speech to Text** access, and nothing else.
+
+**Free ElevenLabs plans can't use "library" voices through the API** (402 `paid_plan_required`).
+Tested on 2026-11-20:
+
+- **Works on free:** Lily (her default), Sarah (the lessons' default narrator), Matilda, Alice,
+  George and Daniel.
+- **Paid only:** Rachel and Charlotte.
+
 ## Who does what
 
 | Step                                                         | Provider     | How                                                                                                                                                               |

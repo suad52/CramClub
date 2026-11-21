@@ -148,7 +148,7 @@ export function Librarian() {
     const inFront = dz > 0.2 && Math.abs(runtime.y) < 1;
     const near = inFront && dist < NOTICE_RANGE;
     const { open, working, speakUntil } = librarianPresence;
-    const talking = performance.now() < speakUntil;
+    const talking = performance.now() < speakUntil || librarianPresence.speaking;
     // With her panel open she keeps her eyes on you from anywhere in front of the desk.
     const watching = near || (open && dz > 0.2);
     // Busy with a request: head down over the ledger (she looks up to say a reply).
@@ -202,11 +202,14 @@ export function Librarian() {
     f.smile = m.smile;
     f.browRaise = m.brows;
     // Talking: the jaw opens and closes between 0 and 0.35, in uneven "syllables".
-    f.jawOpen = talking
-      ? 0.35 * (0.5 - 0.5 * Math.cos(m.t * 15)) * (0.6 + 0.4 * Math.sin(m.t * 2.7))
-      : m.greet > 0
-        ? 0.12 + 0.08 * Math.sin(m.t * 9)
-        : 0;
+    // With her ElevenLabs voice playing, the jaw follows its loudness; otherwise it mimes.
+    f.jawOpen = librarianPresence.speaking
+      ? MathUtils.damp(f.jawOpen, 0.04 + 0.42 * librarianPresence.mouth, 18, dt)
+      : talking
+        ? 0.35 * (0.5 - 0.5 * Math.cos(m.t * 15)) * (0.6 + 0.4 * Math.sin(m.t * 2.7))
+        : m.greet > 0
+          ? 0.12 + 0.08 * Math.sin(m.t * 9)
+          : 0;
     m.near = near;
 
     // Breathing and a slow weight shift, and her shoulders follow her gaze a little.

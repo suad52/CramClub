@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { LessonPlayerView } from "@/components/learning-studio/LessonPlayer";
+import { PushToTalk } from "./PushToTalk";
 import {
   type ApiError,
   type Resource,
@@ -18,6 +19,7 @@ import { addLesson, loadLessons } from "@/lib/learning-studio/library";
 import { useLessonPlayback } from "@/lib/learning-studio/useLessonPlayback";
 import { mentionsDate, mentionsStudyTime } from "@/lib/librarian/planDetails";
 import { librarianPresence } from "@/lib/librarian/presence";
+import { isMuted, sayAloud, setMuted, stopSpeaking, subscribeMuted } from "@/lib/librarian/voice";
 import { type ChatMessage, useLibrarianSession } from "@/lib/librarian/session";
 import {
   type LibrarianHome,
@@ -104,6 +106,28 @@ interface Failure {
   job: () => Promise<void>;
 }
 
+/** Her first words (shown, and said aloud once per visit when her voice is set up). */
+const GREETING =
+  "Hello, I'm Ms. Fenwick. Tell me what you're studying and I'll look for good sources on the web, then help you turn them into a study plan or a lesson.";
+let greeted = false;
+
+/** Turns her spoken voice (ElevenLabs) on or off; remembered in this browser. */
+function VoiceToggle() {
+  const muted = useSyncExternalStore(subscribeMuted, isMuted, () => false);
+  return (
+    <button
+      type="button"
+      onClick={() => setMuted(!muted)}
+      aria-pressed={!muted}
+      title={muted ? "Turn her voice on" : "Mute her voice"}
+      className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-bold text-ink-soft transition hover:bg-ink/5 hover:text-ink ${FOCUS}`}
+    >
+      <span aria-hidden>{muted ? "🔇" : "🔊"}</span>
+      <span className="hidden sm:inline">{muted ? "Voice off" : "Voice on"}</span>
+    </button>
+  );
+}
+
 export function LibrarianPanel({
   context,
   titleId,
@@ -145,9 +169,20 @@ export function LibrarianPanel({
   // The librarian in the 3D library: eyes on you while this is open, writing while she works.
   useEffect(() => {
     librarianPresence.open = true;
+    // She says hello aloud the first time she's opened on a visit. Queued, so a mount that's
+    // undone straight away (React's dev double-mount) doesn't use up the greeting.
+    const hello =
+      !greeted && useLibrarianSession.getState().messages.length === 0
+        ? setTimeout(() => {
+            greeted = true;
+            void sayAloud(GREETING);
+          }, 120)
+        : undefined;
     return () => {
+      clearTimeout(hello);
       librarianPresence.open = false;
       librarianPresence.working = false;
+      stopSpeaking();
     };
   }, []);
   useEffect(() => {
@@ -348,6 +383,7 @@ export function LibrarianPanel({
             </span>
           </p>
         </div>
+        <VoiceToggle />
         {inConversation && (
           <button
             type="button"
@@ -610,6 +646,13 @@ function Composer({
           }
           className={`min-w-0 flex-1 rounded-full bg-white/70 px-4 py-2.5 text-sm ring-1 ring-ink/15 ${FOCUS}`}
         />
+        <PushToTalk
+          disabled={disabled}
+          onText={(text) => {
+            onDraft(text);
+            document.getElementById(inputId)?.focus();
+          }}
+        />
         <button type="submit" className={PRIMARY} disabled={disabled || !draft.trim()}>
           Send
         </button>
@@ -643,8 +686,7 @@ function HomeView({
       <div className="flex items-end gap-2">
         <Portrait className="h-8 w-8" />
         <p className="max-w-[85%] rounded-2xl rounded-bl-md bg-cream px-4 py-2.5 text-[0.95rem] ring-1 ring-ink/10">
-          Hello, I&apos;m Ms. Fenwick. Tell me what you&apos;re studying and I&apos;ll look for good
-          sources on the web, then help you turn them into a study plan or a lesson.
+          {GREETING}
         </p>
       </div>
       <div>
