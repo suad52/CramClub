@@ -1,8 +1,15 @@
-import { request as httpRequest } from "node:http";
+import { type IncomingHttpHeaders, createServer, request as httpRequest } from "node:http";
 import { matchMaker } from "@colyseus/core";
 import { Client, type Room } from "@colyseus/sdk";
 import {
+  CHAT,
+  type ChatLine,
   DEFAULT_AVATAR,
+  FENWICK_ID,
+  FENWICK_NAME,
+  type FenwickChatRequest,
+  INTERNAL_SIGNATURE_HEADER,
+  INTERNAL_TIMESTAMP_HEADER,
   LIBRARY_ROOM_NAME,
   MAX_PLAYERS_PER_ROOM,
   NET,
@@ -12,28 +19,84 @@ import {
   newTicketId,
   sanitizeAvatarConfig,
   signTicket,
+  verifyInternal,
 } from "@ovr/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type GameServerConfig, setServerConfig } from "./config";
-import type { LibraryRoom } from "./rooms/LibraryRoom";
-import { MOVE_BURST_M } from "./rooms/rules";
+import { FENWICK_CHAT_PATH, type LibraryRoom } from "./rooms/LibraryRoom";
+import { FENWICK_TYPING_DELAY_MS, MOVE_BURST_M } from "./rooms/rules";
 import { createGameServer } from "./server";
 
 const SECRET = "test-only-ticket-secret";
 const WEB_ORIGIN = "http://localhost:3100";
-const CONFIG: GameServerConfig = { ticketSecret: SECRET, allowedOrigins: new Set([WEB_ORIGIN]) };
 const port = 25_000 + Math.floor(Math.random() * 5_000);
 const base = `http://localhost:${port}`;
+/** A stand-in for the web app's Ms. Fenwick route (see fakeWeb below). */
+const webPort = 30_000 + Math.floor(Math.random() * 5_000);
+const CONFIG: GameServerConfig = {
+  ticketSecret: SECRET,
+  allowedOrigins: new Set([WEB_ORIGIN]),
+  webInternalUrl: `http://127.0.0.1:${webPort}`,
+};
 const server = createGameServer(CONFIG);
 const open: Room[] = [];
 
+/**
+ * The web app's POST /api/internal/fenwick-chat, as far as the game server can tell: it checks
+ * the signature as the real one does, then answers by the asker's name: "Nell" gets no reply
+ * (`reply: null`), "Errol" a 503, anyone else "Hello <name>!" with extra spaces to clean. A line
+ * starting "thanks" gets no reply either, and the SLOW names wait SLOW_MS before answering.
+ */
+const SLOW = new Set(["Sloane", "Dora", "Pia"]);
+const SLOW_MS = 1500;
+interface FenwickCall {
+  method: string | undefined;
+  url: string | undefined;
+  headers: IncomingHttpHeaders;
+  request: FenwickChatRequest;
+  verified: boolean;
+}
+const fenwickCalls: FenwickCall[] = [];
+const callsFor = (name: string) => fenwickCalls.filter((c) => c.request.askerName === name);
+const fakeWeb = createServer((req, res) => {
+  let body = "";
+  req.setEncoding("utf8");
+  req.on("data", (chunk: string) => (body += chunk));
+  req.on("end", async () => {
+    const header = (name: string) => req.headers[name] as string | undefined;
+    const check = await verifyInternal(
+      SECRET,
+      header(INTERNAL_SIGNATURE_HEADER),
+      header(INTERNAL_TIMESTAMP_HEADER),
+      body,
+    );
+    const request = JSON.parse(body) as FenwickChatRequest;
+    fenwickCalls.push({
+      method: req.method,
+      url: req.url,
+      headers: req.headers,
+      request,
+      verified: check.ok,
+    });
+    if (!check.ok) return res.writeHead(401).end();
+    if (request.askerName === "Errol") return res.writeHead(503).end();
+    if (SLOW.has(request.askerName)) await sleep(SLOW_MS);
+    const last = request.lines.at(-1)?.text ?? "";
+    const none = request.askerName === "Nell" || /^thanks/i.test(last);
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ reply: none ? null : `  Hello   ${request.askerName}!  ` }));
+  });
+});
+
 beforeAll(async () => {
   await server.listen(port);
+  await new Promise<void>((resolve) => fakeWeb.listen(webPort, "127.0.0.1", resolve));
 });
 
 afterAll(async () => {
   await Promise.allSettled(open.map((r) => r.leave()));
   await server.gracefullyShutdown(false);
+  await new Promise((resolve) => fakeWeb.close(resolve));
 });
 
 let learners = 0;
@@ -187,6 +250,7 @@ describe("game server", () => {
         "signedIn",
         "speed",
         "status",
+        "typing",
         "x",
         "y",
         "z",
@@ -413,5 +477,386 @@ describe("game server", () => {
     const next = await reserve(`joinOrCreate/${LIBRARY_ROOM_NAME}`);
     expect(next.ok).toBe(true);
     expect(next.roomId).not.toBe(first.roomId);
+  });
+});
+
+/** A new, empty library room (opened by the server, as players can't "create"). */
+const freshRoom = async () => (await matchMaker.createRoom(LIBRARY_ROOM_NAME, {})).roomId;
+
+describe("the library chat", () => {
+  it("shows every line to everyone, cleaned, named and rate-limited, and catches newcomers up", async () => {
+    const roomId = await freshRoom();
+    const ada = await join("Ada", roomId);
+    const adaHistory = inbox(ada, "chat_history");
+    const bo = await join("Bo", roomId);
+    const adaChat = inbox(ada, "chat");
+    const boChat = inbox(bo, "chat");
+    await until(() => adaHistory.length === 1);
+    expect(adaHistory[0]).toEqual({ lines: [] });
+
+    const quiet = { fenwick: false };
+    ada.send("chat", { text: "  hello \n   there  ", ...quiet });
+    ada.send("chat", { text: "   ", ...quiet }); // nothing left once cleaned: dropped
+    ada.send("chat", { text: "x".repeat(300), ...quiet });
+    ada.send("chat", { text: "four", ...quiet });
+    ada.send("chat", { text: "five, one over the burst", ...quiet }); // CHAT.BURST in a row: dropped
+    await until(() => boChat.length === 3);
+    await sleep(150);
+    expect(boChat.map((l) => l.text)).toEqual(["hello there", "x".repeat(CHAT.MAX_CHARS), "four"]);
+    expect(adaChat).toEqual(boChat); // the sender's confirmation
+    for (const line of boChat) {
+      expect(line).toMatchObject({ from: ada.sessionId, name: "Ada" });
+      expect(line.id).toMatch(/^c\d+$/);
+      expect(line.replyTo).toBeUndefined();
+      expect(Math.abs(line.at - Date.now())).toBeLessThan(5000);
+    }
+    expect(new Set(boChat.map((l) => l.id)).size).toBe(3);
+
+    // Typing shows for everyone, and sending a line ends it.
+    bo.send("typing", { on: true });
+    await until(() => playerIn(ada, bo.sessionId)?.typing === true);
+    bo.send("chat", { text: "hi Ada", ...quiet });
+    await until(() => playerIn(ada, bo.sessionId)?.typing === false);
+    expect(adaChat.at(-1)).toMatchObject({ from: bo.sessionId, name: "Bo", text: "hi Ada" });
+    bo.send("typing", { on: true });
+    await until(() => playerIn(ada, bo.sessionId)?.typing === true);
+    bo.send("typing", { on: false });
+    await until(() => playerIn(ada, bo.sessionId)?.typing === false);
+
+    // Someone joining later gets the room's lines so far.
+    const cy = await join("Cy", roomId);
+    const cyHistory = inbox(cy, "chat_history");
+    await until(() => cyHistory.length === 1);
+    expect(cyHistory[0]!.lines).toEqual(boChat);
+    await Promise.all([ada.leave(), bo.leave(), cy.leave()]);
+  });
+
+  it("turns typing off when it goes stale or the connection drops", async () => {
+    const roomId = await freshRoom();
+    const ada = await join("Ada", roomId);
+    const bo = await join("Bo", roomId);
+    const cy = await join("Cy", roomId);
+    bo.send("typing", { on: true });
+    const since = Date.now();
+    cy.send("typing", { on: true });
+    await until(
+      () =>
+        playerIn(ada, bo.sessionId)?.typing === true &&
+        playerIn(ada, cy.sessionId)?.typing === true,
+    );
+    // Bo's connection drops: he's held for a reconnect, but not as typing.
+    const room = matchMaker.getLocalRoomById(roomId) as LibraryRoom;
+    (room.clients.getById(bo.sessionId)!.ref as unknown as { terminate(): void }).terminate();
+    await until(() => playerIn(ada, bo.sessionId)?.typing === false);
+    expect(playerIn(ada, bo.sessionId)).toBeDefined();
+    // Cy never refreshes it: off after CHAT.TYPING_IDLE_MS.
+    expect(playerIn(ada, cy.sessionId)?.typing).toBe(true);
+    await until(() => playerIn(ada, cy.sessionId)?.typing === false, CHAT.TYPING_IDLE_MS + 2000);
+    expect(Date.now() - since).toBeGreaterThanOrEqual(CHAT.TYPING_IDLE_MS);
+    await Promise.allSettled([ada.leave(), bo.leave(), cy.leave()]);
+  }, 15_000);
+
+  it("has Ms. Fenwick answer whoever nobody answers, and only them", async () => {
+    const asks = (room: Room) => ({
+      chat: inbox(room, "chat"),
+      typing: inbox(room, "fenwick_typing"),
+    });
+
+    // Fiona, alone (her second tab doesn't count), asks twice: one reply covers both, after
+    // GHOST_ALONE_MS, seen by everyone in the room.
+    const fiona = async () => {
+      const roomId = await freshRoom();
+      const room = await join("Fiona", roomId, { learner: "fiona" });
+      const tab = await join("Fiona", roomId, { learner: "fiona" });
+      const mine = asks(room);
+      const other = asks(tab);
+      room.send("chat", { text: "how do I stay focused?" });
+      await sleep(500);
+      const askedAt = Date.now();
+      room.send("chat", { text: "any tips?" });
+      await until(
+        () => mine.chat.length === 3 && other.chat.length === 3,
+        CHAT.GHOST_ALONE_MS + 2000,
+      );
+      expect(Date.now() - askedAt).toBeGreaterThanOrEqual(CHAT.GHOST_ALONE_MS - 50);
+      // Her words came back at once: no "typing" flash before them.
+      await sleep(FENWICK_TYPING_DELAY_MS + 200);
+      expect(mine.typing).toEqual([]);
+      expect(other.typing).toEqual([]);
+      const reply = mine.chat[2]!;
+      expect(reply).toMatchObject({
+        from: FENWICK_ID,
+        name: FENWICK_NAME,
+        text: "Hello Fiona!",
+        replyTo: room.sessionId,
+      });
+      expect(reply.id).toMatch(/^c\d+$/);
+      expect(other.chat).toEqual(mine.chat);
+
+      const calls = callsFor("Fiona");
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toMatchObject({ method: "POST", url: FENWICK_CHAT_PATH, verified: true });
+      expect(calls[0]!.headers["content-type"]).toBe("application/json");
+      expect(calls[0]!.request).toEqual({
+        askerName: "Fiona",
+        alone: true,
+        lines: [
+          { name: "Fiona", text: "how do I stay focused?", fenwick: false, asker: true },
+          { name: "Fiona", text: "any tips?", fenwick: false, asker: true },
+        ],
+      });
+      // Her line is in the room's history too.
+      const late = await join("Gwen", roomId);
+      const history = inbox(late, "chat_history");
+      await until(() => history.length === 1);
+      expect(history[0]!.lines.at(-1)).toEqual(reply);
+      await Promise.all([room.leave(), tab.leave(), late.leave()]);
+    };
+
+    // Nothing to say ("brb"), or the web app failing at once: no line, and no "typing" flash.
+    const noReply = async (name: string) => {
+      const room = await join(name, await freshRoom());
+      const { chat, typing } = asks(room);
+      room.send("chat", { text: "brb" });
+      await until(() => callsFor(name).length === 1, CHAT.GHOST_ALONE_MS + 2000);
+      await sleep(FENWICK_TYPING_DELAY_MS + 300);
+      expect(typing).toEqual([]);
+      expect(chat.map((l: ChatLine) => l.from)).toEqual([room.sessionId]);
+      expect(callsFor(name)).toHaveLength(1);
+      await room.leave();
+    };
+
+    // A reply that takes a while: "typing" on after FENWICK_TYPING_DELAY_MS, her line, then off.
+    const slow = async () => {
+      const room = await join("Sloane", await freshRoom());
+      const { chat, typing } = asks(room);
+      room.send("chat", { text: "what's a good break length?" });
+      await until(() => callsFor("Sloane").length === 1, CHAT.GHOST_ALONE_MS + 2000);
+      const startedAt = Date.now();
+      await until(() => typing.length === 1, 2000);
+      expect(Date.now() - startedAt).toBeGreaterThanOrEqual(FENWICK_TYPING_DELAY_MS - 100);
+      expect(typing[0]).toEqual({ on: true, to: room.sessionId });
+      await until(() => typing.length === 2, SLOW_MS + 1000);
+      expect(typing[1]).toEqual({ on: false, to: room.sessionId });
+      expect(chat.at(-1)).toMatchObject({ from: FENWICK_ID, text: "Hello Sloane!" });
+      await room.leave();
+    };
+
+    // Someone else answers while her reply is being written: it isn't posted.
+    const answeredMeanwhile = async () => {
+      const roomId = await freshRoom();
+      const dora = await join("Dora", roomId);
+      const { chat, typing } = asks(dora);
+      dora.send("chat", { text: "where are the chemistry books?" });
+      await until(() => callsFor("Dora").length === 1, CHAT.GHOST_ALONE_MS + 2000);
+      const eli = await join("Eli", roomId);
+      eli.send("chat", { text: "second floor, by the windows", fenwick: false });
+      await until(() => typing.length === 2, SLOW_MS + 1500);
+      expect(typing.map((t) => t.on)).toEqual([true, false]);
+      await sleep(100);
+      expect(chat.map((l: ChatLine) => l.from)).toEqual([dora.sessionId, eli.sessionId]);
+      await Promise.all([dora.leave(), eli.leave()]);
+    };
+
+    // The switch flipped off: her wait on that line is cancelled, and a reply already being
+    // written isn't posted.
+    const switchedOff = async () => {
+      const quill = await join("Quill", await freshRoom());
+      const quillSaw = asks(quill);
+      quill.send("chat", { text: "testing 123" });
+      await sleep(500);
+      quill.send("chat_pref", { fenwick: false });
+      const pia = await join("Pia", await freshRoom());
+      const piaSaw = asks(pia);
+      pia.send("chat", { text: "how long is a pomodoro?" });
+      await until(() => callsFor("Pia").length === 1, CHAT.GHOST_ALONE_MS + 2000);
+      pia.send("chat_pref", { fenwick: false });
+      await sleep(SLOW_MS + 500);
+      expect(callsFor("Quill")).toEqual([]);
+      expect(quillSaw.typing).toEqual([]);
+      expect(piaSaw.chat.map((l: ChatLine) => l.from)).toEqual([pia.sessionId]);
+      expect(piaSaw.typing.map((t) => t.on)).toEqual([true, false]);
+      await Promise.all([quill.leave(), pia.leave()]);
+    };
+
+    // A reply that needed no answer ("thanks") doesn't use up her cooldown: the next question,
+    // a moment later, gets its answer after just GHOST_ALONE_MS.
+    const thanksThenQuestion = async () => {
+      const tess = await join("Tess", await freshRoom());
+      const { chat } = asks(tess);
+      tess.send("chat", { text: "thanks so much" });
+      await until(() => callsFor("Tess").length === 1, CHAT.GHOST_ALONE_MS + 2000);
+      await sleep(1000);
+      const askedAt = Date.now();
+      tess.send("chat", { text: "and what about integrals?" });
+      await until(() => chat.some((l) => l.from === FENWICK_ID), CHAT.GHOST_ALONE_MS + 3000);
+      expect(Date.now() - askedAt).toBeLessThan(CHAT.GHOST_ALONE_MS + 700);
+      expect(callsFor("Tess")).toHaveLength(2);
+      await tess.leave();
+    };
+
+    // Cal answers Ava (no question back): Cal's line isn't waiting for an answer, so she doesn't
+    // reply to Cal, even once Ava has gone and Cal is alone.
+    const answerIsNoQuestion = async () => {
+      const roomId = await freshRoom();
+      const ava = await join("Ava", roomId);
+      const cal = await join("Cal", roomId);
+      const calSaw = asks(cal);
+      ava.send("chat", { text: "what's the powerhouse of the cell?" });
+      await sleep(300);
+      cal.send("chat", { text: "mitochondria" });
+      await sleep(200);
+      await ava.leave();
+      await sleep(CHAT.GHOST_ALONE_MS + 1000);
+      expect(calSaw.typing).toEqual([]);
+      expect(callsFor("Cal")).toEqual([]);
+      expect(callsFor("Ava")).toEqual([]);
+      await cal.leave();
+    };
+
+    // "fenwick: false": she stays out of it.
+    const optedOut = async () => {
+      const room = await join("Quinn", await freshRoom());
+      const { typing } = asks(room);
+      room.send("chat", { text: "just thinking out loud", fenwick: false });
+      await sleep(CHAT.GHOST_ALONE_MS + 1000);
+      expect(typing).toEqual([]);
+      expect(callsFor("Quinn")).toEqual([]);
+      await room.leave();
+    };
+
+    // Someone else answered: she stays out of it, even once Gus is alone.
+    const answered = async () => {
+      const roomId = await freshRoom();
+      const gus = await join("Gus", roomId);
+      const hal = await join("Hal", roomId);
+      asks(hal);
+      const { typing } = asks(gus);
+      gus.send("chat", { text: "which floor is the quiet one?" });
+      await sleep(200);
+      hal.send("chat", { text: "upstairs!", fenwick: false });
+      await sleep(100);
+      await hal.leave();
+      await sleep(CHAT.GHOST_ALONE_MS + 1000);
+      expect(typing).toEqual([]);
+      expect(callsFor("Gus")).toEqual([]);
+      await gus.leave();
+    };
+
+    // With someone else there she gives them GHOST_MS; once they leave, Jo is alone and past
+    // GHOST_ALONE_MS, so she answers straight away.
+    const leftAlone = async () => {
+      const roomId = await freshRoom();
+      const jo = await join("Jo", roomId);
+      const kim = await join("Kim", roomId);
+      asks(kim);
+      const { chat } = asks(jo);
+      jo.send("chat", { text: "is anyone here?" });
+      await sleep(CHAT.GHOST_ALONE_MS + 1000);
+      expect(callsFor("Jo")).toEqual([]);
+      await kim.leave();
+      await until(() => chat.some((l) => l.from === FENWICK_ID), 2000);
+      expect(chat.at(-1)).toMatchObject({ replyTo: jo.sessionId, text: "Hello Jo!" });
+      expect(callsFor("Jo").map((c) => c.request.alone)).toEqual([true]);
+      await jo.leave();
+    };
+
+    await Promise.all([
+      fiona(),
+      noReply("Nell"),
+      noReply("Errol"),
+      slow(),
+      answeredMeanwhile(),
+      switchedOff(),
+      thanksThenQuestion(),
+      answerIsNoQuestion(),
+      optedOut(),
+      answered(),
+      leftAlone(),
+    ]);
+    expect(fenwickCalls.every((c) => c.verified)).toBe(true);
+  }, 20_000);
+
+  it("catches a reconnecting player up on what was said while they were away", async () => {
+    const roomId = await freshRoom();
+    const ada = await join("Ada", roomId);
+    const bo = await join("Bo", roomId);
+    const boChat = inbox(bo, "chat");
+    const boHistory = inbox(bo, "chat_history");
+    await until(() => boHistory.length === 1);
+    let reconnected = false;
+    bo.onReconnect(() => (reconnected = true));
+    // A slow first retry, so the line below lands while Bo is away.
+    bo.reconnection.minDelay = 800;
+    bo.reconnection.delay = 800;
+    const room = matchMaker.getLocalRoomById(roomId) as LibraryRoom;
+    (room.clients.getById(bo.sessionId)!.ref as unknown as { terminate(): void }).terminate();
+    await until(() => !room.clients.getById(bo.sessionId));
+    ada.send("chat", { text: "back in five, save my seat", fenwick: false });
+    await until(() => room.state.players.size === 2 && reconnected, NET.RECONNECT_S * 1000);
+    await until(() => boHistory.length === 2);
+    expect(boChat.map((l) => l.text)).not.toContain("back in five, save my seat");
+    expect(boHistory[1]!.lines.map((l) => l.text)).toEqual(["back in five, save my seat"]);
+    await Promise.all([ada.leave(), bo.leave()]);
+  });
+});
+
+describe("the /proof page's ticket replay test", () => {
+  const prove = (body: unknown, headers: Record<string, string> = {}) =>
+    fetch(`${base}/proof/ticket`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: WEB_ORIGIN, ...headers },
+      body: JSON.stringify(body),
+    });
+
+  it("accepts a fresh ticket once, then refuses it as a replay", async () => {
+    const once = await ticket("Ada");
+    const first = await prove({ ticket: once });
+    expect(first.status).toBe(200);
+    expect(first.headers.get("access-control-allow-origin")).toBe(WEB_ORIGIN);
+    expect(await first.json()).toEqual({ accepted: true });
+    const second = await prove({ ticket: once });
+    expect(await second.json()).toEqual({ accepted: false, reason: "ticket_replayed" });
+  });
+
+  it("shares one ledger with joining: a proved ticket can't join, a used one can't be proved", async () => {
+    const proved = await ticket("Ada");
+    expect(await (await prove({ ticket: proved })).json()).toEqual({ accepted: true });
+    await expect(
+      new Client(`ws://localhost:${port}`).joinOrCreate(LIBRARY_ROOM_NAME, { ticket: proved }),
+    ).rejects.toThrow(/ticket_replayed/);
+
+    const joined = await ticket("Bo");
+    const room = await new Client(`ws://localhost:${port}`).joinOrCreate(LIBRARY_ROOM_NAME, {
+      ticket: joined,
+    });
+    open.push(room);
+    expect(await (await prove({ ticket: joined })).json()).toEqual({
+      accepted: false,
+      reason: "ticket_replayed",
+    });
+    await room.leave();
+  });
+
+  it("refuses forged tickets, other sites and bad bodies, and never echoes the ticket", async () => {
+    const forged = await ticket("Ada", { secret: "another-secret" });
+    const res = await prove({ ticket: forged });
+    const text = await res.text();
+    expect(JSON.parse(text)).toEqual({ accepted: false, reason: "ticket_bad_signature" });
+    expect(text).not.toContain("Ada");
+    expect(
+      (await prove({ ticket: await ticket("Ada") }, { origin: "https://evil.example" })).status,
+    ).toBe(403);
+    expect((await prove({ nope: true }, { "x-forwarded-for": "198.51.100.7" })).status).toBe(400);
+  });
+
+  it("rate-limits each client address", async () => {
+    const statuses: number[] = [];
+    for (let i = 0; i < 12; i++)
+      statuses.push((await prove({}, { "x-forwarded-for": "203.0.113.9" })).status);
+    expect(statuses.slice(0, 10).every((s) => s === 400)).toBe(true);
+    expect(statuses.slice(10)).toEqual([429, 429]);
+    // Someone else isn't held up by it.
+    expect((await prove({}, { "x-forwarded-for": "203.0.113.10" })).status).toBe(400);
   });
 });

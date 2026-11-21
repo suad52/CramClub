@@ -4,7 +4,7 @@ import { JoinCircle } from "@/components/circles/JoinCircle";
 
 /** The token is the invite itself: keep it out of Referer headers and search engines. */
 export const metadata: Metadata = {
-  title: "Join a Study Circle · OVR",
+  title: "Join a Study Circle · Cram Club",
   referrer: "no-referrer",
   robots: { index: false, follow: false },
 };

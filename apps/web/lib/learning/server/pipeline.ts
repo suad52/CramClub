@@ -5,7 +5,9 @@ import { z } from "zod";
 import {
   DAILY_CAPS,
   LIBRARY_TIME_ZONE as TZ,
+  type PresenceReport,
   XP,
+  clampPresence,
   cleanDisplayName,
   minLessonSeconds,
   subjectSlug,
@@ -16,6 +18,13 @@ import {
  * Writes validated learning activity. Every reward goes through xp_ledger, whose unique
  * (user, reason, activity) key makes it idempotent: a repeated completion finds its ledger row
  * taken and earns nothing. Each write is one transaction, so an event and its XP land together.
+ *
+ * A finished pomodoro may carry `presence` ({ cameraSeconds, seenSeconds }, from the student's
+ * own opt-in face tracking). It is clamped to the server-validated length (rules.ts
+ * clampPresence), stored on the study_session_completed event (camera_seconds, seen_seconds; the
+ * database re-checks seen <= camera <= duration) and, when it had to be cut down, flagged in the
+ * event's metadata. A missing or malformed presence is simply dropped: it never costs the session
+ * its focus time or XP, and nothing ranks by it.
  */
 
 type Sql = postgres.Sql;
@@ -24,6 +33,13 @@ export type Result = { status: number; body: Record<string, unknown> };
 
 const lessonId = z.string().regex(/^[a-z0-9-]{4,64}$/);
 
+const seconds = z.number().min(0).max(Number.MAX_SAFE_INTEGER);
+/** The optional presence reading: anything malformed becomes "not reported", never a 400. */
+export const PresenceBody = z
+  .object({ cameraSeconds: seconds, seenSeconds: seconds })
+  .optional()
+  .catch(undefined);
+
 /** Request bodies, by action. Anything else in a body is ignored. */
 export const Bodies = {
   profile: z.object({
@@ -31,7 +47,7 @@ export const Bodies = {
     leaderboardOptIn: z.boolean().optional(),
   }),
   "session-start": z.object({ plannedMinutes: z.number().int().min(1).max(90) }),
-  "session-complete": z.object({ sessionId: z.uuid() }),
+  "session-complete": z.object({ sessionId: z.uuid(), presence: PresenceBody }),
   "session-abandon": z.object({ sessionId: z.uuid() }),
   "lesson-start": z.object({
     lessonId,
@@ -75,15 +91,20 @@ interface NewEvent {
   durationSeconds?: number | null;
   score?: number | null;
   xp?: number;
+  /** Completed pomodoros only: the clamped presence reading. */
+  presence?: { cameraSeconds: number; seenSeconds: number } | null;
+  metadata?: Record<string, unknown>;
 }
 
 function insertEvent(tx: Tx, e: NewEvent) {
   return tx`INSERT INTO learning_events
     (event_id, user_id, event_type, subject_id, lesson_id, quiz_id, activity_id,
-     duration_seconds, score, xp_delta)
+     duration_seconds, score, xp_delta, camera_seconds, seen_seconds, metadata)
     VALUES (${e.eventId ?? randomUUID()}, ${e.userId}, ${e.type}, ${e.subjectId ?? null},
       ${e.lessonId ?? null}, ${e.quizId ?? null}, ${e.activityId ?? null},
-      ${e.durationSeconds ?? null}, ${e.score ?? null}, ${e.xp ?? 0})`;
+      ${e.durationSeconds ?? null}, ${e.score ?? null}, ${e.xp ?? 0},
+      ${e.presence?.cameraSeconds ?? null}, ${e.presence?.seenSeconds ?? null},
+      ${tx.json((e.metadata ?? {}) as postgres.JSONValue)})`;
 }
 
 /** Claims the reward for an activity. False if it was already claimed (nothing is written). */
@@ -134,8 +155,16 @@ export function startSession(sql: Sql, userId: string, plannedMinutes: number) {
   });
 }
 
-/** A pomodoro rang. Counted only if the server's own clock agrees it ran its length. */
-export function completeSession(sql: Sql, userId: string, sessionId: string) {
+/**
+ * A pomodoro rang. Counted only if the server's own clock agrees it ran its length. Its presence
+ * reading, if any, is clamped to that length and stored with it (see the header).
+ */
+export function completeSession(
+  sql: Sql,
+  userId: string,
+  sessionId: string,
+  report?: PresenceReport | null,
+) {
   return sql.begin(async (tx): Promise<Result> => {
     const [s] = await tx`SELECT started_at, planned_seconds, status, now() AS now
       FROM study_sessions WHERE session_id = ${sessionId} AND user_id = ${userId} FOR UPDATE`;
@@ -155,6 +184,7 @@ export function completeSession(sql: Sql, userId: string, sessionId: string) {
     const xp = (await capReached(tx, userId, "session", DAILY_CAPS.sessions))
       ? 0
       : XP.sessionCompleted;
+    const presence = clampPresence(report, verdict.durationSeconds);
     await award(tx, userId, "session", sessionId, xp, eventId);
     await tx`UPDATE study_sessions SET status = 'completed', ended_at = now(),
         duration_seconds = ${verdict.durationSeconds}, validated_at = now()
@@ -166,9 +196,39 @@ export function completeSession(sql: Sql, userId: string, sessionId: string) {
       activityId: sessionId,
       durationSeconds: verdict.durationSeconds,
       xp,
+      presence,
+      metadata: presenceMetadata(report, presence),
     });
-    return ok({ xp, durationSeconds: verdict.durationSeconds });
+    return ok({
+      xp,
+      durationSeconds: verdict.durationSeconds,
+      presence: presence
+        ? {
+            cameraSeconds: presence.cameraSeconds,
+            seenSeconds: presence.seenSeconds,
+            verifiedMinutes: Math.round(presence.seenSeconds / 60),
+            clamped: presence.clamped,
+          }
+        : null,
+    });
   });
+}
+
+/**
+ * What the event's metadata keeps about a presence reading: only when the server had to clamp it,
+ * the numbers the browser actually sent (so a suspicious client is visible in the record).
+ */
+export function presenceMetadata(
+  report: PresenceReport | null | undefined,
+  kept: ReturnType<typeof clampPresence>,
+): Record<string, unknown> {
+  if (!report || !kept?.clamped) return {};
+  return {
+    presence: {
+      clamped: true,
+      reported: { cameraSeconds: report.cameraSeconds, seenSeconds: report.seenSeconds },
+    },
+  };
 }
 
 /** A pomodoro was given up (left the table, the tab, or the library): no time, no XP. */

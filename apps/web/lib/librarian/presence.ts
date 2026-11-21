@@ -20,6 +20,9 @@ const eye: { x: number; y: number; z: number } = {
  *   which opens her jaw in time with the words.
  * - `eye`: where her eyes are in the world (m), kept up to date by the librarian herself, for the
  *   conversation close-up to frame her face.
+ * - `shushUntil`: a `performance.now()` time; until then she turns to look at you from wherever
+ *   you are, because she's just shushed you (lib/focus/watch.ts, "Ms. Fenwick keeps you honest")
+ *   or just answered you in the library chat (lib/chat/fenwick.ts).
  */
 export const librarianPresence = {
   open: false,
@@ -28,6 +31,7 @@ export const librarianPresence = {
   speaking: false,
   mouth: 0,
   eye,
+  shushUntil: 0,
 };
 
 /** The shortest time she mouths a line for when there's no voice. */

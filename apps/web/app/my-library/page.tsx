@@ -3,7 +3,7 @@ import { MyLibrary } from "@/components/my-library/MyLibrary";
 import { parseTab } from "@/components/my-library/tabs";
 
 export const metadata: Metadata = {
-  title: "My library · OVR",
+  title: "My library · Cram Club",
   description:
     "Your private library: the sources, lessons, study plans and notes you've saved, kept with your account.",
 };

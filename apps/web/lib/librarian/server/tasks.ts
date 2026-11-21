@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type postgres from "postgres";
 import { isTransient } from "@/lib/ai/gemini";
 import { authConfigured } from "@/lib/auth/auth0";
-import { generateLesson } from "@/lib/learning-studio/server";
+import { checkLessonQuiz, generateLesson } from "@/lib/learning-studio/server";
 import type { Level } from "@/lib/learning-studio/schema";
 import { DAILY_CAPS, LIBRARY_TIME_ZONE as TZ, XP, subjectSlug } from "@/lib/learning/rules";
 import { libraryDay } from "@/lib/learning/server/queries";
@@ -76,10 +76,11 @@ export { rankHits };
 /**
  * The Librarian's task lifecycle. A request is understood (Gemini), confirmed by the student,
  * researched (TinyFish), organised (Gemini over what TinyFish returned), and can then become a
- * study plan or a lesson (Gemini, through the Learning Studio's own lesson generator). A request
- * can also start from uploaded notes, with no confirmation: Gemini reads them, TinyFish researches
- * what they link to and cover thinly, then the plan and/or lesson follow on their own. Long work
- * runs after the response (`defer`); the client polls the task. Every row is scoped to its
+ * study plan or a lesson (Gemini, through the Learning Studio's own lesson generator and its quiz
+ * self-check, checkLessonQuiz). A request can also start from uploaded notes, with no
+ * confirmation: Gemini reads them, TinyFish researches what they link to and cover thinly, then
+ * the plan and/or lesson follow on their own. Long work runs after the response (`defer`); the
+ * client polls the task. Every row is scoped to its
  * learner, and every step the UI shows comes from a provider response. A signed-in student's own
  * saved items and Study Circles reach Gemini only through context.ts (scoped, minimal, read-only).
  */
@@ -1206,7 +1207,7 @@ async function runLesson(sql: Sql, userId: string, id: string, planItemId: strin
     if (!pages.length) throw new Error("nothing to build a lesson from");
     const first = notePages.length + 1;
     const last = notePages.length + webPages.length;
-    const lesson = await generateLesson({
+    const drafted = await generateLesson({
       title: focus,
       guidance:
         fromNotes && webPages.length
@@ -1217,6 +1218,11 @@ async function runLesson(sql: Sql, userId: string, id: string, planItemId: strin
       pages,
       model: LIBRARIAN_MODEL,
     });
+    if (await cancelled(sql, id)) return;
+    // The same quiz self-check as the Learning Studio and cloud lessons: one more call that
+    // re-answers the questions from these pages alone; it never throws (the quiz ships as
+    // written if it can't run).
+    const lesson = await checkLessonQuiz(drafted, pages, { from: "sources" });
     if (await cancelled(sql, id)) return;
     const lessonSources = [
       ...parts.map((p, i) => ({ page: i + 1, title: notesLabel(p), url: "", text: notePages[i]! })),

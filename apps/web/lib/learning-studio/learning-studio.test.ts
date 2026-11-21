@@ -46,6 +46,47 @@ describe("lesson validation", () => {
     expect(() => parseLesson({ ...clone(SAMPLE_LESSON), scenes: [] }, 4)).toThrow();
   });
 
+  it("discards any self-check result the generator claims for itself", () => {
+    const l = clone(SAMPLE_LESSON) as Record<string, unknown> & typeof SAMPLE_LESSON;
+    l.quizCheck = {
+      checked: true,
+      questions: 1,
+      verified: 1,
+      fixed: 0,
+      dropped: 0,
+      unsure: 0,
+      from: "notes",
+    };
+    l.scenes[4]!.interaction!.check = "verified";
+    const out = parseLesson(l, 4);
+    expect(out.quizCheck).toBeUndefined();
+    expect(out.scenes[4]!.interaction!.check).toBeUndefined();
+    // The generator's hint and quote are kept (the quote is grounded later, by the check).
+    expect(out.scenes[4]!.interaction).toMatchObject({
+      hint: SAMPLE_LESSON.scenes[4]!.interaction!.hint,
+      quote: SAMPLE_LESSON.scenes[4]!.interaction!.quote,
+    });
+    expect(out.scenes[0]!.interaction).toBeUndefined();
+  });
+
+  it("drops a malformed claimed check, hint or quote instead of failing the lesson", () => {
+    const l = clone(SAMPLE_LESSON) as unknown as Record<string, unknown> & {
+      scenes: Record<string, unknown>[];
+    };
+    l.quizCheck = { checked: "yes" };
+    l.scenes[4]!.interaction = {
+      ...(l.scenes[4]!.interaction as object),
+      check: "approved",
+      hint: 42,
+      quote: ["not", "text"],
+    };
+    const q = parseLesson(l, 4).scenes[4]!.interaction!;
+    expect(q.check).toBeUndefined();
+    expect(q.hint).toBeUndefined();
+    expect(q.quote).toBeUndefined();
+    expect(q.correctIndex).toBe(2);
+  });
+
   it("makes scene ids safe and unique", () => {
     const l = clone(SAMPLE_LESSON);
     l.scenes[1]!.id = "Intro!";
@@ -89,6 +130,16 @@ describe("notes and captions", () => {
 });
 
 describe("tidyLessonJson", () => {
+  it("trims an over-long hint or quote instead of failing the lesson", async () => {
+    const { tidyLessonJson } = await import("./schema");
+    const l = clone(SAMPLE_LESSON);
+    l.scenes[4]!.interaction!.hint = "h".repeat(260);
+    l.scenes[4]!.interaction!.quote = "q ".repeat(150);
+    const q = parseLesson(tidyLessonJson(l), 4).scenes[4]!.interaction!;
+    expect(q.hint!.length).toBeLessThanOrEqual(200);
+    expect(q.quote!.length).toBeLessThanOrEqual(200);
+  });
+
   it("trims long quotes and replaces a half-filled visual instead of failing", async () => {
     const { tidyLessonJson } = await import("./schema");
     const out = tidyLessonJson({

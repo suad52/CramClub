@@ -1,14 +1,15 @@
 import "server-only";
 import type postgres from "postgres";
 import { TEXT_FALLBACK_MODEL } from "@/lib/ai/gemini";
-import { generateLesson, synthesize } from "@/lib/learning-studio/server";
+import { checkLessonQuiz, generateLesson, synthesize } from "@/lib/learning-studio/server";
 import { quickResearch } from "@/lib/librarian/server/research";
 import { getStorage } from "@/lib/storage";
 import type { PipelineDeps } from "./pipeline";
 
 /**
  * The real services behind a lesson job: TinyFish (the Librarian's quick research), Gemini (the
- * Learning Studio's lesson generator) and ElevenLabs (its narration), plus object storage.
+ * Learning Studio's lesson generator and its quiz self-check, which fails open) and ElevenLabs
+ * (its narration), plus object storage.
  */
 
 /** The model lesson jobs try first (the Librarian's fast default; the generator falls back). */
@@ -29,6 +30,10 @@ export function liveDeps(sql: postgres.Sql): PipelineDeps {
       return rows.map((r) => ({ title: r.title, url: r.url, domain: r.domain, text: r.extract }));
     },
     generateLesson: (o) => generateLesson({ ...o, model: LESSON_JOB_MODEL }),
+    // The worker isn't on a request clock, so the check may take a little longer than in the
+    // studio (GEMINI_QUIZ_CHECK_MODEL picks its model; it defaults to the quick one).
+    checkQuiz: (lesson, pages) =>
+      checkLessonQuiz(lesson, pages, { from: "sources", timeoutMs: 60_000 }),
     synthesize: (text) => synthesize(text),
   };
 }

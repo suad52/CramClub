@@ -23,7 +23,8 @@ interface MenuItem {
 
 /**
  * The game-style title screen, drawn over the live library while the camera slowly circles
- * your character. Arrow keys + Enter work as well as the mouse.
+ * your character. Arrow keys + Enter work as well as the mouse. Under the name it says what Cram
+ * Club is for: studying next to real people so starting is easier (body doubling).
  */
 export function TitleScreen() {
   const ready = useGameStore((s) => s.ready);
@@ -45,7 +46,8 @@ export function TitleScreen() {
               id: "enter",
               label: "Enter the Library",
               hint: `Continue as ${name}`,
-              run: () => setPhase("entering"),
+              // Through the camera and microphone check first (components/entry/DeviceSetup.tsx).
+              run: () => setPhase("setup"),
             },
             {
               id: "studio",
@@ -126,10 +128,11 @@ export function TitleScreen() {
           A cozy library to study together
         </p>
         <h1
-          className="title-pop mt-4 text-[clamp(5rem,12vw,9rem)] leading-[0.85] font-bold tracking-tight text-cream [paint-order:stroke_fill] [text-shadow:0_9px_0_#1f1a16] [-webkit-text-stroke:11px_#1f1a16]"
+          className="title-pop mt-4 text-[clamp(4rem,9vw,6.75rem)] leading-[0.88] font-bold tracking-tight text-cream [paint-order:stroke_fill] [text-shadow:0_9px_0_#1f1a16] [-webkit-text-stroke:11px_#1f1a16]"
           style={{ animationDelay: "160ms" }}
         >
-          OVR
+          <span className="block">Cram</span>
+          <span className="block">Club</span>
         </h1>
         <div
           className="title-pop mt-5 flex items-center gap-2"
@@ -140,8 +143,15 @@ export function TitleScreen() {
           <span className="h-3 w-3 rounded-full border-[2.5px] border-walnut bg-lamp shadow-[0_3px_0_#1f1a16]" />
           <span className="h-3 w-3 rounded-full border-[2.5px] border-walnut bg-[#7fb27a] shadow-[0_3px_0_#1f1a16]" />
         </div>
+        <p
+          className="title-pop mt-5 max-w-md text-[1.15rem] leading-snug font-semibold text-cream/90 [text-shadow:0_2px_0_#1f1a16]"
+          style={{ animationDelay: "280ms" }}
+        >
+          Study next to real people, so starting feels easier.{" "}
+          <span className="text-lamp">That&apos;s body doubling.</span>
+        </p>
 
-        <nav aria-label="Title menu" className="mt-10">
+        <nav aria-label="Title menu" className="mt-8">
           <ul className="space-y-3.5">
             {items.map((it, i) => {
               const active = i === focus;
@@ -213,7 +223,7 @@ export function TitleScreen() {
             aria-hidden
             className="absolute -top-4 -right-4 grid h-14 w-14 rotate-12 place-items-center rounded-full border-[3px] border-walnut bg-lamp text-[0.95rem] font-bold text-walnut shadow-[0_4px_0_#1f1a16]"
           >
-            OVR
+            CC
           </span>
           {hasCharacter ? (
             <>

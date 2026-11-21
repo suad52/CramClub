@@ -1,4 +1,5 @@
 import { ANCHORS, PLAYER, SEATS, findStandPoint, wrapAngle } from "@ovr/shared";
+import { chatHasFocus } from "@/lib/chat/keys";
 import {
   isLessonOverlayOpen,
   shouldOfferJoin,
@@ -377,11 +378,14 @@ export function holdFreeCursor(held: boolean) {
   if (!store.cursorFree) return;
   store.setCursorFree(false);
   const s = useGameStore.getState();
-  // A panel opened while Shift was held keeps the mouse free; letting go only clears the flag.
+  // A panel opened (or the chat box focused) while Shift was held keeps the mouse free; letting
+  // go only clears the flag.
   const covered =
+    chatHasFocus() ||
     s.menuOpen ||
     s.guideOpen ||
     s.progressOpen ||
+    s.studioOpen ||
     s.librarianOpen ||
     isBoardOpen() ||
     isLessonOverlayOpen() ||

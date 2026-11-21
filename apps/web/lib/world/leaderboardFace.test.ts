@@ -1,13 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { type HallBoard, STALE_AFTER, nextHallBoard } from "@/lib/learning/hallBoards";
 import type { Leaderboard, LeaderboardRow } from "@/lib/learning/types";
-import { FACE_ROWS, formatDays, formatFocus, formatXp, leaderboardFace } from "./leaderboardFace";
+import {
+  FACE_ROWS,
+  formatDays,
+  formatFocus,
+  formatVerified,
+  formatXp,
+  leaderboardFace,
+} from "./leaderboardFace";
 
 const row = (rank: number, extra: Partial<LeaderboardRow> = {}): LeaderboardRow => ({
   rank,
   displayName: `Reader ${rank}`,
   xp: 1300 - rank * 10,
   focusMinutes: 300 - rank * 5,
+  verifiedMinutes: 0,
   activeDays: 5,
   isMe: false,
   isDemo: false,
@@ -45,6 +53,34 @@ describe("leaderboard values", () => {
   });
 });
 
+describe("verified time on the focus board", () => {
+  it("adds a small at-desk line only where some focus time was seen", () => {
+    expect(formatVerified(45)).toBe("✓ 45 m at desk");
+    expect(formatVerified(65)).toBe("✓ 1 h 5 m at desk");
+    expect(formatVerified(0)).toBeNull();
+    expect(formatVerified(undefined)).toBeNull();
+    const face = leaderboardFace(
+      "focus",
+      board([row(1, { verifiedMinutes: 120 }), row(2), row(3, { verifiedMinutes: 20 })]),
+    );
+    expect(face.rows.map((r) => r.detail)).toEqual(["✓ 2 h at desk", null, "✓ 20 m at desk"]);
+    // Same order as the server ranked them: a camera doesn't move anyone up.
+    expect(face.rows.map((r) => r.rank)).toEqual([1, 2, 3]);
+    // The XP board keeps its active days.
+    expect(leaderboardFace("xp", board([row(1, { verifiedMinutes: 120 })])).rows[0]!.detail).toBe(
+      "5 days",
+    );
+  });
+
+  it("mentions your own seen time in the footer when you're below the rows", () => {
+    const rows = Array.from({ length: 10 }, (_, i) => row(i + 1));
+    const me = { rank: 14, xp: 90, focusMinutes: 65, verifiedMinutes: 40, optedIn: true };
+    expect(leaderboardFace("focus", board(rows, me)).footer.text).toBe(
+      "You: #14 · 1 h 5 m (✓ 40 m)",
+    );
+  });
+});
+
 describe("leaderboard face", () => {
   it("shows the top eight with the measure each board ranks by", () => {
     const rows = Array.from({ length: 12 }, (_, i) => row(i + 1));
@@ -68,6 +104,7 @@ describe("leaderboard face", () => {
         rank: 2,
         xp: 1280,
         focusMinutes: 290,
+        verifiedMinutes: 0,
         optedIn: true,
       }),
     );
@@ -79,17 +116,17 @@ describe("leaderboard face", () => {
 
   it("says where you stand when you're below the rows shown", () => {
     const rows = Array.from({ length: 10 }, (_, i) => row(i + 1));
-    const ranked = { rank: 14, xp: 90, focusMinutes: 65, optedIn: true };
+    const ranked = { rank: 14, xp: 90, focusMinutes: 65, verifiedMinutes: 0, optedIn: true };
     expect(leaderboardFace("focus", board(rows, ranked)).footer).toEqual({
       text: "You: #14 · 1 h 5 m",
       you: true,
     });
     expect(leaderboardFace("xp", board(rows, ranked)).footer.text).toBe("You: #14 · 90 XP");
-    const hidden = { rank: null, xp: 90, focusMinutes: 65, optedIn: false };
+    const hidden = { rank: null, xp: 90, focusMinutes: 65, verifiedMinutes: 0, optedIn: false };
     expect(leaderboardFace("xp", board(rows, hidden)).footer.text).toBe(
       "You're hidden from leaderboards",
     );
-    const fresh = { rank: null, xp: 0, focusMinutes: 0, optedIn: true };
+    const fresh = { rank: null, xp: 0, focusMinutes: 0, verifiedMinutes: 0, optedIn: true };
     expect(leaderboardFace("focus", board(rows, fresh)).footer.text).toBe(
       "Finish a pomodoro to join the board",
     );

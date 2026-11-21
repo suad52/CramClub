@@ -11,6 +11,7 @@ import {
   IconWarning,
 } from "@/components/ui/icons";
 import { BTN, BTN_SM, FOCUS, RIBBON } from "@/components/ui/styles";
+import { openMedia } from "@/lib/devices/prefs";
 import { type VoiceChanger, createVoiceChanger, tailSeconds } from "@/lib/voice/changer";
 import {
   PITCH_RANGE,
@@ -387,6 +388,8 @@ function problemOf(err: unknown): Problem {
     case "NotReadableError":
     case "AbortError":
       return "busy";
+    case "NotSupportedError":
+      return "unsupported";
     default:
       return "failed";
   }
@@ -485,9 +488,11 @@ class TesterEngine {
     const ctx = this.context();
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        video: false,
+      // The microphone picked on the "Before you go in" step, or the default one.
+      stream = await openMedia("mic", {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
       });
     } catch (err) {
       if (session === this.session) this.set({ phase: "idle", problem: problemOf(err) });

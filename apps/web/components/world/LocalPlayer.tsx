@@ -62,6 +62,9 @@ export function LocalPlayer({ config }: { config: AvatarConfig }) {
   const faceHead = usePlayerFaceHead();
   const trackingOn = useTrackingStore((s) => s.status !== "off" && s.status !== "error");
   const showFaceView = useTrackingStore((s) => s.showFaceView);
+  // Only in the library itself: the "Before you go in" step and the menu's Camera and microphone
+  // panels have their own live preview.
+  const inLibrary = useGameStore((s) => s.phase === "playing" && !s.devicesOpen);
   const quality = useGameStore((s) => s.settings.quality);
   const toggleCamera = useGameStore((s) => s.toggleCameraMode);
   // Game keys do nothing while a menu, the guide, My Progress, the Librarian, a whiteboard, the
@@ -73,6 +76,7 @@ export function LocalPlayer({ config }: { config: AvatarConfig }) {
       s.menuOpen ||
       s.guideOpen ||
       s.progressOpen ||
+      s.studioOpen ||
       s.librarianOpen ||
       isBoardOpen() ||
       isTimerPanelOpen()
@@ -116,6 +120,7 @@ export function LocalPlayer({ config }: { config: AvatarConfig }) {
       store.menuOpen ||
       store.guideOpen ||
       store.progressOpen ||
+      store.studioOpen ||
       store.librarianOpen ||
       isBoardOpen() ||
       isLessonOverlayOpen() ||
@@ -270,7 +275,7 @@ export function LocalPlayer({ config }: { config: AvatarConfig }) {
           <Avatar config={config} motion={motion} headRef={head} faceHead={faceHead} />
         </Suspense>
       </group>
-      {trackingOn && showFaceView && (
+      {trackingOn && showFaceView && inLibrary && (
         <FacePreview head={head} body={group} renderMain={quality === "low"} />
       )}
     </>

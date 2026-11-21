@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/icons";
 import { BODY, BTN, DISPLAY_L, HEADING, PAGE, PANEL, RIBBON, TAG } from "@/components/ui/styles";
 import type { LessonJobView } from "@/lib/jobs/types";
+import { quizCheckNote } from "@/lib/learning-studio/quizCheck";
 import type { Lesson } from "@/lib/learning-studio/schema";
 import { type CloudLesson, sourceChunks, storedAudio } from "@/lib/lessons/client";
 import { AudioPlayer, clock } from "./AudioPlayer";
@@ -54,7 +55,9 @@ function Shell({ onExit, children }: { onExit: () => void; children: React.React
 /**
  * A cloud lesson from the library (GET /api/lessons/:id, which checks it's yours or shared with a
  * Study Circle you're in): its title, summary, sources, scenes with their stored narration, and
- * the quiz. "Play the lesson" opens the Learning Studio's player on the same stored MP3s, so
+ * the quiz (double-checked against the sources by the worker when lesson.quizCheck says so; each
+ * question shows its hint after a wrong first try and its quote once answered). "Play the
+ * lesson" opens the Learning Studio's player on the same stored MP3s, so
  * nothing is synthesized again however often it's reopened. A lesson still being made shows its
  * live status card instead and opens itself when it's ready.
  */
@@ -155,6 +158,7 @@ function Overview({
     .filter((x) => !!x.scene.interaction);
   const [answered, setAnswered] = useState<Record<string, boolean>>({});
   const quizRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const checkNote = quizCheckNote(lesson.quizCheck);
 
   return (
     <article className="mt-6">
@@ -180,6 +184,12 @@ function Overview({
           {job.audio.length > 0 && (
             <span className={`${TAG.forest} tabular`}>
               {job.audio.length} narrated{recorded > 0 ? ` · ${clock(recorded)}` : ""}
+            </span>
+          )}
+          {checkNote && (
+            <span className={`${TAG.forest} gap-1`} title={checkNote}>
+              <IconCheck size={13} strokeWidth={3} />
+              Quiz double-checked
             </span>
           )}
           <StorageBadge storage={job.storage} />
@@ -265,6 +275,7 @@ function Overview({
               <p className={`${BODY} mt-1`}>
                 The knowledge checks from the lesson, all in one place.
                 {quiz.length > 1 && ` ${Object.keys(answered).length} of ${quiz.length} done.`}
+                {checkNote && ` ${checkNote}`}
               </p>
               <ol className="mt-6 space-y-8">
                 {quiz.map(({ scene, index }, n) => (
@@ -281,6 +292,7 @@ function Overview({
                     </p>
                     <Question
                       q={scene.interaction!}
+                      quoteFrom={lesson.quizCheck?.from ?? "sources"}
                       onDone={() => {
                         setAnswered((a) => ({ ...a, [scene.id]: true }));
                         quizRefs.current[n + 1]?.focus();

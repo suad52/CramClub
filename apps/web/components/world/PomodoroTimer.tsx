@@ -29,13 +29,16 @@ import {
   usePomodoro,
 } from "@/lib/game/pomodoro";
 import { type Quality, useGameStore } from "@/lib/game/store";
+import { useFocusStore } from "@/lib/focus/store";
 import { type TimerSpot, timerSpot } from "@/lib/world/tableTimer";
 
 /*
  * The Pomodoro timer on the table: a little walnut desk clock with an LED display, which pops up
  * in front of you when you sit down. It shows the time left in the current phase (the focus length
  * while you get ready), what the phase is, how far through it you are and the pomodoros done in
- * this set. Built procedurally (no model file).
+ * this set. While you focus with your own face tracking on, a small meter sits beside the phase:
+ * a green dot while it sees you at the desk and how much of this pomodoro it has (lib/focus/; only
+ * on-device face numbers, never video). Built procedurally (no model file).
  *
  * In metres: origin on the table under its middle, the display facing +Z.
  */
@@ -118,6 +121,8 @@ function contactTexture() {
 
 /** LED colours: amber while you get ready, red for focus, green for a break. */
 const COLOURS = ["#ffb23d", "#ff4a2e", "#3ee483", "#3ee483"] as const;
+/** The "seen at desk" dot, lit while the camera sees you. */
+const SEEN_COLOUR = "#3ee483";
 const LABELS = ["READY", "FOCUS", "BREAK", "LONG BREAK"] as const;
 type Mode = 0 | 1 | 2 | 3;
 const modeOf = (phase: PomodoroPhase): Mode =>
@@ -175,6 +180,10 @@ interface DisplayView {
   every: number;
   /** Progress through the phase, in thousandths. */
   progress: number;
+  /** Seen at the desk this pomodoro (%); -1 hides the meter, -2 shows it before there's a figure. */
+  seen: number;
+  /** The camera sees you at the desk right now. */
+  seenNow: boolean;
 }
 
 function paintDisplay(c: CanvasRenderingContext2D, v: DisplayView) {
@@ -194,7 +203,23 @@ function paintDisplay(c: CanvasRenderingContext2D, v: DisplayView) {
   c.shadowBlur = 10;
   c.font = "700 26px ui-monospace, Menlo, Consolas, monospace";
   c.textBaseline = "middle";
-  c.fillText(v.ringing ? "TIME'S UP" : v.paused ? "PAUSED" : LABELS[v.mode], 30, 36);
+  const label = v.ringing ? "TIME'S UP" : v.paused ? "PAUSED" : LABELS[v.mode];
+  c.fillText(label, 30, 36);
+  if (v.seen !== -1) {
+    // The focus meter: a dot (green while it sees you) and the share of the pomodoro so far.
+    const x = 30 + c.measureText(label).width + 30;
+    const dot = v.seenNow ? SEEN_COLOUR : lit;
+    c.save();
+    c.fillStyle = dot;
+    c.shadowColor = dot;
+    c.globalAlpha = v.seenNow ? 1 : 0.3;
+    c.beginPath();
+    c.arc(x, 36, 8, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+    c.font = "700 22px ui-monospace, Menlo, Consolas, monospace";
+    c.fillText(v.seen >= 0 ? `${v.seen}%` : "--%", x + 16, 37);
+  }
   for (let i = 0; i < v.every; i++) {
     c.globalAlpha = i < v.done ? 1 : 0.15;
     c.beginPath();
@@ -372,6 +397,8 @@ function buildTimerRig(): TimerRig {
       done: 0,
       every: 4,
       progress: 0,
+      seen: -1,
+      seenNow: false,
     },
     painted: false,
   };
@@ -455,6 +482,10 @@ function updateDisplay(rig: TimerRig, s: PomodoroState) {
   const mode = ringing ? rig.ringMode : modeOf(s.phase);
   const done = s.phase === "longBreak" ? every : Math.min(s.inSet, every - 1);
   const progress = ringing ? 1000 : Math.round(phaseProgress(s, now) * 1000);
+  const focus = useFocusStore.getState();
+  const meter = !ringing && rig.start < 0 && s.phase === "focus" && focus.cameraOn;
+  const seen = meter ? (focus.percent ?? -2) : -1;
+  const seenNow = meter && focus.seenNow;
 
   const v = rig.view;
   if (
@@ -467,7 +498,9 @@ function updateDisplay(rig: TimerRig, s: PomodoroState) {
     v.ringing === ringing &&
     v.done === done &&
     v.every === every &&
-    v.progress === progress
+    v.progress === progress &&
+    v.seen === seen &&
+    v.seenNow === seenNow
   )
     return;
   v.secs = secs;
@@ -479,6 +512,8 @@ function updateDisplay(rig: TimerRig, s: PomodoroState) {
   v.done = done;
   v.every = every;
   v.progress = progress;
+  v.seen = seen;
+  v.seenNow = seenNow;
   paintDisplay(rig.screen, v);
   rig.screenTexture.needsUpdate = true;
   rig.painted = true;

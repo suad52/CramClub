@@ -1,6 +1,7 @@
 import "server-only";
 import type postgres from "postgres";
 import { AiNotConfiguredError, isTransient } from "@/lib/ai/gemini";
+import { describeQuizCheck } from "@/lib/learning-studio/quizCheck";
 import type { Lesson, LessonLength, Level } from "@/lib/learning-studio/schema";
 import { StudioError, TtsNotConfiguredError } from "@/lib/learning-studio/server";
 import type { ResearchHooks } from "@/lib/librarian/server/research";
@@ -23,10 +24,14 @@ import { JOB_LEASE_SECONDS, type LessonAudioRef, type LessonJobStatus } from "./
 
 /**
  * One lesson job, step by step: research (TinyFish, or the sources a Librarian request already
- * found), the lesson (Gemini, through the Learning Studio's generator), narration (ElevenLabs, one
- * MP3 per scene into object storage), then a check that every file is stored. Each step's result
- * is checkpointed before the next starts, so a retry skips finished work: research isn't redone,
- * the lesson isn't rewritten, and a scene already in storage isn't recorded (or paid for) again.
+ * found), the lesson (Gemini, through the Learning Studio's generator), the quiz self-check (one
+ * more Gemini call that re-answers each question from the sources; see
+ * lib/learning-studio/quizCheck.ts), narration (ElevenLabs, one MP3 per scene into object
+ * storage), then a check that every file is stored. Each step's result is checkpointed before the
+ * next starts, so a retry skips finished work: research isn't redone, the lesson isn't rewritten,
+ * the quiz isn't checked twice (the stored lesson carries `quizCheck` once it has been), and a
+ * scene already in storage isn't recorded (or paid for) again. The self-check fails open: a
+ * check that errors leaves the quiz as written (quizCheck.checked false), never fails the job.
  *
  * Status and progress are written as each step actually starts and finishes. Web pages are
  * untrusted: they reach Gemini only as quoted reference pages with a rule to ignore any
@@ -47,6 +52,11 @@ export interface PipelineDeps {
     pages: readonly string[];
     guidance?: string;
   }): Promise<Lesson>;
+  /**
+   * The quiz self-check against the pages the lesson was made from. Must not throw for the
+   * check's own failures (it fails open, returning the lesson with quizCheck.checked false).
+   */
+  checkQuiz(lesson: Lesson, pages: readonly string[]): Promise<Lesson>;
   synthesize(text: string): Promise<{ audio: string; alignment: { ends: number[] } | null }>;
 }
 
@@ -153,6 +163,7 @@ export async function runLessonJob(
 
   // 2. The lesson document.
   guard();
+  const pages = pagesFor(research.sources);
   let lesson = job.checkpoint.lesson ? await loadLesson(storage, job.id) : null;
   const fresh = !lesson;
   if (!lesson) {
@@ -164,7 +175,7 @@ export async function runLessonJob(
       title: job.topic,
       level: job.level,
       length: job.length,
-      pages: pagesFor(research.sources),
+      pages,
       guidance: GUIDANCE(
         job.topic,
         research.sources.some((s) => s.snippetOnly),
@@ -183,6 +194,19 @@ export async function runLessonJob(
       sceneCount: lesson.scenes.length,
       progress: `Wrote “${lesson.title}”: ${lesson.scenes.length} scenes`,
     });
+  }
+
+  // 2b. The quiz, double-checked against the same sources. The stored lesson is this step's
+  // checkpoint: once it carries quizCheck (checked or not), a retry skips the call. Only
+  // questions change, never narration or the scene list, so recorded clips stay valid.
+  if (!lesson.quizCheck) {
+    guard();
+    await step("generating_lesson", "Double-checking the quiz against the sources");
+    lesson = await deps.checkQuiz(lesson, pages);
+    // Stored even on shutdown, like the lesson: the check is paid for. Lease checked first.
+    await control.confirm();
+    await storage.put(lessonKey(job.id), JSON.stringify(lesson), "application/json");
+    await control.update({ progress: describeQuizCheck(lesson.quizCheck) });
   }
   const total = lesson.scenes.length;
 

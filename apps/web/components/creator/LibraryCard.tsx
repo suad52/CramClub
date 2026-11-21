@@ -115,12 +115,12 @@ export function LibraryCard({
           aria-hidden
           className="pointer-events-none absolute inset-2.5 rounded-[16px] border-2 border-dashed border-walnut/25"
         />
-        <p className={`${RIBBON} absolute -top-4 left-6`}>OVR library card</p>
+        <p className={`${RIBBON} absolute -top-4 left-6`}>Cram Club card</p>
         <span
           aria-hidden
           className="absolute -top-4 -right-4 grid h-14 w-14 rotate-12 place-items-center rounded-full border-[3px] border-walnut bg-sun font-display text-[0.95rem] font-bold text-walnut shadow-[0_4px_0_#1f1a16]"
         >
-          OVR
+          CC
         </span>
         <div className="relative flex items-start justify-between gap-4 pr-8">
           <div>

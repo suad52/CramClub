@@ -10,6 +10,8 @@ import {
   niceMinutesScale,
   niceScale,
   ratio,
+  streakNote,
+  verifiedText,
 } from "./format";
 
 const entry = (over: Partial<TimelineEntry>): TimelineEntry => ({
@@ -20,9 +22,40 @@ const entry = (over: Partial<TimelineEntry>): TimelineEntry => ({
   lessonTitle: null,
   lessonId: null,
   durationSeconds: null,
+  seenSeconds: null,
   score: null,
   xp: 0,
   ...over,
+});
+
+describe("verified focus and streak notes", () => {
+  it("says how much focus was seen at the desk, and nothing when there's none", () => {
+    expect(verifiedText(40)).toBe("✓ 40m at desk");
+    expect(verifiedText(95, "")).toBe("✓ 1h 35m");
+    expect(verifiedText(0)).toBeNull();
+    expect(verifiedText(null)).toBeNull();
+  });
+
+  it("says when a rest day kept the streak going", () => {
+    const s = (over: Partial<Parameters<typeof streakNote>[0]>) => ({
+      current: 5,
+      longest: 7,
+      restDays: [] as string[],
+      studyToday: false,
+      ...over,
+    });
+    expect(streakNote(s({}), "2026-11-20")).toBe("Longest 7 days");
+    expect(streakNote(s({ restDays: ["2026-11-16"] }), "2026-11-20")).toMatch(
+      /^Rest day used .*16 · longest 7 days$/,
+    );
+    expect(streakNote(s({ restDays: ["2026-11-19"], studyToday: true }), "2026-11-20")).toBe(
+      "Yesterday was your rest day. Study today to keep it going",
+    );
+    expect(streakNote(s({ studyToday: true }), "2026-11-20")).toBe(
+      "Study today to keep it going · longest 7 days",
+    );
+    expect(streakNote(s({ current: 0, longest: 1 }), "2026-11-20")).toBe("Longest 1 day");
+  });
 });
 
 describe("formatMinutes", () => {

@@ -132,7 +132,9 @@ function LiveDot() {
  * so Enter in a menu stays there).
  */
 function useCovered() {
-  const menu = useGameStore((s) => s.menuOpen || s.guideOpen || s.progressOpen || s.librarianOpen);
+  const menu = useGameStore(
+    (s) => s.menuOpen || s.guideOpen || s.progressOpen || s.studioOpen || s.librarianOpen,
+  );
   const board = useWhiteboardStore((s) => s.openId !== null);
   const lesson = useBoardLessons((s) => s.fullscreen || s.pickerBoardId !== null);
   return menu || board || lesson;
@@ -541,6 +543,7 @@ function QuestionCard({ playback }: { playback: LessonPlayback }) {
         q={q}
         onDone={playback.completeQuestion}
         onPick={(i) => void trackQuizAnswer(playback.lesson, playback.scene, i)}
+        quoteFrom={playback.lesson.quizCheck?.from}
         hotkeys
         compact
       />

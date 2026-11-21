@@ -33,6 +33,8 @@ import {
   clampSetting,
   formatClock,
   isFocusing,
+  lengthShort,
+  lengthWord,
   missedAwaySince,
   phaseProgress,
   remainingMs,
@@ -42,7 +44,11 @@ import {
 import { playTimerAlarm, playTimerStart, playTimerTick } from "@/lib/game/sfx";
 import { useGameStore } from "@/lib/game/store";
 import { useProfileStore } from "@/lib/avatar/profile";
+import { useDemo } from "@/lib/demo/mode";
 import { saveProfile, trackPomodoros } from "@/lib/learning/client";
+import { startFocusWatch } from "@/lib/focus/watch";
+import { FenwickCaption, FocusMeter, StudyingNearby } from "@/components/focus/FocusBits";
+import { ShowedUp } from "@/components/focus/ShowedUp";
 import { XpToast } from "./XpToast";
 
 /*
@@ -50,6 +56,12 @@ import { XpToast } from "./XpToast";
  * clock on the table is drawn in the 3D scene from the same store). Browsers can't stop anyone
  * switching tabs, so instead leaving is noticed and costs the pomodoro, and the page does what it
  * can to keep you here: full screen, asking before it closes, and a nudge in the tab title.
+ *
+ * The focus loop rides along (lib/focus/, started here by LearningTracker): the "seen at desk"
+ * meter on the card while your own face tracking is on, the body-doubling line, Ms. Fenwick's
+ * shush captions under the card, and the "You showed up" card when a pomodoro rings. In the judge
+ * demo (lib/demo) the store runs on quick timings, so lengths are worded with lengthWord (a
+ * "15-second break") and the settings' steppers wait until demo mode is over.
  */
 
 /**
@@ -402,12 +414,14 @@ function PomodoroDirector() {
 /* ------------------------------------------------------------------ */
 
 /**
- * Sends this player's pomodoros to learning analytics (the server validates and scores them) and
- * keeps their leaderboard name in step with their character's name.
+ * Sends this player's pomodoros to learning analytics (the server validates and scores them, with
+ * the verified-presence tally from the focus loop) and keeps their leaderboard name in step with
+ * their character's name. It also runs the focus loop's watch (lib/focus/watch.ts).
  */
 function LearningTracker() {
   const displayName = useProfileStore((s) => s.displayName);
   useEffect(() => trackPomodoros(), []);
+  useEffect(() => startFocusWatch(), []);
   useEffect(() => {
     if (displayName) void saveProfile({ displayName });
   }, [displayName]);
@@ -450,8 +464,10 @@ export function PomodoroLayer() {
       {ready && playing && (
         <>
           {/* Top left, under the zone name (and the "Walking faster" chip): the middle of the view
-              is your desk, where the 3D timer sits. */}
+              is your desk, where the 3D timer sits. The library chat (bottom left) measures it
+              to stay below it (data-hud-top-left; components/chat/ChatPanel.tsx). */}
           <div
+            data-hud-top-left
             className={`pointer-events-none absolute left-4 z-[11] flex w-[24rem] max-w-[calc(100%-2rem)] flex-col gap-2 ${walkFast ? "top-[7.25rem]" : "top-20"}`}
           >
             <TimerCard compact={cardNotice} onLeave={leaveTable} />
@@ -593,10 +609,11 @@ function TimerCard({ compact, onLeave }: { compact: boolean; onLeave: () => void
             {clockOf(s, now)}
           </p>
           <p className={`text-[13px] leading-5 font-medium ${HUD_MUTED}`}>
-            of focus, then a {s.settings.shortBreakMinutes}-minute break. Stay at the table and in
-            this tab until it rings.
+            of focus, then a {lengthWord(s.settings.shortBreakMinutes)} break. Stay at the table and
+            in this tab until it rings.
           </p>
         </div>
+        <StudyingNearby className="mt-3.5" />
         <TaskInput />
         <SetRow s={s} now={now} />
         <div className={`mt-4 grid grid-cols-[1fr_auto] gap-2 border-t-2 pt-4 ${DIVIDE}`}>
@@ -658,6 +675,7 @@ function TimerCard({ compact, onLeave }: { compact: boolean; onLeave: () => void
           />
         </div>
       )}
+      {focusing && <FocusMeter />}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <SetRow s={s} now={now} inline />
         <span className="ml-auto flex items-center gap-1.5">
@@ -785,6 +803,7 @@ function SetRow({ s, now, inline = false }: { s: PomodoroState; now: number; inl
 function TimerSettings({ onDone }: { onDone: () => void }) {
   const settings = usePomodoro((s) => s.settings);
   const focusing = usePomodoro(isFocusing);
+  const demo = useDemo((d) => d.on);
   const update = (change: Partial<PomodoroSettings>) =>
     usePomodoro.getState().updateSettings(change);
   const panel = useRef<HTMLDivElement>(null);
@@ -795,7 +814,14 @@ function TimerSettings({ onDone }: { onDone: () => void }) {
     // With the pause menu, My Progress or the Librarian open over them, Esc is theirs.
     const onKey = (e: KeyboardEvent) => {
       const game = useGameStore.getState();
-      if (e.key !== "Escape" || game.menuOpen || game.progressOpen || game.librarianOpen) return;
+      if (
+        e.key !== "Escape" ||
+        game.menuOpen ||
+        game.progressOpen ||
+        game.studioOpen ||
+        game.librarianOpen
+      )
+        return;
       e.preventDefault();
       onDone();
     };
@@ -803,7 +829,7 @@ function TimerSettings({ onDone }: { onDone: () => void }) {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [onDone]);
 
-  const minutes = (n: number) => `${n} min`;
+  const minutes = lengthShort;
   return (
     <div ref={panel}>
       <header className="flex items-center gap-3">
@@ -813,15 +839,26 @@ function TimerSettings({ onDone }: { onDone: () => void }) {
         </button>
       </header>
       <div className="mt-4 space-y-1.5">
-        <Stepper setting="focusMinutes" label="Pomodoro" format={minutes} fixed={focusing} />
-        <Stepper setting="shortBreakMinutes" label="Short break" format={minutes} />
-        <Stepper setting="longBreakMinutes" label="Long break" format={minutes} />
+        <Stepper
+          setting="focusMinutes"
+          label="Pomodoro"
+          format={minutes}
+          fixed={focusing || demo}
+        />
+        <Stepper setting="shortBreakMinutes" label="Short break" format={minutes} fixed={demo} />
+        <Stepper setting="longBreakMinutes" label="Long break" format={minutes} fixed={demo} />
         <Stepper
           setting="longBreakEvery"
           label="Long break every"
           format={(n) => `${n} pomodoros`}
+          fixed={demo}
         />
       </div>
+      {demo && (
+        <p className={`mt-2 text-xs leading-[1.125rem] font-medium ${HUD_MUTED}`}>
+          Demo mode runs on quick timings. Your own lengths come back when you exit the demo.
+        </p>
+      )}
       <div className={`mt-4 space-y-0.5 border-t-2 pt-3 ${DIVIDE}`}>
         <Toggle
           label="Strict"
@@ -841,6 +878,12 @@ function TimerSettings({ onDone }: { onDone: () => void }) {
           hint="Go full screen while a pomodoro runs, so nothing else is in sight."
           checked={settings.screenLock}
           onChange={(screenLock) => update({ screenLock })}
+        />
+        <Toggle
+          label="Ms. Fenwick keeps you honest"
+          hint="She shushes you, kindly and by name, if you drift off mid-pomodoro. Only on-device face data is used, and only if you turned face tracking on."
+          checked={settings.fenwickShush}
+          onChange={(fenwickShush) => update({ fenwickShush })}
         />
       </div>
       {focusing && (
@@ -1119,6 +1162,7 @@ function Toasts() {
           {toastText(toast)}
         </p>
       )}
+      <FenwickCaption />
       {seatLockAt !== null && (
         <p key={seatLockAt} className={TOAST}>
           You&apos;re mid-pomodoro, so stay at the table until it rings.{" "}
@@ -1232,17 +1276,27 @@ function NoticeBody({ notice }: { notice: PomodoroNotice }) {
     );
   } else if (notice.kind === "focusDone") {
     const long = notice.breakPhase === "longBreak";
-    eyebrow = long ? "Set complete" : "Time for a break";
-    title = `Pomodoro ${notice.count} done`;
-    body = long ? (
-      <p>
-        That&apos;s {longBreakEvery} in a row. Take a {longBreakMinutes}-minute long break: walk
-        around, get some water, rest your eyes.
-      </p>
-    ) : (
-      <p>
-        Take a {shortBreakMinutes}-minute break. Stand up, stretch and look away from the screen.
-      </p>
+    eyebrow = notice.preview
+      ? "Demo preview"
+      : long
+        ? "Set complete"
+        : `Pomodoro ${notice.count} done`;
+    title = "You showed up";
+    // The recap (minutes, seen at desk, who studied nearby, XP, her note), then the break.
+    body = (
+      <ShowedUp at={notice.at}>
+        {long ? (
+          <p>
+            That&apos;s {longBreakEvery} in a row. Take a {lengthWord(longBreakMinutes)} long break:
+            walk around, get some water, rest your eyes.
+          </p>
+        ) : (
+          <p>
+            Take a {lengthWord(shortBreakMinutes)} break. Stand up, stretch and look away from the
+            screen.
+          </p>
+        )}
+      </ShowedUp>
     );
     actions = (
       <>

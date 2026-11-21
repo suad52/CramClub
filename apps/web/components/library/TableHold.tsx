@@ -17,8 +17,6 @@ import { formatClock } from "@/lib/game/pomodoro";
 import { useGameStore } from "@/lib/game/store";
 import { isLessonOverlayOpen } from "@/lib/learning-studio/boardLessons";
 import {
-  HOLD_NOUN,
-  HOLD_TEXT,
   claimTable,
   clearTableError,
   clockTime,
@@ -28,6 +26,8 @@ import {
   dismissTimeUp,
   highlightInvitation,
   holdKey,
+  holdNounNow,
+  holdTextNow,
   cancelLeave,
   invitationKey,
   inviteByEmail,
@@ -42,14 +42,10 @@ import {
   tableName,
   useTables,
   useTablesLive,
+  warnMsNow,
 } from "@/lib/tables/client";
 import { msLeft } from "@/lib/tables/time";
-import {
-  EMAIL_INVITES_PER_HOLD,
-  type TableInvitation,
-  type TableStatus,
-  WARN_MINUTES,
-} from "@/lib/tables/types";
+import { EMAIL_INVITES_PER_HOLD, type TableInvitation, type TableStatus } from "@/lib/tables/types";
 
 /*
  * Holding a table, like in a real library (rules: lib/tables/types.ts, the server decides).
@@ -66,7 +62,8 @@ import {
  *   until when, and "Show me" highlights the table's name (it doesn't walk you anywhere).
  *
  * Cards never take the mouse: with it captured, hold Shift to use their buttons (like the timer's
- * cards). Esc closes the top one while the mouse is free.
+ * cards). Esc closes the top one while the mouse is free. In the judge demo (lib/demo) a hold is a
+ * few minutes and its word comes a minute before the end (holdTextNow / warnMsNow).
  */
 
 /* ---- Looks ---- */
@@ -248,6 +245,7 @@ export function TableHoldLayer() {
         g.menuOpen ||
         g.guideOpen ||
         g.progressOpen ||
+        g.studioOpen ||
         g.librarianOpen ||
         isBoardOpen() ||
         isLessonOverlayOpen()
@@ -343,8 +341,8 @@ function ClaimCard({ tableId }: { tableId: string }) {
         You&apos;re the first here
       </h2>
       <p className={`mt-1.5 ${BODY}`}>
-        Hold this table for {HOLD_TEXT}? Your first name goes on a little card on the table, and you
-        can give it up whenever you like.
+        Hold this table for {holdTextNow()}? Your first name goes on a little card on the table, and
+        you can give it up whenever you like.
       </p>
 
       <div className="mt-5 space-y-3">
@@ -797,7 +795,7 @@ function HolderPanel({
   const [confirming, setConfirming] = useState(false);
   const blockId = useId();
   const isPrivate = hold.visibility === "private";
-  const soon = left <= WARN_MINUTES * 60_000;
+  const soon = left <= warnMsNow();
   const emailCount = hold.emailInvites?.length ?? 0;
 
   const pick = (visibility: "public" | "private") => {
@@ -966,7 +964,7 @@ function TimeUpCard({ tableId }: { tableId: string }) {
     >
       <p className={`${RIBBON} absolute -top-3.5 left-5`}>Time&apos;s up</p>
       <h2 id="table-timeup-title" className="font-display text-[19px] leading-6 font-bold">
-        Your {HOLD_NOUN} at {tableName(tableId)} is up
+        Your {holdNounNow()} at {tableName(tableId)} is up
       </h2>
       <p className="mt-1 text-[14px] leading-5 font-medium text-ink-soft">
         The table is open again.

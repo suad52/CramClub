@@ -1,4 +1,4 @@
-import type { TimelineEntry } from "@/lib/learning/types";
+import type { Dashboard, TimelineEntry } from "@/lib/learning/types";
 
 /** Display helpers for the progress dashboard. Pure, so they can be tested without a browser. */
 
@@ -20,6 +20,36 @@ export function formatMinutes(total: number) {
 export function formatSeconds(total: number) {
   if (total < 59.5) return `${Math.max(0, Math.round(total))}s`;
   return formatMinutes(total / 60);
+}
+
+/**
+ * "✓ 40m at desk": the part of focus time the student's own face tracking saw them at the desk,
+ * or null when there's none (camera off is normal, and shows nothing at all).
+ */
+export function verifiedText(minutes: number | null | undefined, suffix = " at desk") {
+  const m = Math.round(minutes ?? 0);
+  return m > 0 ? `✓ ${formatMinutes(m)}${suffix}` : null;
+}
+
+/** The day before a "YYYY-MM-DD" day. */
+function dayBefore(day: string) {
+  return new Date(parseDay(day).getTime() - 864e5).toISOString().slice(0, 10);
+}
+
+/**
+ * The line under the streak: when a rest day kept it going (one missed day in any 7 is
+ * forgiven, lib/learning/rules.ts streaks), whether it needs today, and the longest streak.
+ */
+export function streakNote(streak: Dashboard["streak"], today: string) {
+  const longest = `longest ${plural(streak.longest, "day")}`;
+  if (streak.current === 0) return `Longest ${plural(streak.longest, "day")}`;
+  const rest = streak.restDays[streak.restDays.length - 1];
+  if (rest && rest === dayBefore(today) && streak.studyToday)
+    return "Yesterday was your rest day. Study today to keep it going";
+  if (rest)
+    return `Rest day used ${formatDay(rest, { weekday: "short", month: "short", day: "numeric" })} · ${longest}`;
+  if (streak.studyToday) return `Study today to keep it going · ${longest}`;
+  return `Longest ${plural(streak.longest, "day")}`;
 }
 
 /** "1 lesson", "3 lessons". */

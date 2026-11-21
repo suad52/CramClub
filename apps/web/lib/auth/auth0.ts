@@ -77,7 +77,7 @@ function makeClient() {
 /** A small page in the library's colours for a sign-in that didn't finish (no details echoed). */
 function callbackProblem() {
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign-in didn't finish · OVR</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign-in didn't finish · Cram Club</title>
 <style>
 body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f5f2ea;color:#1f1a16;font:500 16px/1.5 ui-rounded,"Nunito",system-ui,sans-serif;padding:16px}
 main{max-width:420px;background:#fffefa;border:3px solid #1f1a16;border-radius:24px;box-shadow:0 6px 0 #1f1a16;padding:28px}

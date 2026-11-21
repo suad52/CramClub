@@ -1,5 +1,6 @@
 // End-to-end check of the learning pipeline against a running app and its real database:
-// sessions, lessons, quizzes, idempotency, the anti-cheat checks and the read views. It makes a
+// sessions (with a presence reading, clamped by the server), lessons, quizzes, idempotency, the
+// anti-cheat checks and the read views. It makes a
 // throwaway learner, backdates its rows where a real wait would be needed, and deletes everything
 // it made at the end. Usage: pnpm db:smoke [baseUrl]   (default http://localhost:3100)
 import assert from "node:assert/strict";
@@ -54,12 +55,26 @@ try {
 
   // After its full length it counts once, for 10 XP and 25 minutes.
   await sql`UPDATE study_sessions SET started_at = now() - interval '25 minutes' WHERE session_id = ${second}`;
-  let done = await post("session-complete", { sessionId: second });
+  // It reports more camera time than the session ran: the server keeps 25 min, flags the clamp.
+  let done = await post("session-complete", {
+    sessionId: second,
+    presence: { cameraSeconds: 1800, seenSeconds: 1200 },
+  });
   assert.equal(done.status, 200);
   assert.equal(done.json.xp, 10);
   assert.equal(done.json.durationSeconds, 1500);
+  assert.deepEqual(done.json.presence, {
+    cameraSeconds: 1500,
+    seenSeconds: 1200,
+    verifiedMinutes: 20,
+    clamped: true,
+  });
   assert.equal((await post("session-complete", { sessionId: second })).json.xp, 0);
-  step("completed pomodoro: +10 XP once, 25 min credited");
+  const [stored] = await sql`SELECT camera_seconds, seen_seconds, metadata FROM learning_events
+    WHERE user_id = ${userId} AND event_type = 'study_session_completed'`;
+  assert.deepEqual([stored.camera_seconds, stored.seen_seconds], [1500, 1200]);
+  assert.equal(stored.metadata.presence.clamped, true);
+  step("completed pomodoro: +10 XP once, 25 min credited, 20 min seen (clamped, flagged)");
 
   // Lessons: registered first, not completable instantly, XP once.
   const lesson = {
@@ -104,6 +119,8 @@ try {
   const dash = (await get("dashboard")).json;
   assert.equal(dash.allTime.xp, 60);
   assert.equal(dash.allTime.focusMinutes, 25);
+  assert.equal(dash.allTime.verifiedMinutes, 20);
+  assert.equal(dash.thisWeek.verifiedMinutes, 20);
   assert.equal(dash.allTime.lessons, 1);
   assert.equal(dash.allTime.quizzesCorrect, 1);
   assert.equal(dash.streak.current, 1);
@@ -129,7 +146,7 @@ try {
   const byFocus = (await get("leaderboard?by=focus")).json;
   assert.equal(byFocus.by, "focus");
   assert.equal(
-    byFocus.rows.some((r) => r.isMe && r.focusMinutes === 25),
+    byFocus.rows.some((r) => r.isMe && r.focusMinutes === 25 && r.verifiedMinutes === 20),
     true,
   );
   assert.equal(

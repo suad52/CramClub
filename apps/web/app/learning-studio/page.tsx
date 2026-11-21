@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { StudioClient } from "./StudioClient";
 
 export const metadata: Metadata = {
-  title: "Learning Studio · OVR",
+  title: "Learning Studio · Cram Club",
   description:
     "Upload a PDF of your notes and get a short narrated lesson with visuals, knowledge checks and a librarian who answers from your notes.",
 };

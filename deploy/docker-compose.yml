@@ -69,6 +69,9 @@ services:
       GAME_SERVER_PORT: "2567"
       # Only the site itself may open a room from a browser.
       ALLOWED_ORIGINS: https://${SITE_HOST}
+      # The web app on Compose's private network (it listens on 3100), for Ms. Fenwick's chat
+      # replies: signed server-to-server requests, never through Caddy.
+      WEB_INTERNAL_URL: http://web:3100
     expose:
       - "2567"
     init: true

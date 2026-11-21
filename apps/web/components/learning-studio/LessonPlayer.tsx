@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import {
   IconArrowLeft,
   IconArrowRight,
@@ -29,7 +29,8 @@ import {
   RIBBON,
   TAG,
 } from "@/components/ui/styles";
-import type { Chunk, Interaction, Lesson, Scene } from "@/lib/learning-studio/schema";
+import { quizCheckNote } from "@/lib/learning-studio/quizCheck";
+import type { Chunk, Interaction, Lesson, QuizCheck, Scene } from "@/lib/learning-studio/schema";
 import { topChunks } from "@/lib/learning-studio/text";
 import { type LessonPlayback, useLessonPlayback } from "@/lib/learning-studio/useLessonPlayback";
 import { VisualRenderer } from "./visuals";
@@ -101,6 +102,7 @@ const QUESTION_STYLES = {
     bad: WRONG_FILL,
     btn: BTN_SM.secondary,
     primary: BTN.primary,
+    badge: `${TAG.forest} mt-3 gap-1 shadow-[0_2px_0_#1f1a16]`,
   },
   compact: {
     card: "w-full min-w-0 max-w-sm rounded-[20px] border-[3px] border-black/80 bg-walnut/95 p-3.5 text-walnut-text shadow-[0_5px_0_rgb(0_0_0/0.55)]",
@@ -130,7 +132,15 @@ const QUESTION_STYLES = {
     bad: WRONG_FILL,
     btn: `${HUD_SMALL} bg-walnut-key text-walnut-text hover:bg-[#4a423b]`,
     primary: `${HUD_SMALL} bg-sun text-walnut hover:bg-[#f6d98f]`,
+    badge:
+      "mt-1.5 inline-flex items-center gap-1 rounded-full border-2 border-black/80 bg-leaf px-2 py-px font-display text-[11px] leading-4 font-semibold text-walnut",
   },
+};
+
+/** Where a question's quote comes from, as the student reads it. */
+const QUOTE_LABEL: Record<QuizCheck["from"], string> = {
+  notes: "From your notes:",
+  sources: "From the sources:",
 };
 
 /**
@@ -138,6 +148,13 @@ const QUESTION_STYLES = {
  * from the keyboard (1–5 pick an option, Enter continues) for when the mouse is busy steering the
  * library camera; the options are then numbered to match. Letter keys are deliberately not used:
  * A, B, D and E already walk, open the whiteboard and sit in the library.
+ *
+ * A wrong first pick shows the question's hint and allows one more try before the answer is
+ * revealed (Enter, or "Show the answer", reveals it at once). Only the first pick is reported
+ * through `onPick`: first-try correctness is what counts for mastery. After the answer is shown,
+ * the question's quote (words from the notes or sources, grounded on the server) backs it up.
+ * A question the self-check confirmed wears a "Double-checked by Ms. Fenwick" badge; one it
+ * couldn't confirm says so once answered.
  */
 export function Question({
   q,
@@ -145,24 +162,40 @@ export function Question({
   onPick,
   hotkeys = false,
   compact = false,
+  quoteFrom = "notes",
 }: {
   q: Interaction;
   onDone: () => void;
-  /** An option was picked (the first pick is the answer that counts). */
+  /** The first option picked (the answer that counts). Not called again for the second try. */
   onPick?: (index: number) => void;
   hotkeys?: boolean;
   compact?: boolean;
+  /** What the lesson was made from, for the quote's label (lesson.quizCheck?.from). */
+  quoteFrom?: QuizCheck["from"];
 }) {
-  const [picked, setPicked] = useState<number | null>(null);
+  /** Options picked, in order: at most two (a wrong first try, then one more). */
+  const [picks, setPicks] = useState<number[]>([]);
+  const [gaveUp, setGaveUp] = useState(false);
   const [shown, setShown] = useState(false);
   const s = QUESTION_STYLES[compact ? "compact" : "regular"];
+  const solved = picks.includes(q.correctIndex ?? -1);
+  const revealed = solved || picks.length >= 2 || gaveUp;
+  const retrying = picks.length === 1 && !revealed;
+
+  const choose = useCallback(
+    (i: number) => {
+      setPicks((p) => (p.includes(i) || p.length >= 2 ? p : [...p, i]));
+      if (picks.length === 0) onPick?.(i);
+    },
+    [picks.length, onPick],
+  );
 
   // A compact card may be too short for the feedback and its Continue button, and it can't be
   // scrolled while the mouse is steering the camera: bring them into view once an answer is in.
   const feedback = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (compact && picked !== null) feedback.current?.scrollIntoView({ block: "nearest" });
-  }, [compact, picked]);
+    if (compact && picks.length > 0) feedback.current?.scrollIntoView({ block: "nearest" });
+  }, [compact, picks.length, revealed]);
 
   useEffect(() => {
     if (!hotkeys) return;
@@ -171,25 +204,27 @@ export function Question({
       if ((e.target as HTMLElement)?.closest?.("input, textarea, select, [contenteditable]"))
         return;
       if (e.key === "Enter") {
-        if (q.type === "reflection" || picked !== null) {
+        if (q.type === "reflection" || revealed) {
           // Also stops a focused button turning this Enter into a second click.
           e.preventDefault();
           onDone();
+        } else if (retrying) {
+          e.preventDefault();
+          setGaveUp(true);
         }
         return;
       }
       const digit = /^(?:Digit|Numpad)([1-5])$/.exec(e.code);
-      if (!digit || q.type !== "multiple-choice" || picked !== null) return;
+      if (!digit || q.type !== "multiple-choice" || revealed) return;
       const i = Number(digit[1]) - 1;
-      if (i < q.options!.length) {
+      if (i < q.options!.length && !picks.includes(i)) {
         e.preventDefault();
-        setPicked(i);
-        onPick?.(i);
+        choose(i);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [hotkeys, q, picked, onDone, onPick]);
+  }, [hotkeys, q, picks, revealed, retrying, choose, onDone]);
 
   const continueButton = (
     <button
@@ -201,6 +236,17 @@ export function Question({
       Continue
       <IconArrowRight size={compact ? 14 : 16} />
     </button>
+  );
+  const quote = q.quote && (
+    <p className={`${s.smallGap} ${s.answer}`}>
+      <span className="font-display font-semibold">{QUOTE_LABEL[quoteFrom]}</span> “{q.quote}”
+    </p>
+  );
+  const badge = (q.check === "verified" || q.check === "fixed") && (
+    <p className={s.badge}>
+      <IconCheck size={compact ? 12 : 14} strokeWidth={3} />
+      Double-checked by Ms. Fenwick
+    </p>
   );
   if (q.type === "reflection") {
     return (
@@ -222,11 +268,12 @@ export function Question({
           </button>
         )}
         {shown && <p className={`${s.smallGap} ${s.answer}`}>{q.suggestedAnswer}</p>}
+        {shown && quote}
         <div>{continueButton}</div>
       </div>
     );
   }
-  const correct = picked === q.correctIndex;
+  const where = quoteFrom === "sources" ? "the sources" : "your notes";
   return (
     <fieldset className={s.card}>
       <legend className="sr-only">Knowledge check</legend>
@@ -236,22 +283,20 @@ export function Question({
         </p>
       )}
       <p className={s.text}>{q.question}</p>
+      {badge}
       <div className={`${s.gap} ${s.options} grid`}>
         {q.options!.map((opt, i) => {
-          const isRight = picked !== null && i === q.correctIndex;
-          const isWrong = picked !== null && i === picked && !isRight;
-          const state = picked === null ? s.idle : isRight ? s.right : isWrong ? s.wrong : s.rest;
+          const isRight = revealed && i === q.correctIndex;
+          const isWrong = picks.includes(i) && i !== q.correctIndex;
+          const state = isRight ? s.right : isWrong ? s.wrong : revealed ? s.rest : s.idle;
           return (
             <button
               key={opt}
               type="button"
-              disabled={picked !== null}
-              onClick={() => {
-                setPicked(i);
-                onPick?.(i);
-              }}
+              disabled={revealed || picks.includes(i)}
+              onClick={() => choose(i)}
               className={`${s.option} ${state}`}
-              aria-pressed={picked === i}
+              aria-pressed={picks.includes(i)}
               aria-keyshortcuts={hotkeys ? String(i + 1) : undefined}
             >
               <span className={s.marker}>
@@ -275,24 +320,64 @@ export function Question({
                   className={`flex shrink-0 items-center gap-1 self-center ${s.tag}`}
                 >
                   <IconClose size={16} className={s.tagWrong} />
-                  Your answer
+                  {i === picks[0] ? "Your answer" : "Second try"}
                 </span>
               )}
-              {picked !== null && i === q.correctIndex && (
-                <span className="sr-only"> (correct answer)</span>
-              )}
+              {isRight && <span className="sr-only"> (correct answer)</span>}
+              {isWrong && <span className="sr-only"> (not this one)</span>}
             </button>
           );
         })}
       </div>
-      {picked !== null && (
+      {picks.length > 0 && (
         <div ref={feedback} className={s.gap} role="status">
-          <p className={`flex items-center gap-1.5 ${s.feedbackText} ${correct ? s.good : s.bad}`}>
-            {correct ? <IconCheck size={18} /> : <IconClose size={18} />}
-            {correct ? "Correct." : "Not quite."}
-          </p>
-          {q.explanation && <p className={`mt-1 ${s.note}`}>{q.explanation}</p>}
-          {continueButton}
+          {retrying ? (
+            <>
+              <p className={`flex items-center gap-1.5 ${s.feedbackText} ${s.bad}`}>
+                <IconClose size={18} />
+                Not quite. One more try.
+              </p>
+              <p className={`mt-1 ${s.note}`}>
+                {q.hint ? (
+                  <>
+                    <span className="font-display font-semibold">Hint:</span> {q.hint}
+                  </>
+                ) : (
+                  "Have another look at the options that are left."
+                )}
+              </p>
+              <button
+                type="button"
+                className={`${s.btn} ${s.smallGap}`}
+                onClick={() => setGaveUp(true)}
+                aria-keyshortcuts={hotkeys ? "Enter" : undefined}
+              >
+                Show the answer
+              </button>
+            </>
+          ) : (
+            <>
+              <p
+                className={`flex items-center gap-1.5 ${s.feedbackText} ${solved ? s.good : s.bad}`}
+              >
+                {solved ? <IconCheck size={18} /> : <IconClose size={18} />}
+                {solved
+                  ? picks.length === 1
+                    ? "Correct."
+                    : "Got it on the second try."
+                  : "Not quite."}
+              </p>
+              {q.explanation && <p className={`mt-1 ${s.note}`}>{q.explanation}</p>}
+              {quote}
+              {q.check === "unsure" && (
+                <p className={`${s.smallGap} flex items-start gap-1.5 ${s.note}`}>
+                  <IconWarning size={14} strokeWidth={2.25} className="mt-1 shrink-0" />
+                  Ms. Fenwick couldn&apos;t confirm this answer in {where}, so check it there.
+                </p>
+              )}
+              {continueButton}
+            </>
+          )}
         </div>
       )}
     </fieldset>
@@ -452,9 +537,11 @@ export interface PlayerProps {
   /** Stored narration by scene index (a cloud lesson's MP3s), played instead of new speech. */
   audio?: Readonly<Record<number, string>>;
   exitLabel?: string;
+  /** Size to the container (the in-library book) instead of the full page. */
+  fill?: boolean;
 }
 
-/** The Learning Studio's player: its own playback, shown full page. */
+/** The Learning Studio's player: its own playback, shown full page (or filling a container). */
 export function LessonPlayer({
   lesson,
   chunks,
@@ -463,10 +550,17 @@ export function LessonPlayer({
   onExit,
   audio,
   exitLabel,
+  fill,
 }: PlayerProps) {
   const playback = useLessonPlayback(lesson, { startScene, onProgress, audio });
   return (
-    <LessonPlayerView playback={playback} chunks={chunks} onExit={onExit} exitLabel={exitLabel} />
+    <LessonPlayerView
+      playback={playback}
+      chunks={chunks}
+      onExit={onExit}
+      exitLabel={exitLabel}
+      fill={fill}
+    />
   );
 }
 
@@ -548,6 +642,7 @@ export function LessonPlayerView({
   // Once a scene's narration has ended, "Next scene" (or the question) is the main action.
   const nextUp = ended && !showQuestion && !last;
   const total = lesson.scenes.length;
+  const quizNote = quizCheckNote(lesson.quizCheck);
 
   return (
     <div className={`flex flex-col bg-canvas ${fill ? "h-full overflow-y-auto" : "min-h-dvh"}`}>
@@ -645,6 +740,7 @@ export function LessonPlayerView({
                 q={scene.interaction!}
                 onDone={completeQuestion}
                 onPick={(i) => void trackQuizAnswer(lesson, scene, i)}
+                quoteFrom={lesson.quizCheck?.from}
               />
             )}
 
@@ -819,6 +915,7 @@ export function LessonPlayerView({
                   : n.mode === "text"
                     ? "No voice is available, so the narration is shown as text."
                     : "Narrated by your browser's voice."}{" "}
+                {quizNote && `${quizNote} `}
                 Lessons can contain mistakes: check the sources.
               </p>
             </div>

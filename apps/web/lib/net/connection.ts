@@ -4,6 +4,7 @@ import { Callbacks, Client, type Room } from "@colyseus/sdk";
 import { create } from "zustand";
 import {
   type ClientMessages,
+  FENWICK_ID,
   type FacialParams,
   type JoinOptions,
   LIBRARY_ROOM_NAME,
@@ -13,6 +14,19 @@ import {
   type StudyStatus,
 } from "@ovr/shared";
 import { useProfileStore } from "@/lib/avatar/profile";
+import { fenwickAnsweredMe } from "@/lib/chat/fenwick";
+import { cleanChatText, parseChatLine, parseHistory } from "@/lib/chat/format";
+import { LineBucket, TypingSignal } from "@/lib/chat/pacing";
+import {
+  catchUpHistory,
+  clearChatPresence,
+  forgetPlayer,
+  receiveLine,
+  resetChat,
+  setFenwickTyping,
+  setHistory,
+  setPlayerTyping,
+} from "@/lib/chat/store";
 import { faceState, useTrackingStore } from "@/lib/facial-tracking/tracker";
 import { isFocusing, usePomodoro } from "@/lib/game/pomodoro";
 import { runtime } from "@/lib/game/runtime";
@@ -46,6 +60,16 @@ import {
  * Every frame tickNet() sends where you are (at most NET.MOVE_HZ, only when it changed) and your
  * face while tracking is on (NET.FACE_HZ). Your avatar and study status go when they change.
  * Seats go through the server: requestSeat() asks for one and waits for "seat" or "seat_denied".
+ *
+ * The library chat (lib/chat/store.ts holds it, components/chat/ChatPanel.tsx shows it): lines
+ * ("chat", and "chat_history" right after joining, which replaces the list, and again after a
+ * reconnect, which only adds what was said meanwhile), who's typing (each player's `typing` in
+ * the state) and Ms. Fenwick writing a reply ("fenwick_typing") go into the chat store;
+ * sendChat() sends a line (never faster than the server's limit: lib/chat/pacing.ts LineBucket),
+ * noteChatTyping() / stopChatTyping() say whether you're typing (TypingSignal), and
+ * sendFenwickPref() tells the room when you flip "Ms. Fenwick answers if nobody does". Only the
+ * game server posts her lines (`from: FENWICK_ID`); when one answers you (`replyTo` is your
+ * sessionId), this browser alone says it aloud (lib/chat/fenwick.ts).
  */
 
 export type NetStatus = "offline" | "connecting" | "online" | "full" | "error";
@@ -222,6 +246,55 @@ function sendAll() {
   tickNet(performance.now());
 }
 
+/* ---- Chat ---- */
+
+const typingSignal = new TypingSignal((on) => send("typing", { on }));
+const lineBucket = new LineBucket();
+
+export type ChatSend = "sent" | "empty" | "offline" | "slow";
+
+/**
+ * Sends a line to everyone in the room (it shows once the server echoes it back). `fenwick:
+ * false` when you've switched off "Ms. Fenwick answers if nobody does".
+ */
+export function sendChat(text: string, fenwick: boolean): ChatSend {
+  const clean = cleanChatText(text);
+  if (!clean) return "empty";
+  if (!room || useNet.getState().status !== "online") return "offline";
+  const now = performance.now();
+  if (!lineBucket.take(now)) return "slow";
+  if (!send("chat", { text: clean, fenwick })) return "offline";
+  typingSignal.stop(now);
+  return "sent";
+}
+
+/** The chat box changed: tells the room you're typing (or not, once it's empty), when due. */
+export function noteChatTyping(text: string) {
+  typingSignal.input(text, performance.now());
+}
+
+/** You left the chat box (or sent the line): you're not typing any more. */
+export function stopChatTyping() {
+  typingSignal.stop(performance.now());
+}
+
+/**
+ * "Ms. Fenwick answers if nobody does" flipped: off cancels her wait on your latest line (and a
+ * reply she's still writing to you). Offline, nothing to cancel; your next line carries it.
+ */
+export function sendFenwickPref(on: boolean) {
+  send("chat_pref", { fenwick: on });
+}
+
+/** Everyone's `typing`, read again from the state (after a reconnect). */
+function readTyping(r: LibraryRoom) {
+  const players = (r.state as { players?: { forEach?: unknown } } | undefined)?.players;
+  if (!players || typeof players.forEach !== "function") return;
+  (players.forEach as (cb: (p: NetPlayer, id: string) => void) => void)((p, id) => {
+    if (id !== r.sessionId) setPlayerTyping(id, p.typing === true);
+  });
+}
+
 /* ---- Seats ---- */
 
 function settleSeat(seatId: string, answer: SeatAnswer) {
@@ -327,6 +400,23 @@ function attach(r: LibraryRoom, gen: number) {
     if (typeof msg?.from === "string" && msg.from !== r.sessionId)
       setRemoteFace(msg.from, msg.params);
   });
+  r.onMessage("chat", (msg: ServerMessages["chat"]) => {
+    if (room !== r) return;
+    const line = parseChatLine(msg);
+    if (!line || !receiveLine(line, r.sessionId)) return;
+    if (line.from === FENWICK_ID && line.replyTo === r.sessionId) fenwickAnsweredMe(line);
+  });
+  // Right after joining it replaces the list; after a reconnect it fills in what was missed.
+  let rejoined = false;
+  r.onMessage("chat_history", (msg: ServerMessages["chat_history"]) => {
+    if (room !== r) return;
+    if (rejoined) catchUpHistory(parseHistory(msg), r.sessionId);
+    else setHistory(parseHistory(msg));
+  });
+  r.onMessage("fenwick_typing", (msg: ServerMessages["fenwick_typing"]) => {
+    if (room !== r || typeof msg?.to !== "string" || !msg.to) return;
+    setFenwickTyping(msg.on === true, msg.to);
+  });
 
   const callbacks = Callbacks.get(r as never) as unknown as {
     onAdd: (prop: string, cb: (value: NetPlayer, key: string) => void) => () => void;
@@ -347,26 +437,35 @@ function attach(r: LibraryRoom, gen: number) {
       return;
     }
     upsertRemote(sessionId, player, performance.now());
+    setPlayerTyping(sessionId, player.typing === true);
     callbacks.onChange(player, () => {
-      if (room === r) upsertRemote(sessionId, player, performance.now());
+      if (room !== r) return;
+      upsertRemote(sessionId, player, performance.now());
+      setPlayerTyping(sessionId, player.typing === true);
     });
   });
   callbacks.onRemove("players", (_player, sessionId) => {
     updateCount();
     removeRemote(sessionId);
+    forgetPlayer(sessionId);
   });
 
   r.onDrop(() => {
     if (gen !== generation) return;
     setStatus("connecting");
     updateCount();
+    // Nobody's typing can be seen meanwhile; the room forgets yours.
+    clearChatPresence();
+    typingSignal.reset();
   });
   r.onReconnect(() => {
     if (gen !== generation) return;
+    rejoined = true;
     setStatus("online");
     updateCount();
     sendAll();
     syncSeat();
+    readTyping(r);
   });
   r.onLeave(() => {
     if (room === r) detach();
@@ -389,6 +488,8 @@ function detach() {
   grantedSeat = null;
   if (pendingSeat) settleSeat(pendingSeat.seatId, { ok: true, offline: true });
   clearRemotes();
+  clearChatPresence();
+  typingSignal.reset();
   useNet.setState({ selfId: null, count: 0 });
 }
 
@@ -564,6 +665,7 @@ export function startMultiplayer(): () => void {
     if (r) void r.leave();
     sentAvatar = "";
     sentStatus = null;
+    resetChat();
     useNet.setState({ status: "offline", count: 0, selfId: null });
   };
 }

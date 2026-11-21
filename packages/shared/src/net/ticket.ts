@@ -119,12 +119,14 @@ function hmacKey(secret: string): Promise<object> {
   return key;
 }
 
-async function hmac(secret: string, message: string): Promise<string> {
+/** base64url(HMAC-SHA256(secret, message)). Callers add their own context prefix (see below). */
+export async function hmac(secret: string, message: string): Promise<string> {
   const mac = await subtle().sign("HMAC", await hmacKey(secret), encode(message));
   return toBase64Url(new Uint8Array(mac));
 }
 
-// Domain separation: the same secret signs tickets and derives learner keys.
+// Domain separation: the same secret signs tickets, derives learner keys and signs the game
+// server's internal requests to the web app (internal.ts, "ovr-internal.v1.").
 const TICKET_CONTEXT = "ovr-ticket.v1.";
 const KEY_CONTEXT = "ovr-learner-key:";
 

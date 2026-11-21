@@ -23,6 +23,7 @@ import {
   tablesView,
   updateTable,
 } from "@/lib/tables/server";
+import { HOLD_MINUTES, MIN_HOLD_MINUTES } from "@/lib/tables/types";
 
 /**
  * The table-holds API (contract in lib/tables/types.ts). Who's asking comes only from the
@@ -33,7 +34,8 @@ import {
  *   GET   /api/tables                    → TablesView
  *   POST  /api/tables/:tableId/sit       → SitResult (200, or 403 table_private / 401
  *         sign_in_required with the SitResult and the usual `error` both in the body)
- *   POST  /api/tables/:tableId/claim     { visibility, circleId? } → TableStatus (201)
+ *   POST  /api/tables/:tableId/claim     { visibility, circleId?, minutes? } → TableStatus (201;
+ *         `minutes` only ever shortens the hold: a whole number, at most HOLD_MINUTES)
  *   PATCH /api/tables/:tableId           { visibility?, circleId? | null } → TableStatus
  *   POST  /api/tables/:tableId/invite    → { link, path, expiresAt } (201)
  *   POST  /api/tables/join               { token } → { tableId, status }
@@ -59,7 +61,12 @@ const allowEmailInvite = createRateLimiter(30, 10 * 60_000);
 const VISIBILITY = z.enum(["public", "private"]);
 const Bodies = {
   heartbeat: z.object({ seated: z.boolean() }),
-  claim: z.object({ visibility: VISIBILITY, circleId: z.uuid().nullable().optional() }),
+  claim: z.object({
+    visibility: VISIBILITY,
+    circleId: z.uuid().nullable().optional(),
+    // A shorter hold (the judge demo's); never longer than HOLD_MINUTES.
+    minutes: z.number().int().min(MIN_HOLD_MINUTES).max(HOLD_MINUTES).optional(),
+  }),
   update: z
     .object({ visibility: VISIBILITY.optional(), circleId: z.uuid().nullable().optional() })
     .refine((b) => b.visibility !== undefined || b.circleId !== undefined),

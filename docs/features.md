@@ -33,22 +33,23 @@ of every phase.
 
 ## Phase 2 (part one): title screen + Character Studio ✅
 
-| Feature               | Status | Notes                                                                                                         |
-| --------------------- | ------ | ------------------------------------------------------------------------------------------------------------- |
-| Title screen          | Done   | Over the live library while the camera circles your character; ↑ ↓ Enter; member card with your name          |
-| Swoop in              | Done   | "Enter the Library" flies the camera from the title shot into the third-person follow camera                  |
-| Character Studio      | Done   | 13 categories, live 3D turntable, drag to turn, scroll to zoom, Front / Side / Back / Face views              |
-| Blender-made parts    | Done   | 10 hairstyles, 6 tops, 4 bottoms, 3 shoes, 10 accessories, 4 eyes, 4 brows, 3 noses, 4 face shapes, 4 details |
-| Colours               | Done   | 10 skin tones, 9 eye, 14 hair, 6 lip, 18 clothing colours, 3 metals; trims, laces and soles adapt             |
-| Body sliders          | Done   | Build (slim ↔ broad morph that clothes follow) and height                                                     |
-| Hover preview         | Done   | Hovering a tile or swatch tries it on; moving away puts it back                                               |
-| Presets               | Done   | Cozy Reader, Night Owl, Campus Runner, Studio Artist, Minimal, Colorful                                       |
-| Randomize             | Done   | Minimal ↔ Playful slider; coordinated outfits (one hero colour, neutrals around it); R key                    |
-| Preview poses / faces | Done   | Idle, Wave, Sit (on a stool); Neutral, Smile, Wink, Wow, Sleepy                                               |
-| Undo / Redo / Reset   | Done   | Ctrl+Z / Ctrl+Shift+Z; Reset returns to the saved look; leaving with changes asks first                       |
-| Name + save           | Done   | "Sign your card" with name suggestions; saved locally (guests) and sanitized on load                          |
-| Edit later            | Done   | Pause menu → Edit character; title screen → Character Studio                                                  |
-| Hats over any hair    | Done   | Beanie and cap tuck the hair in with a clipping plane that follows the head                                   |
+| Feature                     | Status | Notes                                                                                                                                                                                                                                                                              |
+| --------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Title screen                | Done   | Over the live library while the camera circles your character; ↑ ↓ Enter; member card with your name                                                                                                                                                                               |
+| Swoop in                    | Done   | "Enter the Library" flies the camera from the title shot into the third-person follow camera                                                                                                                                                                                       |
+| Camera and microphone check | Done   | "Before you go in", every time you enter: camera on/off with a mirrored preview and face status, microphone test with a live level meter (10 s max, nothing sent), device pickers, a test sound; remembered, so Enter goes straight in; Esc → Camera and microphone in the library |
+| Character Studio            | Done   | 13 categories, live 3D turntable, drag to turn, scroll to zoom, Front / Side / Back / Face views                                                                                                                                                                                   |
+| Blender-made parts          | Done   | 10 hairstyles, 6 tops, 4 bottoms, 3 shoes, 10 accessories, 4 eyes, 4 brows, 3 noses, 4 face shapes, 4 details                                                                                                                                                                      |
+| Colours                     | Done   | 10 skin tones, 9 eye, 14 hair, 6 lip, 18 clothing colours, 3 metals; trims, laces and soles adapt                                                                                                                                                                                  |
+| Body sliders                | Done   | Build (slim ↔ broad morph that clothes follow) and height                                                                                                                                                                                                                          |
+| Hover preview               | Done   | Hovering a tile or swatch tries it on; moving away puts it back                                                                                                                                                                                                                    |
+| Presets                     | Done   | Cozy Reader, Night Owl, Campus Runner, Studio Artist, Minimal, Colorful                                                                                                                                                                                                            |
+| Randomize                   | Done   | Minimal ↔ Playful slider; coordinated outfits (one hero colour, neutrals around it); R key                                                                                                                                                                                         |
+| Preview poses / faces       | Done   | Idle, Wave, Sit (on a stool); Neutral, Smile, Wink, Wow, Sleepy                                                                                                                                                                                                                    |
+| Undo / Redo / Reset         | Done   | Ctrl+Z / Ctrl+Shift+Z; Reset returns to the saved look; leaving with changes asks first                                                                                                                                                                                            |
+| Name + save                 | Done   | "Sign your card" with name suggestions; saved locally (guests) and sanitized on load                                                                                                                                                                                               |
+| Edit later                  | Done   | Pause menu → Edit character; title screen → Character Studio                                                                                                                                                                                                                       |
+| Hats over any hair          | Done   | Beanie and cap tuck the hair in with a clipping plane that follows the head                                                                                                                                                                                                        |
 
 Still to do in Phase 2: display names above avatars (needs Phase 3 to matter), more zone
 interactions and a fuller settings panel. The pipeline is documented in
@@ -61,7 +62,7 @@ multiplayer (Phase 3) can carry the values.
 
 | Feature                    | Status | Notes                                                                                                                                                                                                                                                                          |
 | -------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Opt-in camera              | Done   | "Face" button → panel → Turn on camera; the camera is never requested before that                                                                                                                                                                                              |
+| Opt-in camera              | Done   | "Turn camera on" on the "Before you go in" check, the "Face" panel or the menu; the camera is never requested before that                                                                                                                                                      |
 | On-device face analysis    | Done   | MediaPipe Face Landmarker in the browser, model self-hosted; video never leaves the device                                                                                                                                                                                     |
 | Head, blinks, brows, mouth | Done   | Head turn/nod/tilt, each eye's blink, smile, mouth open, eyebrow raise                                                                                                                                                                                                         |
 | Calibration                | Done   | Learns your resting face in the first second; Recalibrate button                                                                                                                                                                                                               |
@@ -142,6 +143,24 @@ activity stored in Tiger Data. Full guide: [learning-analytics.md](learning-anal
 Verified 2026-11-20 against the live Tiger Cloud service: `pnpm --filter web db:smoke` (11 checks:
 early/late sessions refused, no overlap, XP once, answer keys fixed, forged cookie, privacy), and a
 pomodoro started and finished in the real library showing up on the dashboard and leaderboard.
+
+## Library chat and Ms. Fenwick (Hack Western 13)
+
+A room-wide text chat in the live library, and the librarian stepping in when nobody answers.
+Contract: `packages/shared/src/net/protocol.ts` (CHAT) and `internal.ts`.
+
+| Feature              | Status | Notes                                                                                                   |
+| -------------------- | ------ | ------------------------------------------------------------------------------------------------------- |
+| Room chat            | Done   | Enter opens it; first names; cleaned, capped at 200 characters and rate-limited by the game server      |
+| Typing indicator     | Done   | "… is typing" in the panel and dots over the avatar; off within 5 s of the last keystroke               |
+| Late joiners         | Done   | The room's last 30 lines on joining, and what was missed after a reconnect; memory only, never stored   |
+| Ms. Fenwick steps in | Done   | Nobody answered you in 10 s (3 s alone): she replies to the room, your browser says it in her voice     |
+| Not for answers      | Done   | A line answering someone (no question back), "ok" / "brb" / "thanks", or a switched-off asker: no reply |
+| Limits               | Done   | Once per 20 s per student (5 s alone), 6 a minute per room, 30 a minute per game server, 60 on the web  |
+| Safety               | Done   | Tightened Gemini filters; a reply repeating a student's words is held back; no browser can post as her  |
+
+Verified with `pnpm --filter @ovr/game-server test` (real sockets, a stand-in web route) and
+`node scripts/e2e/chat-fenwick.mjs` (real game server, web app and Gemini).
 
 ## Coming next
 

@@ -4,7 +4,7 @@ import { ProgressDashboard } from "@/components/progress/ProgressDashboard";
 import { DotRow } from "@/components/progress/ui";
 import { BODY_L, BTN_SM, DISPLAY_L, PAGE } from "@/components/ui/styles";
 
-export const metadata: Metadata = { title: "My progress · OVR" };
+export const metadata: Metadata = { title: "My progress · Cram Club" };
 
 export default function ProgressPage() {
   return (

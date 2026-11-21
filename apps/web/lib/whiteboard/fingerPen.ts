@@ -1,7 +1,9 @@
 "use client";
 
 import type { HandLandmarker } from "@mediapipe/tasks-vision";
+import { openMedia } from "@/lib/devices/prefs";
 import { getCameraStream } from "@/lib/facial-tracking/tracker";
+import { withQuietInfo } from "@/lib/facial-tracking/quietInfo";
 
 /**
  * Drawing on the whiteboard with your finger: MediaPipe's hand tracker follows your index
@@ -60,16 +62,17 @@ async function createLandmarker() {
     numHands: 1,
   });
   try {
-    return await HandLandmarker.createFromOptions(fileset, options("GPU"));
+    return await withQuietInfo(() => HandLandmarker.createFromOptions(fileset, options("GPU")));
   } catch {
-    return await HandLandmarker.createFromOptions(fileset, options("CPU"));
+    return await withQuietInfo(() => HandLandmarker.createFromOptions(fileset, options("CPU")));
   }
 }
 
 /**
  * Starts following the student's hand; calls `onSample` every frame with a hand in view (and
- * `null` when the hand leaves). Reuses the face tracker's camera when it's already on. Returns a
- * stop function. Must be started from a user action (the browser asks for the camera).
+ * `null` when the hand leaves). Reuses the face tracker's camera when it's already on, and
+ * otherwise opens the camera the student picked (lib/devices/prefs.ts). Returns a stop function.
+ * Must be started from a user action (the browser asks for the camera).
  */
 export async function startFingerPen(
   onSample: (s: FingerSample | null) => void,
@@ -77,16 +80,24 @@ export async function startFingerPen(
   const shared = getCameraStream();
   const stream =
     shared ??
-    (await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+    (await openMedia("camera", {
+      facingMode: "user",
+      width: { ideal: 640 },
+      height: { ideal: 480 },
     }));
   const video = document.createElement("video");
   video.muted = true;
   video.playsInline = true;
   video.srcObject = stream;
-  await video.play();
-  landmarker ??= await createLandmarker();
+  try {
+    await video.play();
+    landmarker ??= await createLandmarker();
+  } catch (err) {
+    // Couldn't start: don't leave a camera this opened running.
+    video.srcObject = null;
+    if (!shared) for (const t of stream.getTracks()) t.stop();
+    throw err;
+  }
   let running = true;
   let frame = 0;
   let lastTime = -1;

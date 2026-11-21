@@ -6,9 +6,11 @@ export type Quality = "high" | "balanced" | "low";
 
 /**
  * Where the player is in the session: the title screen over the library, the character
- * studio, the camera swooping in, or walking around.
+ * studio, the "Before you go in" camera and microphone check (components/entry/DeviceSetup.tsx,
+ * shown every time between the title and the library; like the title, nothing in the world reacts
+ * to keys or the mouse yet), the camera swooping in, or walking around.
  */
-export type Phase = "title" | "creator" | "entering" | "playing";
+export type Phase = "title" | "creator" | "setup" | "entering" | "playing";
 
 export interface Settings {
   /** Radians per pixel of mouse movement, scaled ×1000 for a friendlier slider. */
@@ -39,6 +41,15 @@ interface GameStore {
   progressOpen: boolean;
   /** The AI Librarian's panel over the library (holds the game still, like My Progress). */
   librarianOpen: boolean;
+  /** The Learning Studio as an open book over the library (holds the game still, like My Progress). */
+  studioOpen: boolean;
+  /** Opened at least once this visit: the book stays mounted (hidden) so a lesson in progress survives closing it. */
+  studioOpened: boolean;
+  /**
+   * The menu's "Camera and microphone" panels, over the library. They open from the menu and
+   * the menu stays open underneath (it steps aside while they're up), so the game holds still.
+   */
+  devicesOpen: boolean;
   zoneId: ZoneId | null;
   /** Seat the player could sit in right now, if any. */
   nearbySeatId: string | null;
@@ -67,6 +78,8 @@ interface GameStore {
   setGuideOpen: (open: boolean) => void;
   setProgressOpen: (open: boolean) => void;
   setLibrarianOpen: (open: boolean) => void;
+  setStudioOpen: (open: boolean) => void;
+  setDevicesOpen: (open: boolean) => void;
   setZone: (zone: ZoneId | null) => void;
   setNearbySeat: (seatId: string | null) => void;
   setNearbyBoard: (boardId: string | null) => void;
@@ -97,6 +110,9 @@ export const useGameStore = create<GameStore>()(
       guideOpen: false,
       progressOpen: false,
       librarianOpen: false,
+      studioOpen: false,
+      studioOpened: false,
+      devicesOpen: false,
       zoneId: null,
       nearbySeatId: null,
       nearbyBoardId: null,
@@ -123,6 +139,9 @@ export const useGameStore = create<GameStore>()(
         set((s) => ({ guideOpen, guideSeen: s.guideSeen || !guideOpen })),
       setProgressOpen: (progressOpen) => set({ progressOpen }),
       setLibrarianOpen: (librarianOpen) => set({ librarianOpen }),
+      setStudioOpen: (studioOpen) =>
+        set((s) => ({ studioOpen, studioOpened: s.studioOpened || studioOpen })),
+      setDevicesOpen: (devicesOpen) => set({ devicesOpen }),
       setZone: (zoneId) => set({ zoneId }),
       setNearbySeat: (nearbySeatId) => set({ nearbySeatId }),
       setNearbyBoard: (nearbyBoardId) => set({ nearbyBoardId }),

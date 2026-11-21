@@ -264,3 +264,42 @@ body {
 .title-glow {
   animation: title-glow 2.4s ease-in-out infinite;
 }
+
+/* The Learning Studio book (components/library/StudioBook.tsx): it opens, and a sheet turns over
+   when you pick another page. */
+@keyframes book-open {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes page-turn {
+  from {
+    transform: perspective(1600px) rotateY(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: perspective(1600px) rotateY(-100deg);
+    opacity: 0;
+  }
+}
+.book-open {
+  animation: book-open 260ms ease-out both;
+}
+.page-turn {
+  animation: page-turn 420ms ease-in both;
+  box-shadow: -8px 0 18px rgb(31 26 22 / 0.18);
+}
+@media (prefers-reduced-motion: reduce) {
+  .book-open,
+  .page-turn {
+    animation: none;
+  }
+  .page-turn {
+    display: none;
+  }
+}

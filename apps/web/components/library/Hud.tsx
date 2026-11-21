@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ZONES } from "@ovr/shared";
+import { ChatPanel } from "@/components/chat/ChatPanel";
 import { IconUsers } from "@/components/ui/icons";
 import { HUD_CHIP, HUD_MUTED } from "@/components/ui/styles";
 import {
@@ -17,6 +18,7 @@ import {
 import { exitPointerLock } from "@/lib/game/pointer";
 import { isFocusing, usePomodoro } from "@/lib/game/pomodoro";
 import { useGameStore } from "@/lib/game/store";
+import { useChat } from "@/lib/chat/store";
 import { tableNumberOf, useBoardLessons } from "@/lib/learning-studio/boardLessons";
 import { useNet } from "@/lib/net/connection";
 import { CameraOnChip } from "./ExpressionTracking";
@@ -25,7 +27,9 @@ import { CameraOnChip } from "./ExpressionTracking";
  * The HUD over the 3D library stays minimal: where you are (top left), the menu (top right), and
  * what you can do right here (bottom centre). Everything else lives in the menu sheet (PauseMenu
  * in Overlays.tsx). Its height matters: the pomodoro card sits just under the zone chip (and the
- * "Walking faster" chip) at top-20 / top-[7.25rem], see Pomodoro.tsx.
+ * "Walking faster" chip) at top-20 / top-[7.25rem], see Pomodoro.tsx. Bottom left: the library
+ * chat (components/chat/ChatPanel.tsx), above the first "how to move" hint while that shows; the
+ * lesson preview has the bottom-right corner (BoardLessons.tsx).
  */
 
 const zoneById = new Map(ZONES.map((z) => [z.id, z]));
@@ -229,12 +233,14 @@ function InteractionPrompt() {
     return run && s.joinedBoardId !== id && s.declined[run.boardId] === run.startedAt ? id : null;
   });
   const lessonOverlay = useBoardLessons((s) => s.fullscreen || s.pickerBoardId !== null);
-  // Keeps clear of the lesson preview in the bottom-left corner (a long row wraps upwards).
+  // Keeps clear of the lesson preview in the bottom-right corner and the open chat in the
+  // bottom-left one (a long row wraps upwards).
   const previewShown = useBoardLessons((s) => s.joinedBoardId !== null);
+  const chatOpen = useChat((s) => s.open);
   if (!label || lessonOverlay) return null;
   return (
     <div
-      className={`pointer-events-none absolute inset-x-0 bottom-10 flex flex-wrap-reverse justify-center gap-2.5 ${previewShown ? "px-[21.5rem]" : "px-4"}`}
+      className={`pointer-events-none absolute inset-x-0 bottom-10 flex flex-wrap-reverse justify-center gap-2.5 ${chatOpen ? "px-[23rem]" : previewShown ? "px-[21.5rem]" : "px-4"}`}
     >
       {!seatLocked && (
         <Prompt keyLabel="E" onClick={() => interact()}>
@@ -264,6 +270,12 @@ function InteractionPrompt() {
 
 /** How long the first "how to move" hint stays up once you're walking around. */
 const HINT_MS = 6000;
+/** A key typed into a text box (the chat, a form) is text, not a move. */
+function isTextBox(target: EventTarget | null) {
+  const el = target as HTMLElement | null;
+  return !!el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
+}
+
 const MOVE_KEYS = new Set([
   "KeyW",
   "KeyA",
@@ -275,18 +287,23 @@ const MOVE_KEYS = new Set([
   "ArrowRight",
 ]);
 
+/** How long the hint takes to fade before it makes room for the chat. */
+const HINT_FADE_MS = 500;
+
 /**
- * Bottom left, just after you walk in: the three controls you need first. It fades away after a
- * few seconds or as soon as you start walking. The clock waits while the controls guide is open.
+ * Bottom left, just after you walk in: the three controls you need first, under the chat pill.
+ * It fades away after a few seconds or as soon as you start walking, then makes room. The clock
+ * waits while the controls guide is open.
  */
 function ControlsHint() {
   const guideOpen = useGameStore((s) => s.guideOpen);
   const [gone, setGone] = useState(false);
+  const [removed, setRemoved] = useState(false);
   useEffect(() => {
     if (gone || guideOpen) return;
     const timer = setTimeout(() => setGone(true), HINT_MS);
     const onKey = (e: KeyboardEvent) => {
-      if (MOVE_KEYS.has(e.code)) setGone(true);
+      if (MOVE_KEYS.has(e.code) && !isTextBox(e.target)) setGone(true);
     };
     window.addEventListener("keydown", onKey);
     return () => {
@@ -294,10 +311,16 @@ function ControlsHint() {
       window.removeEventListener("keydown", onKey);
     };
   }, [gone, guideOpen]);
+  useEffect(() => {
+    if (!gone) return;
+    const timer = setTimeout(() => setRemoved(true), HINT_FADE_MS);
+    return () => clearTimeout(timer);
+  }, [gone]);
+  if (removed) return null;
   return (
     <div
       aria-hidden={gone}
-      className={`${HUD_CHIP} pointer-events-none absolute bottom-4 left-4 hidden items-center gap-4 py-1.5 pr-3.5 pl-1.5 text-xs font-semibold transition-opacity duration-500 motion-reduce:transition-none sm:flex ${gone ? "opacity-0" : "opacity-100"}`}
+      className={`${HUD_CHIP} pointer-events-none hidden items-center gap-4 py-1.5 pr-3.5 pl-1.5 text-xs font-semibold transition-opacity duration-500 motion-reduce:transition-none sm:flex ${gone ? "opacity-0" : "opacity-100"}`}
     >
       <span className="flex items-center gap-2">
         <kbd className="kbd kbd-dark">W A S D</kbd>
@@ -343,7 +366,10 @@ export function Hud() {
         <MenuButton />
       </div>
       <InteractionPrompt />
-      <ControlsHint />
+      <div className="absolute bottom-4 left-4 flex flex-col items-start gap-2">
+        <ChatPanel />
+        <ControlsHint />
+      </div>
       <Crosshair />
     </div>
   );

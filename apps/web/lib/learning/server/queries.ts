@@ -19,6 +19,11 @@ import type {
  * aggregate (Tiger Data keeps it materialised and adds the newest events in real time), so they
  * stay fast however long the event history grows. The timeline and the community's hour-of-day
  * rhythm read the learning_events hypertable directly, scoped by time.
+ *
+ * Verified focus ("seen at the desk", migration 0010) comes from two more continuous aggregates:
+ * focus_presence_daily (per learner per day: the chart, the month, all time, the leaderboards)
+ * and focus_presence_weekly, rolled up from the daily one (this week against last week). It is
+ * shown beside focus time and never ranked by.
  */
 
 type Sql = postgres.Sql;
@@ -41,6 +46,7 @@ export function lastDays(n: number, today = libraryDay()) {
 const EMPTY_TOTALS: PeriodTotals = {
   xp: 0,
   focusMinutes: 0,
+  verifiedMinutes: 0,
   sessions: 0,
   lessons: 0,
   quizzes: 0,
@@ -64,7 +70,7 @@ export async function timeline(
   const limit = Math.min(50, opts.limit ?? 30);
   const rows = await sql`
     SELECT e.event_id, e.event_type, e.occurred_at, s.name AS subject, l.title, e.lesson_id,
-      e.duration_seconds, e.score, e.xp_delta
+      e.duration_seconds, e.seen_seconds, e.score, e.xp_delta
     FROM learning_events e
     LEFT JOIN lessons l ON l.user_id = e.user_id AND l.lesson_id = e.lesson_id
     LEFT JOIN subjects s ON s.subject_id = e.subject_id
@@ -82,6 +88,7 @@ export async function timeline(
     lessonTitle: (r.title as string) ?? null,
     lessonId: (r.lesson_id as string) ?? null,
     durationSeconds: r.duration_seconds === null ? null : int(r.duration_seconds),
+    seenSeconds: r.seen_seconds === null ? null : int(r.seen_seconds),
     score: r.score === null ? null : Number(r.score),
     xp: int(r.xp_delta),
   }));
@@ -94,7 +101,8 @@ export async function timeline(
 /**
  * Everyone with XP in the period, ranked: XP, then focus time, then active days, then who
  * joined first. By "focus" it's everyone with focus time, ranked by it, then XP, then the same.
- * Opted-out learners aren't ranked. Rows carry user ids: never send them out.
+ * Opted-out learners aren't ranked. Each row also carries its verified ("seen") seconds, which
+ * the order never looks at. Rows carry user ids: never send them out.
  */
 async function ranking(sql: Sql, period: "week" | "month", by: LeaderboardOrder = "xp") {
   return sql`
@@ -109,13 +117,18 @@ async function ranking(sql: Sql, period: "week" | "month", by: LeaderboardOrder 
       SELECT d.user_id, sum(d.xp)::int AS xp, sum(d.focus_seconds)::int AS focus,
         count(DISTINCT d.day)::int AS days
       FROM learning_daily d, bounds WHERE d.day >= bounds.start AND d.day < bounds.stop
-      GROUP BY d.user_id)
+      GROUP BY d.user_id),
+    p AS (
+      SELECT f.user_id, sum(f.seen_seconds)::int AS seen
+      FROM focus_presence_daily f, bounds WHERE f.day >= bounds.start AND f.day < bounds.stop
+      GROUP BY f.user_id)
     SELECT row_number() OVER (
         ORDER BY CASE WHEN ${by} = 'focus' THEN t.focus ELSE t.xp END DESC,
           CASE WHEN ${by} = 'focus' THEN t.xp ELSE t.focus END DESC,
           t.days DESC, l.created_at, l.user_id)::int AS rank,
-      l.user_id, l.display_name, l.is_demo, t.xp, t.focus, t.days, bounds.start, bounds.stop
-    FROM t JOIN learners l USING (user_id), bounds
+      l.user_id, l.display_name, l.is_demo, t.xp, t.focus, t.days, coalesce(p.seen, 0) AS seen,
+      bounds.start, bounds.stop
+    FROM t JOIN learners l USING (user_id) LEFT JOIN p USING (user_id), bounds
     WHERE CASE WHEN ${by} = 'focus' THEN t.focus ELSE t.xp END > 0 AND l.leaderboard_opt_in
     ORDER BY rank`;
 }
@@ -131,10 +144,14 @@ export async function leaderboard(
     ranking(sql, period, by),
     userId
       ? sql`SELECT l.leaderboard_opt_in, coalesce(sum(d.xp), 0)::int AS xp,
-            coalesce(sum(d.focus_seconds), 0)::int AS focus
+            coalesce(sum(d.focus_seconds), 0)::int AS focus,
+            (SELECT coalesce(sum(f.seen_seconds), 0)::int FROM focus_presence_daily f
+              WHERE f.user_id = l.user_id
+                AND f.day >= date_trunc(${period}, now() AT TIME ZONE ${TZ}) AT TIME ZONE ${TZ})
+              AS seen
           FROM learners l LEFT JOIN learning_daily d ON d.user_id = l.user_id
             AND d.day >= date_trunc(${period}, now() AT TIME ZONE ${TZ}) AT TIME ZONE ${TZ}
-          WHERE l.user_id = ${userId} GROUP BY l.leaderboard_opt_in`
+          WHERE l.user_id = ${userId} GROUP BY l.user_id, l.leaderboard_opt_in`
       : Promise.resolve([]),
     sql`SELECT date_trunc(${period}, now() AT TIME ZONE ${TZ}) AT TIME ZONE ${TZ} AS start,
       (date_trunc(${period}, now() AT TIME ZONE ${TZ})
@@ -146,6 +163,7 @@ export async function leaderboard(
     displayName: r.display_name as string,
     xp: int(r.xp),
     focusMinutes: Math.round(int(r.focus) / 60),
+    verifiedMinutes: Math.round(int(r.seen) / 60),
     activeDays: int(r.days),
     isMe: r.user_id === userId,
     isDemo: r.is_demo as boolean,
@@ -162,6 +180,7 @@ export async function leaderboard(
           rank: meRow ? int(meRow.rank) : null,
           xp: int(mine[0].xp),
           focusMinutes: Math.round(int(mine[0].focus) / 60),
+          verifiedMinutes: Math.round(int(mine[0].seen) / 60),
           optedIn: mine[0].leaderboard_opt_in as boolean,
         }
       : null,
@@ -181,9 +200,16 @@ export async function dashboard(sql: Sql, userId: string | null): Promise<Dashbo
       thisWeek: EMPTY_TOTALS,
       lastWeek: EMPTY_TOTALS,
       thisMonth: EMPTY_TOTALS,
-      streak: { current: 0, longest: 0 },
+      streak: { current: 0, longest: 0, restDays: [], studyToday: false },
       explored: { subjects: 0, lessons: 0 },
-      days: days30.map((day) => ({ day, xp: 0, focusMinutes: 0, lessons: 0, quizzes: 0 })),
+      days: days30.map((day) => ({
+        day,
+        xp: 0,
+        focusMinutes: 0,
+        verifiedMinutes: 0,
+        lessons: 0,
+        quizzes: 0,
+      })),
       subjects: [],
       recent: [],
       continueWith: null,
@@ -191,10 +217,23 @@ export async function dashboard(sql: Sql, userId: string | null): Promise<Dashbo
       queryMs: ms(t0),
     };
   }
-  const [learner, totals, daily, active, explored, subjects, weekly, recent, next, ranked] =
-    await Promise.all([
-      sql`SELECT display_name, leaderboard_opt_in FROM learners WHERE user_id = ${userId}`,
-      sql`
+  const [
+    learner,
+    totals,
+    daily,
+    active,
+    explored,
+    subjects,
+    weekly,
+    recent,
+    next,
+    ranked,
+    seenDays,
+    [seenTotals],
+    seenWeeks,
+  ] = await Promise.all([
+    sql`SELECT display_name, leaderboard_opt_in FROM learners WHERE user_id = ${userId}`,
+    sql`
         WITH b AS (SELECT
           date_trunc('week', now() AT TIME ZONE ${TZ}) AT TIME ZONE ${TZ} AS wk,
           date_trunc('month', now() AT TIME ZONE ${TZ}) AT TIME ZONE ${TZ} AS mo)
@@ -212,7 +251,7 @@ export async function dashboard(sql: Sql, userId: string | null): Promise<Dashbo
           WHEN 'month' THEN d.day >= b.mo
           ELSE true END
         GROUP BY p.name`,
-      sql`
+    sql`
         SELECT to_char(day AT TIME ZONE ${TZ}, 'YYYY-MM-DD') AS day, sum(xp)::int AS xp,
           (sum(focus_seconds) / 60)::int AS focus, sum(lessons_completed)::int AS lessons,
           sum(quizzes_completed)::int AS quizzes
@@ -220,11 +259,11 @@ export async function dashboard(sql: Sql, userId: string | null): Promise<Dashbo
         WHERE user_id = ${userId}
           AND day >= (date_trunc('day', now() AT TIME ZONE ${TZ}) - interval '29 days') AT TIME ZONE ${TZ}
         GROUP BY 1`,
-      sql`SELECT DISTINCT to_char(day AT TIME ZONE ${TZ}, 'YYYY-MM-DD') AS day
+    sql`SELECT DISTINCT to_char(day AT TIME ZONE ${TZ}, 'YYYY-MM-DD') AS day
         FROM learning_daily WHERE user_id = ${userId}`,
-      sql`SELECT count(DISTINCT subject_id)::int AS subjects, count(*)::int AS lessons
+    sql`SELECT count(DISTINCT subject_id)::int AS subjects, count(*)::int AS lessons
         FROM lessons WHERE user_id = ${userId}`,
-      sql`
+    sql`
         SELECT s.subject_id, s.name, count(*)::int AS started,
           count(*) FILTER (WHERE p.completion_status = 'completed')::int AS completed,
           sum(p.quizzes_answered)::int AS answered, sum(p.quizzes_first_try)::int AS first_try,
@@ -232,7 +271,7 @@ export async function dashboard(sql: Sql, userId: string | null): Promise<Dashbo
         FROM learning_progress p JOIN subjects s USING (subject_id)
         WHERE p.user_id = ${userId}
         GROUP BY s.subject_id, s.name ORDER BY last DESC`,
-      sql`
+    sql`
         SELECT subject_id,
           round(extract(epoch FROM date_trunc('week', now() AT TIME ZONE ${TZ})
             - date_trunc('week', day AT TIME ZONE ${TZ})) / 604800)::int AS weeks_ago,
@@ -241,23 +280,49 @@ export async function dashboard(sql: Sql, userId: string | null): Promise<Dashbo
         WHERE user_id = ${userId} AND subject_id IS NOT NULL
           AND day >= (date_trunc('week', now() AT TIME ZONE ${TZ}) - interval '5 weeks') AT TIME ZONE ${TZ}
         GROUP BY 1, 2`,
-      timeline(sql, userId, { limit: 5 }),
-      sql`
+    timeline(sql, userId, { limit: 5 }),
+    sql`
         SELECT p.lesson_id, l.title, s.name AS subject
         FROM learning_progress p JOIN lessons l USING (user_id, lesson_id)
         JOIN subjects s ON s.subject_id = p.subject_id
         WHERE p.user_id = ${userId} AND p.completion_status = 'in_progress'
         ORDER BY p.last_activity_at DESC LIMIT 1`,
-      ranking(sql, "week"),
-    ]);
+    ranking(sql, "week"),
+    // Verified focus per day, last 30 days (focus_presence_daily).
+    sql`
+        SELECT to_char(day AT TIME ZONE ${TZ}, 'YYYY-MM-DD') AS day, sum(seen_seconds)::int AS seen
+        FROM focus_presence_daily
+        WHERE user_id = ${userId}
+          AND day >= (date_trunc('day', now() AT TIME ZONE ${TZ}) - interval '29 days') AT TIME ZONE ${TZ}
+        GROUP BY 1`,
+    sql`
+        SELECT coalesce(sum(seen_seconds), 0)::int AS all_time,
+          coalesce(sum(seen_seconds) FILTER (WHERE
+            day >= date_trunc('month', now() AT TIME ZONE ${TZ}) AT TIME ZONE ${TZ}), 0)::int AS month
+        FROM focus_presence_daily WHERE user_id = ${userId}`,
+    // This week and last week, from the weekly aggregate rolled up from the daily one.
+    sql`
+        SELECT CASE WHEN week >= date_trunc('week', now() AT TIME ZONE ${TZ}) AT TIME ZONE ${TZ}
+            THEN 'week' ELSE 'last' END AS name, sum(seen_seconds)::int AS seen
+        FROM focus_presence_weekly
+        WHERE user_id = ${userId}
+          AND week >= (date_trunc('week', now() AT TIME ZONE ${TZ}) - interval '7 days') AT TIME ZONE ${TZ}
+        GROUP BY 1`,
+  ]);
 
   const byPeriod = new Map(totals.map((r) => [r.name as string, r]));
+  const seenBy: Record<string, number> = {
+    all: int(seenTotals?.all_time),
+    month: int(seenTotals?.month),
+    ...Object.fromEntries(seenWeeks.map((r) => [r.name as string, int(r.seen)])),
+  };
   const period = (name: string): PeriodTotals => {
     const r = byPeriod.get(name);
     return r
       ? {
           xp: int(r.xp),
           focusMinutes: Math.round(int(r.focus) / 60),
+          verifiedMinutes: Math.round((seenBy[name] ?? 0) / 60),
           sessions: int(r.sessions),
           lessons: int(r.lessons),
           quizzes: int(r.quizzes),
@@ -267,12 +332,15 @@ export async function dashboard(sql: Sql, userId: string | null): Promise<Dashbo
       : EMPTY_TOTALS;
   };
   const dayMap = new Map(daily.map((r) => [r.day as string, r]));
+  const seenMap = new Map(seenDays.map((r) => [r.day as string, int(r.seen)]));
   const days: DayActivity[] = days30.map((day) => {
     const r = dayMap.get(day);
     return {
       day,
       xp: int(r?.xp),
       focusMinutes: int(r?.focus),
+      // Whole minutes, rounded down like focus minutes, so it never shows more than them.
+      verifiedMinutes: Math.floor((seenMap.get(day) ?? 0) / 60),
       lessons: int(r?.lessons),
       quizzes: int(r?.quizzes),
     };

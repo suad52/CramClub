@@ -9,10 +9,14 @@ import {
   backPatch,
   clampSetting,
   dayKey,
+  finishNowPatch,
   formatClock,
   isFocusing,
+  lengthShort,
+  lengthWord,
   phaseMinutes,
   phaseProgress,
+  quickTimingsPatch,
   remainingMs,
   settingsPatch,
   skipBreakPatch,
@@ -50,6 +54,7 @@ const GENTLE: PomodoroSettings = { ...DEFAULT_POMODORO_SETTINGS, strict: false }
 
 const state = (patch: Partial<PomodoroState> = {}): PomodoroState => ({
   settings: DEFAULT_POMODORO_SETTINGS,
+  savedSettings: null,
   phase: "idle",
   startedAt: null,
   endsAt: null,
@@ -98,6 +103,7 @@ describe("defaults", () => {
       strict: true,
       ticking: false,
       screenLock: true,
+      fenwickShush: true,
     });
     expect(AWAY_GRACE_MS).toBe(10_000);
     expect(POMODORO_LIMITS.focusMinutes).toEqual([5, 90, 5]);
@@ -637,6 +643,7 @@ describe("settings", () => {
           longBreakEvery: 3,
           ticking: true,
           screenLock: false,
+          fenwickShush: false,
         },
         begin(),
       ),
@@ -648,6 +655,7 @@ describe("settings", () => {
       longBreakEvery: 3,
       ticking: true,
       screenLock: false,
+      fenwickShush: false,
     });
     // Strictness can't be switched on half way through either.
     expect(change({ strict: true }, begin({ settings: GENTLE })).strict).toBe(false);
@@ -674,6 +682,87 @@ describe("settings", () => {
     s = step(s, settingsPatch(s, { shortBreakMinutes: 10 }));
     expect(remainingMs(s, T0)).toBe(5 * MIN);
     expect(phaseProgress(s, T0)).toBe(0);
+  });
+});
+
+/** The judge demo's timings (lib/demo/settings.ts has the real ones; these are the same shape). */
+const QUICK = {
+  focusMinutes: 1,
+  shortBreakMinutes: 0.25,
+  longBreakMinutes: 0.5,
+  longBreakEvery: 2,
+};
+
+describe("quick timings (the judge demo)", () => {
+  it("swaps the lengths in and keeps the student's own aside, then puts them back", () => {
+    const own = { ...DEFAULT_POMODORO_SETTINGS, focusMinutes: 50, ticking: true };
+    const s = step(state({ settings: own }), quickTimingsPatch(state({ settings: own }), QUICK));
+    expect(s.settings).toEqual({ ...own, ...QUICK });
+    expect(s.savedSettings).toEqual(own);
+    // Turning them on twice keeps the student's own, not the quick ones.
+    expect(step(s, quickTimingsPatch(s, QUICK)).savedSettings).toEqual(own);
+    const back = step(s, quickTimingsPatch(s, null));
+    expect(back).toMatchObject({ settings: own, savedSettings: null });
+    expect(quickTimingsPatch(back, null)).toEqual({});
+  });
+
+  it("runs a 1-minute pomodoro, a 15-second break and a long break after 2", () => {
+    let s = step(state(), quickTimingsPatch(state(), QUICK));
+    s = step(s, startFocusPatch(s, T0));
+    expect(s.endsAt).toBe(T0 + MIN);
+    s = ring(s);
+    expect(s).toMatchObject({ phase: "shortBreak", endsAt: T0 + MIN + 15 * SEC });
+    s = ring(s);
+    s = step(s, startFocusPatch(s, s.endsAt!));
+    s = ring(s);
+    expect(s.phase).toBe("longBreak");
+    expect(s.endsAt! - s.startedAt!).toBe(30 * SEC);
+  });
+
+  it("keeps the quick lengths fixed, but a switch flipped is the student's own after", () => {
+    const s = step(state(), quickTimingsPatch(state(), QUICK));
+    const changed = step(s, settingsPatch(s, { focusMinutes: 30, ticking: true }));
+    expect(changed.settings).toMatchObject({ focusMinutes: 1, ticking: true });
+    expect(changed.savedSettings).toMatchObject({ focusMinutes: 25, ticking: true });
+  });
+
+  it("words its lengths for people", () => {
+    expect(lengthWord(5)).toBe("5-minute");
+    expect(lengthWord(0.25)).toBe("15-second");
+    expect(lengthShort(25)).toBe("25 min");
+    expect(lengthShort(0.5)).toBe("30 s");
+  });
+});
+
+describe("finishing a pomodoro now (the judge demo)", () => {
+  it("rings it for real: a break, the set and today's tally move on", () => {
+    const s = begin();
+    const done = step(s, finishNowPatch(s, END - 5 * SEC, false));
+    expect(done).toMatchObject({
+      phase: "shortBreak",
+      inSet: 1,
+      today: { date: TODAY, count: 1 },
+      notice: { kind: "focusDone", count: 1, at: END - 5 * SEC },
+    });
+    expect(done.notice).not.toHaveProperty("preview");
+  });
+
+  it("a preview is only shown: marked, and today's tally is left alone", () => {
+    const s = begin({ today: { date: TODAY, count: 2 } });
+    const done = step(s, finishNowPatch(s, T0 + MIN, true));
+    expect(done).toMatchObject({
+      phase: "shortBreak",
+      today: { date: TODAY, count: 2 },
+      notice: { kind: "focusDone", preview: true },
+    });
+  });
+
+  it("does nothing outside a pomodoro, and finishes even one you'd stepped away from", () => {
+    expect(finishNowPatch(state(), T0, false)).toEqual({});
+    expect(finishNowPatch(onBreak("shortBreak", 1), T0, true)).toEqual({});
+    const away = begin();
+    const left = step(away, awayPatch(away, T0 + MIN));
+    expect(finishNowPatch(left, T0 + 2 * MIN, true)).toMatchObject({ phase: "shortBreak" });
   });
 });
 
@@ -787,6 +876,7 @@ describe("the store", () => {
             shortBreakMinutes: "x",
             longBreakMinutes: 7,
             strict: false,
+            fenwickShush: "sure",
           },
           today: { date: TODAY, count: 3 },
           task: "y".repeat(100),
@@ -808,6 +898,22 @@ describe("the store", () => {
     expect(store().today).toEqual({ date: TODAY, count: 3 });
     expect(store().task).toHaveLength(80);
     expect(store()).toMatchObject({ phase: "idle", startedAt: null, endsAt: null });
+  });
+
+  it("never saves the demo's quick timings: the student's own are saved and come back", () => {
+    store().updateSettings({ focusMinutes: 40 });
+    store().setQuickTimings(QUICK);
+    expect(store().settings.focusMinutes).toBe(1);
+    store().startFocus(T0);
+    expect(store().endsAt).toBe(T0 + MIN);
+    store().finishNow(true, T0 + 10 * SEC);
+    expect(store().notice).toMatchObject({ kind: "focusDone", preview: true });
+    const saved = JSON.parse(storage.getItem("ovr.pomodoro")!);
+    expect(saved.state.settings.focusMinutes).toBe(40);
+    expect(saved.state.today.count).toBe(0);
+    store().setQuickTimings(null);
+    expect(store().settings.focusMinutes).toBe(40);
+    expect(store().savedSettings).toBeNull();
   });
 
   it("ignores a broken saved tally", async () => {

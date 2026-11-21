@@ -6,13 +6,16 @@ import { NeutralToneMapping } from "three";
 import { useEffect, useState } from "react";
 import { SPAWN_POINTS } from "@ovr/shared";
 import { CharacterStudio } from "@/components/creator/CharacterStudio";
+import { DeviceSetup, DevicesOverlay } from "@/components/entry/DeviceSetup";
 import { TitleScreen } from "@/components/entry/TitleScreen";
+import { DemoLayer } from "@/components/demo/DemoLayer";
 import { BTN, PANEL, RIBBON } from "@/components/ui/styles";
 import { LibraryScene } from "@/components/world/LibraryScene";
 import { useProfileStore } from "@/lib/avatar/profile";
 import { exitPointerLock } from "@/lib/game/pointer";
 import { watchTableAccess } from "@/lib/game/tableAccess";
 import { startMultiplayer, useNet } from "@/lib/net/connection";
+import * as chatStore from "@/lib/chat/store";
 import { remoteLive, useRemotePlayers } from "@/lib/net/players";
 import { usePomodoro } from "@/lib/game/pomodoro";
 import { resetRuntime, runtime } from "@/lib/game/runtime";
@@ -38,9 +41,13 @@ import {
 } from "./Overlays";
 import { PomodoroLayer } from "./Pomodoro";
 import { LibrarianOverlay } from "./LibrarianOverlay";
+import { StudioBook } from "./StudioBook";
 import { ProgressOverlay } from "./ProgressOverlay";
 import { TableHoldLayer } from "./TableHold";
 import { librarianPresence } from "@/lib/librarian/presence";
+import { useFocusStore } from "@/lib/focus/store";
+import { focusSession } from "@/lib/focus/session";
+import { useDemo } from "@/lib/demo/mode";
 
 // Stable reference: R3F re-applies renderer props whenever this object changes identity.
 // Neutral tone mapping keeps the stylized palette true; post-processing uses the same curve.
@@ -98,8 +105,9 @@ function Studio() {
       onCancel={() => useGameStore.getState().setPhase(from)}
       onSave={(name, config) => {
         useProfileStore.getState().save(name, config);
-        // A brand-new character walks straight in; edits return to where you were.
-        useGameStore.getState().setPhase(firstTime ? "entering" : from);
+        // A brand-new character goes on to the camera and microphone check, then in; edits
+        // return to where you were.
+        useGameStore.getState().setPhase(firstTime ? "setup" : from);
       }}
     />
   );
@@ -144,6 +152,7 @@ export default function LibraryExperience() {
     s.setGuideOpen(false);
     s.setProgressOpen(false);
     s.setLibrarianOpen(false);
+    s.setDevicesOpen(false);
     // Every visit starts on the title screen; the controls guide opens after entering.
     s.setPhase("title");
     if (process.env.NODE_ENV !== "production") {
@@ -155,8 +164,11 @@ export default function LibraryExperience() {
         whiteboard: useWhiteboardStore,
         boardLessons: useBoardLessons,
         pomodoro: usePomodoro,
+        focus: { store: useFocusStore, session: focusSession },
+        demo: useDemo,
         librarian: librarianPresence,
         net: { useNet, remoteLive, useRemotePlayers },
+        chat: chatStore,
       };
     }
     return () => {
@@ -175,7 +187,7 @@ export default function LibraryExperience() {
     return (
       <ErrorCard
         title="Your browser can't open the library"
-        body="OVR needs WebGL 2, which this browser or device doesn't support. Try a recent version of Chrome, Edge, Firefox or Safari on a computer."
+        body="Cram Club needs WebGL 2, which this browser or device doesn't support. Try a recent version of Chrome, Edge, Firefox or Safari on a computer."
       />
     );
   }
@@ -203,7 +215,7 @@ export default function LibraryExperience() {
             setContextLost(true);
           });
         }}
-        aria-label="3D view of the OVR library"
+        aria-label="3D view of the Cram Club library"
       >
         <LibraryScene />
       </Canvas>
@@ -212,14 +224,19 @@ export default function LibraryExperience() {
       <BoardLessonsLayer />
       <PomodoroLayer />
       <TableHoldLayer />
+      {/* The judge demo's ribbon and controls (nothing unless demo mode is on for this tab). */}
+      <DemoLayer />
       <FaceViewFrame />
       <TrackingPanel />
       <WhiteboardPanel />
       <PauseMenu />
       <ProgressOverlay />
       <LibrarianOverlay />
+      <StudioBook />
       <ControlsGuide />
+      <DevicesOverlay />
       <TitleScreen />
+      <DeviceSetup />
       {phase === "creator" && <Studio />}
       <LoadingScreen />
       <TouchDeviceNotice />

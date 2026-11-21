@@ -7,6 +7,11 @@ import { logger } from "@colyseus/core";
  *   can join (every ticket is refused).
  * - ALLOWED_ORIGINS: comma-separated web origins allowed to connect from a browser, e.g.
  *   "http://localhost:3100,https://ovr.example". Unset: any origin (with a warning at startup).
+ * - WEB_INTERNAL_URL: where this server reaches the web app, server to server, to ask for
+ *   Ms. Fenwick's chat replies (POST <url>/api/internal/fenwick-chat, signed with
+ *   GAME_TICKET_SECRET: packages/shared net/internal.ts). Default http://localhost:3100 (the dev
+ *   web app); in Docker Compose http://web:3100. Not a URL: she stays quiet in the chat (with a
+ *   warning at startup), as she does without GAME_TICKET_SECRET.
  *
  * The Origin check only stops other websites from using a visitor's browser to connect: a
  * non-browser client sends whatever Origin it likes, so the ticket stays the real gate.
@@ -15,6 +20,27 @@ export interface GameServerConfig {
   ticketSecret: string | undefined;
   /** Normalised origins ("http://localhost:3100"), or null to allow any. */
   allowedOrigins: ReadonlySet<string> | null;
+  /** The web app's base URL for internal requests, no trailing slash; null: Fenwick chat off. */
+  webInternalUrl: string | null;
+}
+
+/** WEB_INTERNAL_URL when it isn't set. */
+export const DEFAULT_WEB_INTERNAL_URL = "http://localhost:3100";
+
+/**
+ * "http://web:3100/" → "http://web:3100" (a path prefix is kept, without its trailing slash);
+ * unset → the default; null for anything that isn't an http(s) URL.
+ */
+export function parseWebInternalUrl(value: string | undefined): string | null {
+  const raw = value?.trim() || DEFAULT_WEB_INTERNAL_URL;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    if (url.username || url.password || url.search || url.hash) return null;
+    return `${url.origin}${url.pathname}`.replace(/\/+$/, "");
+  } catch {
+    return null;
+  }
 }
 
 /** "http://localhost:3100/" → "http://localhost:3100"; null for anything that isn't a URL. */
@@ -62,6 +88,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): GameServerC
   return {
     ticketSecret: env.GAME_TICKET_SECRET?.trim() || undefined,
     allowedOrigins: parseAllowedOrigins(env.ALLOWED_ORIGINS),
+    webInternalUrl: parseWebInternalUrl(env.WEB_INTERNAL_URL),
   };
 }
 

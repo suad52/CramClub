@@ -7,7 +7,9 @@
 #   deploy/deploy.sh <server-ip-or-host> [path/to/ssh-key]
 #
 # Needs deploy/env/web.env and deploy/env/game.env (from the .example files). Optional:
-#   deploy/env/site.env  SITE_HOST=your.domain  (default: <server-ip-with-dashes>.sslip.io)
+#   SITE_HOST=your.domain in the environment, or in deploy/env/site.env (the environment wins);
+#     default: <server-ip-with-dashes>.sslip.io, e.g. 149-248-61-2.sslip.io for 149.248.61.2.
+#     Changing it needs the Auth0 URLs updated too (docs/DOMAIN.md).
 #   DEPLOY_USER=deploy   the SSH user cloud-init.yaml creates
 #   DEPLOY_DIR=/home/deploy/ovr
 set -euo pipefail

@@ -1,13 +1,17 @@
 import { clientKey, createRateLimiter, errorResponse, readJson } from "@/lib/ai/http";
 import { studioErrorResponse } from "@/lib/learning-studio/routeErrors";
 import { LENGTHS, LEVELS, type LessonLength, type Level } from "@/lib/learning-studio/schema";
-import { generateLesson } from "@/lib/learning-studio/server";
+import { checkLessonQuiz, generateLesson } from "@/lib/learning-studio/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 const allow = createRateLimiter(4, 60_000);
 
-/** POST { pages: string[], title?, level, length } → { lesson } (validated). */
+/**
+ * POST { pages: string[], title?, level, length } → { lesson } (validated, and its quiz
+ * double-checked against the same pages: lesson.quizCheck says how that went; the check fails
+ * open, so a lesson is never lost to it).
+ */
 export async function POST(request: Request) {
   if (!allow(clientKey(request)))
     return errorResponse(
@@ -38,8 +42,9 @@ export async function POST(request: Request) {
     : "short";
   const title = typeof body?.title === "string" ? body.title.slice(0, 100) : "";
   try {
+    const lesson = await generateLesson({ title, level, length, pages: pages as string[] });
     return Response.json({
-      lesson: await generateLesson({ title, level, length, pages: pages as string[] }),
+      lesson: await checkLessonQuiz(lesson, pages as string[], { from: "notes" }),
     });
   } catch (err) {
     return studioErrorResponse(err, "lessons");

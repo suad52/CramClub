@@ -147,8 +147,8 @@ function NotSetUp() {
         your requests.
       </p>
       <p className="mt-3 text-[13.5px] leading-5">
-        Running OVR yourself? Add the Auth0 keys to apps/web/.env.local (docs/auth0.md explains
-        where to find them), then restart the dev server.
+        Running Cram Club yourself? Add the Auth0 keys to apps/web/.env.local (docs/auth0.md
+        explains where to find them), then restart the dev server.
       </p>
       <div className="mt-5 flex flex-wrap gap-2.5">
         <Link href="/learning-studio" className={BTN.secondary}>

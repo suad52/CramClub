@@ -37,7 +37,7 @@ export function DesktopNotice({ className = "" }: { className?: string }) {
       </span>
       <span>
         <strong className="font-display font-semibold text-walnut">
-          OVR is built for a computer with a keyboard and mouse.
+          Cram Club is built for a computer with a keyboard and mouse.
         </strong>{" "}
         Phones and tablets aren&apos;t supported yet, so the library may be hard to move around in
         on this device.

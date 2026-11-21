@@ -32,6 +32,8 @@ import {
   formatTime,
   plural,
   ratio,
+  streakNote,
+  verifiedText,
 } from "./format";
 import { History } from "./History";
 import { LeaderboardPanel } from "./Leaderboard";
@@ -53,6 +55,11 @@ import {
  * "My progress": the student's own record (focus time, lessons, quizzes, XP, streaks), their
  * subjects and history, the leaderboard and community-wide trends. Shown on its own page and as
  * a panel over the 3D library. Each tab loads when it's first opened and stays loaded.
+ *
+ * Two honesty details: focus time seen at the desk ("✓ 40m at desk", only for students who turn
+ * on their own face tracking; nothing shows without it, and it never changes XP or rank), and
+ * forgiving streaks (one missed day in any 7 is a rest day; the streak tile says when one was
+ * used).
  */
 
 const TABS = [
@@ -397,13 +404,28 @@ function ContinueCard({
 
 function StatTiles({ d }: { d: Dashboard }) {
   const accuracy = ratio(d.allTime.quizzesCorrect, d.allTime.quizzes);
-  const tiles = [
+  const today = d.days[d.days.length - 1]?.day ?? "";
+  const tiles: {
+    label: string;
+    value: string;
+    sub: string;
+    icon: typeof IconClock;
+    dot: string;
+    /** A small leaf chip under the tile (verified focus), with words for screen readers. */
+    chip?: { text: string; label: string } | null;
+  }[] = [
     {
       label: "Focus this week",
       value: formatMinutes(d.thisWeek.focusMinutes),
       sub: `${formatMinutes(d.allTime.focusMinutes)} all-time`,
       icon: IconClock,
       dot: "bg-leaf",
+      chip: verifiedText(d.thisWeek.verifiedMinutes, "")
+        ? {
+            text: verifiedText(d.thisWeek.verifiedMinutes)!,
+            label: `${formatMinutes(d.thisWeek.verifiedMinutes)} of it seen at your desk`,
+          }
+        : null,
     },
     {
       label: "XP this week",
@@ -429,7 +451,7 @@ function StatTiles({ d }: { d: Dashboard }) {
     {
       label: "Current streak",
       value: plural(d.streak.current, "day"),
-      sub: `Longest ${plural(d.streak.longest, "day")}`,
+      sub: streakNote(d.streak, today),
       icon: IconFlame,
       dot: "bg-tangerine",
     },
@@ -462,6 +484,14 @@ function StatTiles({ d }: { d: Dashboard }) {
             <dd className="mt-auto pt-2 text-[13px] leading-5 font-medium text-ink-soft">
               {t.sub}
             </dd>
+            {t.chip && (
+              <dd className="mt-2">
+                <span className="tabular inline-flex items-center rounded-full border-2 border-walnut bg-forest-tint px-2 py-px font-display text-[12px] leading-4 font-semibold text-sage-dark">
+                  <span aria-hidden>{t.chip.text}</span>
+                  <span className="sr-only">{t.chip.label}</span>
+                </span>
+              </dd>
+            )}
           </div>
         );
       })}
@@ -481,9 +511,12 @@ function ActivityChart({ days }: { days: Dashboard["days"] }) {
     detail: [
       `${formatNumber(day.xp)} XP`,
       `${formatMinutes(day.focusMinutes)} focus`,
+      verifiedText(day.verifiedMinutes),
       plural(day.lessons, "lesson"),
       plural(day.quizzes, "quiz", "quizzes"),
-    ].join(" · "),
+    ]
+      .filter(Boolean)
+      .join(" · "),
   }));
   const total = days.reduce((sum, day) => sum + value(day), 0);
   const best = days.reduce<Dashboard["days"][number] | null>(
@@ -527,6 +560,7 @@ function ActivityChart({ days }: { days: Dashboard["days"] }) {
 
 function WeekVsWeek({ d }: { d: Dashboard }) {
   const id = useId();
+  const seen = d.thisWeek.verifiedMinutes + d.lastWeek.verifiedMinutes > 0;
   const rows = [
     { label: "XP", now: d.thisWeek.xp, before: d.lastWeek.xp, show: formatNumber },
     {
@@ -535,6 +569,17 @@ function WeekVsWeek({ d }: { d: Dashboard }) {
       before: d.lastWeek.focusMinutes,
       show: formatMinutes,
     },
+    // Only for students who've used face tracking: nobody else sees a row of zeros.
+    ...(seen
+      ? [
+          {
+            label: "✓ At desk",
+            now: d.thisWeek.verifiedMinutes,
+            before: d.lastWeek.verifiedMinutes,
+            show: formatMinutes,
+          },
+        ]
+      : []),
     { label: "Lessons", now: d.thisWeek.lessons, before: d.lastWeek.lessons, show: formatNumber },
     { label: "Quizzes", now: d.thisWeek.quizzes, before: d.lastWeek.quizzes, show: formatNumber },
     {
@@ -615,7 +660,7 @@ function WeeklyRank({ d, go }: { d: Dashboard; go: (tab: ProgressTab) => void })
       <SectionTitle id={id} title="Weekly rank" />
       {rank ? (
         <p className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[15px] font-medium text-ink-soft">
-          {/* A tilted sun stamp, like the title screen's "OVR" badge. */}
+          {/* A tilted sun stamp, like the title screen's "CC" stamp. */}
           <span className="tabular title-pop inline-grid h-16 min-w-16 -rotate-6 place-items-center rounded-full border-[3px] border-walnut bg-sun px-3 font-display text-[30px] leading-none font-bold text-walnut shadow-[0_4px_0_#1f1a16]">
             #{rank.rank}
           </span>{" "}
@@ -683,6 +728,12 @@ function HowXpWorks() {
         <p className="max-w-[46ch] text-[13px] leading-5 font-medium text-ink-soft">
           Past a daily limit, an activity still goes on your record, for 0 XP. Focus time counts a
           pomodoro&apos;s planned length, never time paused or spent away.
+        </p>
+        <p className="mt-2 max-w-[46ch] text-[13px] leading-5 font-medium text-ink-soft">
+          Streaks forgive one missed day in any 7: a rest day. If you turn on face tracking at your
+          table, a <span className="font-semibold text-sage-dark">✓</span> shows how much of your
+          focus time you were seen at your desk, here and on the leaderboards. It&apos;s never
+          needed, and it doesn&apos;t change your XP or your rank.
         </p>
         <DotRow className="mt-4" />
       </div>

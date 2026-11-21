@@ -6,6 +6,7 @@ import { type Group, MathUtils, type Object3D, type Sprite, SpriteMaterial } fro
 import { useShallow } from "zustand/react/shallow";
 import { NET, PLAYER, type StudyStatus, movePlayer, wrapAngle } from "@ovr/shared";
 import { Avatar, type AvatarMotion } from "@/components/avatar/Avatar";
+import { chatLive } from "@/lib/chat/store";
 import { getSeat } from "@/lib/game/actions";
 import { runtime } from "@/lib/game/runtime";
 import { useGameStore } from "@/lib/game/store";
@@ -14,13 +15,15 @@ import { type NetSample, SNAP_DISTANCE } from "@/lib/net/interpolation";
 import { TAG_PX, createTagTexture, paintTag } from "@/lib/net/nameTag";
 import { remoteLive, useRemotePlayers } from "@/lib/net/players";
 import { loadFaceFonts } from "@/lib/world/leaderboardFace";
+import { type BubblePlace, FenwickBubble, SpeechBubble } from "./ChatBubbles";
 
 /*
  * Everyone else in the library: their avatars where the server last saw them, drawn
  * NET.INTERP_DELAY_MS in the past and glided between moves (lib/net/interpolation.ts), walking,
  * running and sitting with the same seat poses as your own avatar, their face tracking when they
  * have it on, and a name tag. Their real-face photo never leaves their browser, so they always
- * show the chibi head here.
+ * show the chibi head here. Over the tag, a speech bubble with their latest chat line or typing
+ * dots (ChatBubbles.tsx), and Ms. Fenwick's bubble over her head while she answers in the chat.
  */
 
 /** Name tags fade out between these distances from the camera (metres). */
@@ -36,6 +39,8 @@ const TAG_PER_METRE = 0.07;
 const TAG_MIN_M = 0.16;
 const TAG_MAX_M = 0.8;
 const TAG_ASPECT = TAG_PX.w / TAG_PX.h;
+/** The chat bubble's bottom edge, above the tag's top (metres). */
+const BUBBLE_GAP = 0.02;
 /** Two players' centres closer than this push you gently apart (you only; they push themselves). */
 const PERSONAL_SPACE = PLAYER.radius * 2;
 /** Feet further apart than this are on different floors (or stairs). */
@@ -114,6 +119,8 @@ function RemotePlayer({ id }: { id: string }) {
   const group = useRef<Group>(null);
   const head = useRef<Object3D>(null);
   const tag = useRef<Sprite>(null);
+  const bubble = useRef<BubblePlace>({ y: 2.6, size: TAG_MIN_M, opacity: 0 });
+  const bubbleSource = useCallback(() => chatLive.players.get(id), [id]);
   const state = useRef<RemoteState>({
     motion: { speed: 0, sitBlend: 0, seatHeight: 0.46, face: null, gesture: null },
     sample: { t: 0, x: 0, y: 0, z: 0, ry: 0, speed: 0 },
@@ -184,6 +191,10 @@ function RemotePlayer({ id }: { id: string }) {
       const opacity = MathUtils.clamp((TAG_FADE_TO - d) / (TAG_FADE_TO - TAG_FADE_FROM), 0, 1);
       (t.material as SpriteMaterial).opacity = opacity;
       t.visible = opacity > 0.01;
+      const b = bubble.current;
+      b.y = t.position.y + size + BUBBLE_GAP;
+      b.size = size;
+      b.opacity = opacity;
     }
 
     // A soft push when you walk into someone standing (never through walls: it's a move too).
@@ -211,11 +222,12 @@ function RemotePlayer({ id }: { id: string }) {
         <Avatar config={info.avatar} motion={motion} headRef={head} />
       </Suspense>
       <NameTag name={info.name} status={info.status} signedIn={info.signedIn} spriteRef={tag} />
+      <SpeechBubble source={bubbleSource} place={bubble} />
     </group>
   );
 }
 
-/** Sends your own moves (when due) and draws everyone else. */
+/** Sends your own moves (when due) and draws everyone else (and Ms. Fenwick's chat bubble). */
 export function RemotePlayers() {
   const ids = useRemotePlayers(useShallow((s) => Object.keys(s.players)));
   useFrame(() => tickNet(performance.now()), -1);
@@ -224,6 +236,7 @@ export function RemotePlayers() {
       {ids.map((id) => (
         <RemotePlayer key={id} id={id} />
       ))}
+      <FenwickBubble />
     </>
   );
 }

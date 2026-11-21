@@ -1,4 +1,11 @@
-/** Shapes the learning API returns (GET /api/learning/<view>). Numbers come straight from Tiger Data. */
+/**
+ * Shapes the learning API returns (GET /api/learning/<view>). Numbers come straight from Tiger Data.
+ *
+ * "Verified" focus minutes are the part of a pomodoro's credited focus time that the student's
+ * own opt-in face tracking saw them at the desk (seenSeconds / 60, clamped by the server; see
+ * lib/learning/rules.ts clampPresence and migration 0010). They sit next to focus minutes as an
+ * extra honesty signal, are 0 for anyone who keeps the camera off, and never change a ranking.
+ */
 
 export type TimelineKind = "all" | "lessons" | "quizzes" | "sessions";
 
@@ -11,6 +18,8 @@ export interface TimelineEntry {
   lessonTitle: string | null;
   lessonId: string | null;
   durationSeconds: number | null;
+  /** Pomodoros only: seconds seen at the desk, when face tracking was on (null: not reported). */
+  seenSeconds: number | null;
   score: number | null;
   xp: number;
 }
@@ -20,6 +29,8 @@ export interface DayActivity {
   day: string;
   xp: number;
   focusMinutes: number;
+  /** Of focusMinutes, seen at the desk. */
+  verifiedMinutes: number;
   lessons: number;
   quizzes: number;
 }
@@ -27,6 +38,8 @@ export interface DayActivity {
 export interface PeriodTotals {
   xp: number;
   focusMinutes: number;
+  /** Of focusMinutes, seen at the desk (0 without face tracking). */
+  verifiedMinutes: number;
   sessions: number;
   lessons: number;
   quizzes: number;
@@ -54,7 +67,8 @@ export interface Dashboard {
   thisWeek: PeriodTotals;
   lastWeek: PeriodTotals;
   thisMonth: PeriodTotals;
-  streak: { current: number; longest: number };
+  /** Forgiving streaks (lib/learning/rules.ts streaks): one rest day in any 7 days. */
+  streak: { current: number; longest: number; restDays: string[]; studyToday: boolean };
   explored: { subjects: number; lessons: number };
   /** Last 30 days, oldest first, gaps filled with zeros. */
   days: DayActivity[];
@@ -70,6 +84,8 @@ export interface LeaderboardRow {
   displayName: string;
   xp: number;
   focusMinutes: number;
+  /** Of focusMinutes, seen at the desk: shown beside it, never ranked by. */
+  verifiedMinutes: number;
   activeDays: number;
   isMe: boolean;
   isDemo: boolean;
@@ -87,7 +103,13 @@ export interface Leaderboard {
   to: string;
   rows: LeaderboardRow[];
   /** Your own standing, even when outside the top rows or opted out (then rank is null). */
-  me: { rank: number | null; xp: number; focusMinutes: number; optedIn: boolean } | null;
+  me: {
+    rank: number | null;
+    xp: number;
+    focusMinutes: number;
+    verifiedMinutes: number;
+    optedIn: boolean;
+  } | null;
   participants: number;
   queryMs: number;
 }

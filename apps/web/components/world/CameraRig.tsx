@@ -4,6 +4,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { MathUtils, Matrix4, type PerspectiveCamera, Quaternion, Vector3 } from "three";
 import { CAMERA, LIBRARIAN, PLAYER, isCameraBlocked, wrapAngle } from "@ovr/shared";
+import { chatHasFocus } from "@/lib/chat/keys";
 import { getSeat, isBoardOpen } from "@/lib/game/actions";
 import { registerCanvas } from "@/lib/game/pointer";
 import { runtime } from "@/lib/game/runtime";
@@ -198,13 +199,22 @@ export function CameraRig() {
     };
     const onMove = (e: MouseEvent) => {
       if (document.pointerLockElement !== el && !dragging) return;
-      const { settings, cameraMode, menuOpen, guideOpen, progressOpen, librarianOpen, phase } =
-        useGameStore.getState();
+      const {
+        settings,
+        cameraMode,
+        menuOpen,
+        guideOpen,
+        progressOpen,
+        studioOpen,
+        librarianOpen,
+        phase,
+      } = useGameStore.getState();
       if (
         phase !== "playing" ||
         menuOpen ||
         guideOpen ||
         progressOpen ||
+        studioOpen ||
         librarianOpen ||
         isBoardOpen() ||
         isLessonOverlayOpen()
@@ -231,6 +241,7 @@ export function CameraRig() {
         s.menuOpen ||
         s.guideOpen ||
         s.progressOpen ||
+        s.studioOpen ||
         s.librarianOpen ||
         isBoardOpen() ||
         isLessonOverlayOpen()
@@ -247,14 +258,17 @@ export function CameraRig() {
       const store = useGameStore.getState();
       store.setPointerLocked(locked);
       // Esc releases the pointer: treat that as "pause" (but not when Shift freed the cursor, or
-      // when the lesson picker, a full-screen lesson, My Progress or the Librarian took the mouse).
+      // when the lesson picker, a full-screen lesson, My Progress, the Librarian or the chat box
+      // took the mouse).
       if (
         !locked &&
         !store.guideOpen &&
         !store.progressOpen &&
+        !store.studioOpen &&
         !store.librarianOpen &&
         !store.cursorFree &&
-        !isLessonOverlayOpen()
+        !isLessonOverlayOpen() &&
+        !chatHasFocus()
       )
         store.setMenuOpen(true);
       if (locked) store.setMenuOpen(false);
@@ -320,6 +334,7 @@ export function CameraRig() {
       !game.menuOpen &&
       !game.guideOpen &&
       !game.progressOpen &&
+      !game.studioOpen &&
       !game.librarianOpen &&
       !isBoardOpen() &&
       !isLessonOverlayOpen();
@@ -404,10 +419,12 @@ export function CameraRig() {
     camera.position.copy(pivot).addScaledVector(forward, -s.distance);
     target.copy(camera.position).add(forward);
 
-    // Title screen / studio: orbit shot. Entering: swoop from the orbit into the follow camera.
+    // Title screen / studio / the camera and microphone check before going in: orbit shot.
+    // Entering: swoop from the orbit into the follow camera.
     const store = useGameStore.getState();
     s.time += dt;
-    if (store.phase === "title" || store.phase === "creator") s.intro = 0;
+    if (store.phase === "title" || store.phase === "creator" || store.phase === "setup")
+      s.intro = 0;
     else if (store.phase === "entering") {
       s.intro = Math.min(1, s.intro + dt / INTRO_SECONDS);
       if (s.intro >= 1) {

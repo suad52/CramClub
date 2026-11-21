@@ -19,6 +19,7 @@ export const Player = schema(
     seatId: t.string(),
     status: t.string<StudyStatus>().default("available"),
     face: t.boolean(),
+    typing: t.boolean(),
   },
   "Player",
 );

@@ -2,6 +2,7 @@ import type { FaceLandmarker } from "@mediapipe/tasks-vision";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { FacialParams } from "@ovr/shared";
+import { openMedia, useDevicePrefs } from "@/lib/devices/prefs";
 import {
   FaceSmoother,
   type RawFace,
@@ -9,11 +10,13 @@ import {
   extractRawFace,
   toFacialParams,
 } from "./mapping";
+import { withQuietInfo } from "./quietInfo";
 
 /**
  * Optional, opt-in expression tracking. The webcam is opened only when the user asks, frames are
  * analysed on this device by MediaPipe Face Landmarker, and only eight smoothed numbers come out.
- * Nothing about the video leaves the browser.
+ * Nothing about the video leaves the browser. The camera is the one the student picked on the
+ * "Before you go in" step (lib/devices/prefs.ts), or the browser's default.
  */
 
 export type TrackingStatus = "off" | "starting" | "calibrating" | "tracking" | "no-face" | "error";
@@ -80,6 +83,12 @@ export const useTrackingStore = create<TrackingStore>()(
 export const faceState: { params: FacialParams | null } = { params: null };
 
 let running = false;
+/**
+ * Bumped by every start and stop. A start that finds it changed after an await was cancelled (or
+ * replaced by a newer start), so it closes what it opened instead of keeping it: a quick on, off,
+ * on can never leave a second camera running with its light on.
+ */
+let session = 0;
 let stream: MediaStream | null = null;
 let video: HTMLVideoElement | null = null;
 let landmarker: FaceLandmarker | null = null;
@@ -97,7 +106,7 @@ function describeError(err: unknown): string {
   switch (name) {
     case "NotAllowedError":
     case "SecurityError":
-      return "Camera access was blocked. Allow the camera for this site in your browser's settings, then try again. Some built-in app browsers never allow cameras; if so, open OVR in Chrome, Edge or Safari.";
+      return "Camera access was blocked. Allow the camera for this site in your browser's settings, then try again. Some built-in app browsers never allow cameras; if so, open Cram Club in Chrome, Edge or Safari.";
     case "NotFoundError":
     case "OverconstrainedError":
       return "No camera was found on this device.";
@@ -106,6 +115,7 @@ function describeError(err: unknown): string {
     case "ModelError":
       return "The face tracking model couldn't load. Check your internet connection and try again.";
     case "Unsupported":
+    case "NotSupportedError":
       return "This browser can't share a camera with the page.";
     default:
       return "Expression tracking couldn't start. Your avatar will keep its normal animation.";
@@ -130,11 +140,11 @@ async function createLandmarker(): Promise<FaceLandmarker> {
     outputFacialTransformationMatrixes: true,
   });
   try {
-    return await FaceLandmarker.createFromOptions(fileset, options("GPU"));
+    return await withQuietInfo(() => FaceLandmarker.createFromOptions(fileset, options("GPU")));
   } catch {
     // Some machines can't use the GPU delegate; the CPU one is slower but works everywhere.
     try {
-      return await FaceLandmarker.createFromOptions(fileset, options("CPU"));
+      return await withQuietInfo(() => FaceLandmarker.createFromOptions(fileset, options("CPU")));
     } catch (err) {
       throw new NamedError("ModelError", String(err));
     }
@@ -163,37 +173,47 @@ function cleanup() {
 export async function startTracking() {
   if (running) return;
   running = true;
+  const mine = ++session;
+  const cancelled = () => mine !== session;
+  // What this start opened, so a cancelled one can close exactly that and nothing newer.
+  let media: MediaStream | null = null;
+  let el: HTMLVideoElement | null = null;
+  let lm: FaceLandmarker | null = null;
+  const drop = () => {
+    media?.getTracks().forEach((t) => t.stop());
+    if (el) {
+      el.pause();
+      el.srcObject = null;
+    }
+    if (lm !== landmarker) lm?.close();
+  };
   setState({ status: "starting", error: null, calibration: 0 });
   try {
-    if (!navigator.mediaDevices?.getUserMedia)
-      throw new NamedError("Unsupported", "getUserMedia missing");
-    const media = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: {
-        facingMode: "user",
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-        frameRate: { ideal: 30 },
-      },
+    media = await openMedia("camera", {
+      facingMode: "user",
+      width: { ideal: 640 },
+      height: { ideal: 480 },
+      frameRate: { ideal: 30 },
     });
+    if (cancelled()) return drop();
+    // Shared straight away, so a preview can show while the face model loads.
     stream = media;
-    if (!running) return cleanup();
-    const el = document.createElement("video");
+    el = document.createElement("video");
     el.muted = true;
     el.playsInline = true;
     el.srcObject = media;
     await el.play();
+    if (cancelled()) return drop();
     video = el;
-    const lm = await createLandmarker();
-    if (!running) {
-      lm.close();
-      return cleanup();
-    }
+    lm = await createLandmarker();
+    if (cancelled()) return drop();
     landmarker = lm;
     recalibrate();
     lastVideoTime = -1;
     frameRequest = requestAnimationFrame(step);
   } catch (err) {
+    drop();
+    if (cancelled()) return;
     running = false;
     cleanup();
     setState({ status: "error", error: describeError(err) });
@@ -203,8 +223,33 @@ export async function startTracking() {
 /** Turns the camera off and returns the avatar to its normal animation. */
 export function stopTracking() {
   running = false;
+  session++;
   cleanup();
   setState({ status: "off", calibration: 0 });
+}
+
+/** Tracking is on (starting, calibrating or following a face). */
+export const isTrackingActive = (status: TrackingStatus) => status !== "off" && status !== "error";
+
+/**
+ * The student turning the camera on themselves, from the world's "Camera and face" panel: starts
+ * tracking and, once it is running, remembers "on" for the "Before you go in" step. A start that
+ * failed (blocked, no camera) or was switched off meanwhile remembers nothing.
+ */
+export async function turnCameraOn() {
+  await startTracking();
+  if (isTrackingActive(useTrackingStore.getState().status)) {
+    useDevicePrefs.getState().setCamera("on");
+  }
+}
+
+/**
+ * The student turning the camera off themselves: stops tracking and remembers "off". Stops for
+ * any other reason (leaving the library, an error) use {@link stopTracking} and change nothing.
+ */
+export function turnCameraOff() {
+  stopTracking();
+  useDevicePrefs.getState().setCamera("off");
 }
 
 /** Forgets the resting face and learns it again over the next second. */

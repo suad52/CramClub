@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SAMPLE_LESSON } from "@/lib/learning-studio/mockLesson";
+import { type Verdict, applyQuizCheck } from "@/lib/learning-studio/quizCheck";
+import type { Lesson } from "@/lib/learning-studio/schema";
 import { TtsNotConfiguredError } from "@/lib/learning-studio/server";
 import { TinyFishError } from "@/lib/librarian/server/tinyfish";
 import { lessonKey, sceneAudioKey } from "@/lib/storage";
@@ -238,8 +240,28 @@ const SOURCES = [
   { title: "Khan", url: "https://khanacademy.org/m", domain: "khanacademy.org", text: "a ≡ b" },
 ];
 
-function providers(storage: ObjectStorage, o: { ttsFailAt?: number; noTts?: boolean } = {}) {
-  const calls = { research: 0, lesson: 0, tts: 0, pages: [] as string[], guidance: "" };
+/** The sample lesson's one knowledge check (correctIndex 2), confirmed by the checker. */
+const AGREE = new Map<number, Verdict>([[1, { n: 1, answer: 2, quote: "" }]]);
+
+function providers(
+  storage: ObjectStorage,
+  o: {
+    ttsFailAt?: number;
+    noTts?: boolean;
+    lesson?: Lesson;
+    verdicts?: Map<number, Verdict> | null;
+    checkThrows?: boolean;
+  } = {},
+) {
+  const calls = {
+    research: 0,
+    lesson: 0,
+    check: 0,
+    tts: 0,
+    pages: [] as string[],
+    checkPages: [] as string[],
+    guidance: "",
+  };
   const deps: PipelineDeps = {
     storage,
     async research(_topic, hooks) {
@@ -252,7 +274,18 @@ function providers(storage: ObjectStorage, o: { ttsFailAt?: number; noTts?: bool
       calls.lesson++;
       calls.pages = [...input.pages];
       calls.guidance = input.guidance ?? "";
-      return SAMPLE_LESSON;
+      return o.lesson ?? SAMPLE_LESSON;
+    },
+    async checkQuiz(lesson, pages) {
+      calls.check++;
+      calls.checkPages = [...pages];
+      if (o.checkThrows) throw new Error("bug in the checker");
+      return applyQuizCheck(
+        lesson,
+        o.verdicts === undefined ? AGREE : o.verdicts,
+        pages,
+        "sources",
+      );
     },
     async synthesize(text) {
       calls.tts++;
@@ -282,9 +315,11 @@ describe("lesson pipeline", () => {
     const view = await enqueue();
     const { deps, calls } = providers(storage);
     expect(await processClaimedJob(db.sql, await claim(), deps)).toBe("completed");
-    expect(calls).toMatchObject({ research: 1, lesson: 1, tts: scenes });
+    expect(calls).toMatchObject({ research: 1, lesson: 1, check: 1, tts: scenes });
     // Web text reaches Gemini only as quoted pages, with a rule to ignore instructions inside.
     expect(calls.pages[0]).toContain("Source: Modular arithmetic (example.edu)");
+    // The quiz is checked against the very pages the lesson was written from.
+    expect(calls.checkPages).toEqual(calls.pages);
     expect(calls.guidance).toMatch(/untrusted reference material/);
     const done = (await getLessonJob(db.sql, ADA, view.id))!.view;
     expect(done).toMatchObject({
@@ -298,7 +333,10 @@ describe("lesson pipeline", () => {
     expect(done.audio).toHaveLength(scenes);
     expect(done.audio[0]).toEqual({ scene: 0, duration: 3.3 });
     expect(done.progress).toBe(`Saved the lesson and ${scenes} narration clips to local storage`);
-    expect(await loadLesson(storage, view.id)).toMatchObject({ title: SAMPLE_LESSON.title });
+    expect(await loadLesson(storage, view.id)).toMatchObject({
+      title: SAMPLE_LESSON.title,
+      quizCheck: { checked: true, questions: 1, verified: 1, dropped: 0, from: "sources" },
+    });
     expect((await storage.head(sceneAudioKey(view.id, 1)))?.contentType).toBe("audio/mpeg");
     expect(await sceneAudio(db.sql, ADA, view.id, 1)).toMatchObject({
       key: sceneAudioKey(view.id, 1),
@@ -317,7 +355,7 @@ describe("lesson pipeline", () => {
     db.advance(retryDelaySeconds(1));
     const second = providers(storage);
     expect(await processClaimedJob(db.sql, await claim(), second.deps)).toBe("completed");
-    expect(second.calls).toMatchObject({ research: 0, lesson: 0, tts: scenes - 2 });
+    expect(second.calls).toMatchObject({ research: 0, lesson: 0, check: 0, tts: scenes - 2 });
     const done = db.jobs.get(view.id)!;
     expect(done.audio.map((a) => a.scene)).toEqual([...Array(scenes).keys()]);
     expect(done.attempts).toBe(2);
@@ -334,7 +372,7 @@ describe("lesson pipeline", () => {
     Object.assign(row, { status: "queued", attempts: 0 });
     const again = providers(storage);
     expect(await processClaimedJob(db.sql, await claim(), again.deps)).toBe("completed");
-    expect(again.calls).toMatchObject({ research: 0, lesson: 1, tts: scenes });
+    expect(again.calls).toMatchObject({ research: 0, lesson: 1, check: 1, tts: scenes });
   });
 
   it("hands the job back on shutdown without spending an attempt", async () => {
@@ -356,10 +394,63 @@ describe("lesson pipeline", () => {
       attempts: 0,
       lease_until: null,
     });
-    // The lesson it had written is kept, so the next run starts at narration.
+    // The lesson it had written is kept, so the next run starts at the quiz check it stopped
+    // before, then narration.
     const next = providers(storage);
     expect(await processClaimedJob(db.sql, await claim(), next.deps)).toBe("completed");
-    expect(next.calls).toMatchObject({ research: 0, lesson: 0, tts: scenes });
+    expect(next.calls).toMatchObject({ research: 0, lesson: 0, check: 1, tts: scenes });
+    expect((await loadLesson(storage, view.id))?.quizCheck?.checked).toBe(true);
+  });
+
+  it("stores the checked quiz: a question the sources don't back is set aside", async () => {
+    const view = await enqueue();
+    const lesson: Lesson = JSON.parse(JSON.stringify(SAMPLE_LESSON));
+    lesson.scenes[1]!.interaction = {
+      type: "multiple-choice",
+      question: "Where does glycolysis happen?",
+      options: ["Cytoplasm", "Nucleus", "Matrix"],
+      correctIndex: 1,
+      hint: "It doesn't need the mitochondrion.",
+    };
+    const verdicts = new Map<number, Verdict>([
+      [1, { n: 1, answer: -1, quote: "" }],
+      [2, { n: 2, answer: 2, quote: "" }],
+    ]);
+    const { deps } = providers(storage, { lesson, verdicts });
+    expect(await processClaimedJob(db.sql, await claim(), deps)).toBe("completed");
+    const stored = (await loadLesson(storage, view.id))!;
+    expect(stored.scenes[1]!.interaction).toBeNull();
+    expect(stored.scenes[4]!.interaction?.check).toBe("verified");
+    expect(stored.quizCheck).toMatchObject({
+      checked: true,
+      questions: 2,
+      verified: 1,
+      dropped: 1,
+    });
+    // Narration still covers every scene: the check never changes the scene list.
+    expect(db.jobs.get(view.id)!.audio).toHaveLength(scenes);
+  });
+
+  it("finishes with the quiz as written when the check couldn't run", async () => {
+    const view = await enqueue();
+    const { deps } = providers(storage, { verdicts: null });
+    expect(await processClaimedJob(db.sql, await claim(), deps)).toBe("completed");
+    const stored = (await loadLesson(storage, view.id))!;
+    expect(stored.quizCheck).toMatchObject({ checked: false, questions: 1, dropped: 0 });
+    expect(stored.scenes[4]!.interaction?.correctIndex).toBe(2);
+    expect(stored.scenes[4]!.interaction?.check).toBeUndefined();
+  });
+
+  it("retries a checker that broke its no-throw contract without rewriting the lesson", async () => {
+    const view = await enqueue();
+    const broken = providers(storage, { checkThrows: true });
+    expect(await processClaimedJob(db.sql, await claim(), broken.deps)).toBe("requeued");
+    expect(broken.calls).toMatchObject({ lesson: 1, check: 1, tts: 0 });
+    db.advance(retryDelaySeconds(1));
+    const fixed = providers(storage);
+    expect(await processClaimedJob(db.sql, await claim(), fixed.deps)).toBe("completed");
+    expect(fixed.calls).toMatchObject({ research: 0, lesson: 0, check: 1, tts: scenes });
+    expect((await loadLesson(storage, view.id))?.quizCheck?.verified).toBe(1);
   });
 
   it("finishes without narration when ElevenLabs isn't configured", async () => {

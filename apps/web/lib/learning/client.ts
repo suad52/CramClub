@@ -1,5 +1,6 @@
 "use client";
 
+import { focusPresence, showSessionXp } from "@/lib/focus/session";
 import { usePomodoro } from "@/lib/game/pomodoro";
 import type { Lesson, Scene } from "@/lib/learning-studio/schema";
 
@@ -102,6 +103,15 @@ export async function trackQuizAnswer(lesson: Lesson, scene: Scene, picked: numb
  * Mirrors the table timer's pomodoros to the server: start when focus starts, complete when it
  * rings, abandon when it's given up. The server times the session with its own clock. Returns
  * an unsubscribe.
+ *
+ * session-complete carries `{ sessionId, presence? }`: `presence: { cameraSeconds, seenSeconds }`
+ * (lib/focus/presence.ts) is how long the student's own face tracking was on during the pomodoro
+ * and how long it saw them at the desk, left out when the camera wasn't on. The server clamps
+ * both to the session's validated length and reports verified focus minutes (seenSeconds / 60)
+ * beside the normal ones; a pomodoro without it counts just the same. The XP it returns goes on
+ * the "You showed up" card while that's on screen, else in the usual toast. A judge-demo preview
+ * (the focusDone notice's `preview`: rung early from the demo controls) is abandoned, never
+ * completed, so it earns nothing; the demo's real finishes complete as usual.
  */
 export function trackPomodoros() {
   let session: Promise<string | null> | null = null;
@@ -113,13 +123,28 @@ export function trackPomodoros() {
       return;
     }
     if (prev.phase !== "focus" || s.phase === "focus" || !session) return;
-    const rang = s.notice?.kind === "focusDone";
+    // A demo preview rang early: the server would rightly refuse it, so it's given up instead.
+    const rang = s.notice?.kind === "focusDone" && !s.notice.preview ? s.notice : null;
+    // Read now, before the next pomodoro can start a fresh tally.
+    const lengthSeconds =
+      prev.startedAt !== null && prev.endsAt !== null
+        ? (prev.endsAt - prev.startedAt) / 1000
+        : prev.settings.focusMinutes * 60;
+    const presence = rang ? focusPresence(lengthSeconds) : undefined;
     const pending = session;
     session = null;
     void pending.then(async (sessionId) => {
       if (!sessionId) return;
-      if (rang) announce(await post("session-complete", { sessionId }), "Pomodoro completed");
-      else await post("session-abandon", { sessionId });
+      if (!rang) {
+        await post("session-abandon", { sessionId });
+        return;
+      }
+      const result = await post(
+        "session-complete",
+        presence ? { sessionId, presence } : { sessionId },
+      );
+      const xp = typeof result?.xp === "number" ? result.xp : null;
+      if (!showSessionXp(rang.at, xp)) announce(result, "Pomodoro completed");
     });
   });
 }

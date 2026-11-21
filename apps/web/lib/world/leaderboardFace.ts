@@ -2,13 +2,17 @@ import type { LeaderboardKind } from "@ovr/shared";
 import { formatRange } from "@/components/progress/format";
 import type { HallBoard } from "@/lib/learning/hallBoards";
 import { LIBRARY_TIME_ZONE } from "@/lib/learning/rules";
-import type { LeaderboardRow } from "@/lib/learning/types";
+import type { Leaderboard, LeaderboardRow } from "@/lib/learning/types";
 
 /*
  * The painted face of a hall leaderboard, in the cartoon style (components/ui/styles.ts): a cream
  * card with thick walnut outlines pinned to a green felt board, a tangerine title ribbon, medal
  * stickers for the top three and your own row in sun yellow. What it says is worked out by
  * `leaderboardFace` (pure, tested); `drawLeaderboardFace` paints it onto the board's canvas.
+ *
+ * The focus board adds a small "✓ 45 m at desk" under a row's focus time when part of it was seen
+ * at the desk by that student's own opt-in face tracking (LeaderboardRow.verifiedMinutes). It's a
+ * detail only: rows are ranked by focus time exactly as before, camera or not.
  */
 
 /** The face canvas (the board's face has the same aspect: LEADERBOARD_STAND.face). */
@@ -21,8 +25,13 @@ export interface FaceRow {
   rank: number;
   name: string;
   value: string;
-  /** A small second line under the value (the XP board's active days). */
+  /**
+   * A small second line under the value: the XP board's active days, the focus board's verified
+   * time (null without any).
+   */
   detail: string | null;
+  /** The detail is verified time (painted leaf green, like the site's "seen at desk" chips). */
+  detailVerified: boolean;
   isMe: boolean;
   isDemo: boolean;
 }
@@ -70,12 +79,25 @@ export function formatFocus(minutes: number) {
 }
 
 export const formatXp = (xp: number) => `${NUMBER.format(Math.max(0, Math.round(xp)))} XP`;
+
+/** "✓ 45 m at desk": focus time seen at the desk, or null when there's none to show. */
+export function formatVerified(minutes: number | undefined) {
+  const m = Math.round(minutes ?? 0);
+  return m > 0 ? `✓ ${formatFocus(m)} at desk` : null;
+}
 export const formatDays = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
 
 /** Demo learners are named "Demo · Mei": the board says "demo" with a tag instead. */
 function nameOf(r: LeaderboardRow) {
   const name = r.isDemo ? r.displayName.replace(/^demo\s*·\s*/i, "") : r.displayName;
   return name.trim() || "Reader";
+}
+
+/** Your focus time for the footer, with what was seen at the desk when there is some. */
+function youFocus(me: NonNullable<Leaderboard["me"]>) {
+  const verified = Math.round(me.verifiedMinutes ?? 0);
+  const focus = formatFocus(me.focusMinutes ?? 0);
+  return verified > 0 ? `${focus} (✓ ${formatFocus(verified)})` : focus;
 }
 
 export function leaderboardFace(
@@ -105,14 +127,18 @@ export function leaderboardFace(
       footer: rule,
     };
   const lb = state.board;
-  const rows = lb.rows.slice(0, FACE_ROWS).map((r): FaceRow => ({
-    rank: r.rank,
-    name: nameOf(r),
-    value: kind === "focus" ? formatFocus(r.focusMinutes) : formatXp(r.xp),
-    detail: kind === "xp" ? formatDays(r.activeDays) : null,
-    isMe: r.isMe,
-    isDemo: r.isDemo,
-  }));
+  const rows = lb.rows.slice(0, FACE_ROWS).map((r): FaceRow => {
+    const detail = kind === "xp" ? formatDays(r.activeDays) : formatVerified(r.verifiedMinutes);
+    return {
+      rank: r.rank,
+      name: nameOf(r),
+      value: kind === "focus" ? formatFocus(r.focusMinutes) : formatXp(r.xp),
+      detail,
+      detailVerified: kind === "focus" && detail !== null,
+      isMe: r.isMe,
+      isDemo: r.isDemo,
+    };
+  });
   const me = lb.me;
   const footer =
     !me || rows.some((r) => r.isMe)
@@ -121,7 +147,7 @@ export function leaderboardFace(
         ? { text: "You're hidden from leaderboards", you: true }
         : me.rank !== null
           ? {
-              text: `You: #${me.rank} · ${kind === "focus" ? formatFocus(me.focusMinutes ?? 0) : formatXp(me.xp)}`,
+              text: `You: #${me.rank} · ${kind === "focus" ? youFocus(me) : formatXp(me.xp)}`,
               you: true,
             }
           : { text: copy.join, you: true };
@@ -149,6 +175,8 @@ const C = {
   tangerineDeep: "#b9612f",
   sun: "#f2cf7e",
   leaf: "#7fb27a",
+  /** Leaf, deep enough to read as small text on the cream card and on sun yellow. */
+  leafInk: "#3d6b39",
   brass: "#b18a50",
   gold: "#f4c443",
   silver: "#dfe3e6",
@@ -484,7 +512,7 @@ export function drawLeaderboardFace(c: Ctx, face: FaceContent, fonts: FaceFonts 
       let detailW = 0;
       if (r.detail) {
         c.font = `700 26px ${fonts.ui}`;
-        c.fillStyle = r.isMe ? C.walnut : C.ink;
+        c.fillStyle = r.detailVerified ? C.leafInk : r.isMe ? C.walnut : C.ink;
         detailW = tabularWidth(c, r.detail);
         drawTabular(c, r.detail, right - 6, cy + 29);
       }

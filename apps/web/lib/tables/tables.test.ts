@@ -576,6 +576,27 @@ describe("claimTable", () => {
     expect(minutes).toBeLessThanOrEqual(60);
   });
 
+  it("holds it for fewer minutes when asked (the judge demo), never for more", async () => {
+    const asked = async (minutes: number) => {
+      const db = world();
+      const out = await claimTable(
+        db.sql,
+        anonymous(BEN),
+        "hall-t01",
+        { visibility: "public", minutes },
+        true,
+      );
+      expect(out).toMatchObject({ ok: true, status: 201 });
+      const insert = db.writes().find((c) => c.text.startsWith("INSERT INTO table_holds"))!;
+      return insert.values.at(-1);
+    };
+    expect(await asked(3)).toBe(3);
+    expect(await asked(HOLD_MINUTES + 30)).toBe(HOLD_MINUTES);
+    expect(await asked(0)).toBe(1);
+    expect(await asked(2.9)).toBe(2);
+    expect(await asked(Number.NaN)).toBe(HOLD_MINUTES);
+  });
+
   it("holds it private for a signed-in student, with their own circle", async () => {
     const db = world();
     const out = await claimTable(
@@ -1388,6 +1409,25 @@ describe("/api/tables", () => {
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ tableId: "hall-t01", mine: true, visibility: "public" });
     expect(res.cookie).toMatch(/^ovr_learner=/);
+  });
+
+  it("takes a shorter hold through the API, but never a longer or odd one", async () => {
+    const db = world();
+    const short = await call("POST", ["hall-t01", "claim"], {
+      db,
+      body: { visibility: "public", minutes: 3 },
+    });
+    expect(short.status).toBe(201);
+    const left = (new Date(short.body.endsAt).getTime() - Date.now()) / MIN;
+    expect(left).toBeGreaterThan(2);
+    expect(left).toBeLessThanOrEqual(3);
+    for (const minutes of [HOLD_MINUTES + 1, 0, 1.5, "3"]) {
+      const res = await call("POST", ["hall-t02", "claim"], {
+        db: world(),
+        body: { visibility: "public", minutes },
+      });
+      expect(res.status).toBe(400);
+    }
   });
 
   it("asks a signed-out student to sign in for a private table", async () => {

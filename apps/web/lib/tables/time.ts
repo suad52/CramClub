@@ -29,10 +29,17 @@ export function isRunning(endsAt: When, now: Now = Date.now()): boolean {
   return msLeft(endsAt, now) > 0;
 }
 
-/** Whether the holder should see "time's nearly up": the last WARN_MINUTES, and not over yet. */
-export function shouldWarn(endsAt: When, now: Now = Date.now()): boolean {
+/**
+ * Whether the holder should see "time's nearly up": the last WARN_MINUTES (or `warnMs`, the judge
+ * demo's shorter warning), and not over yet.
+ */
+export function shouldWarn(
+  endsAt: When,
+  now: Now = Date.now(),
+  warnMs: number = WARN_MINUTES * 60_000,
+): boolean {
   const ms = msLeft(endsAt, now);
-  return ms > 0 && ms <= WARN_MINUTES * 60_000;
+  return ms > 0 && ms <= warnMs;
 }
 
 /** "42 minutes", "1 minute", "less than a minute" (or "no time" once it's over), for calm copy. */

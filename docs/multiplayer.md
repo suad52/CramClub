@@ -29,6 +29,14 @@ client stays in solo mode) and the game server refuses every join. `ALLOWED_ORIG
 every origin the site is opened on (`http://localhost:3100` and `http://127.0.0.1:3100` differ),
 comma-separated; in production, the site's own origin.
 
+Ms. Fenwick answers in the library chat only when the game server can reach the web app:
+`WEB_INTERNAL_URL` in `apps/game-server/.env` (default `http://localhost:3100`; Docker Compose sets
+`http://web:3100`). It signs each request for her words with `GAME_TICKET_SECRET`
+(`packages/shared/src/net/internal.ts` → `POST /api/internal/fenwick-chat`); not a URL, or no
+secret, and she stays quiet in the chat. With `pnpm dev:web` running,
+`node scripts/e2e/chat-fenwick.mjs` checks the whole chat path (its own game server on :2598, real
+sockets, real replies; the header lists the scenarios).
+
 ## Tickets (apps/web `GET /api/net/ticket`)
 
 - Answers `{ ticket, expiresAt, name, signedIn }`, `cache-control: private, no-store`. 403 from

@@ -1,0 +1,45 @@
+{
+  "measuredAt": "2026-11-21T19:46:11.458Z",
+  "machine": {
+    "cpu": "Apple M5",
+    "cores": 10,
+    "memoryGB": 24,
+    "os": "darwin 25.6.0",
+    "node": "v26.13.0"
+  },
+  "setup": {
+    "transport": "local loopback (127.0.0.1), both clients in one process",
+    "server": "apps/game-server src/index.ts via tsx (no watch)",
+    "samples": 300,
+    "warmupDiscarded": 10,
+    "moveSendHz": 10,
+    "faceSendHz": 8,
+    "patchRateMs": 50,
+    "interpDelayMs": 120,
+    "serverBootMs": 212
+  },
+  "move": {
+    "n": 300,
+    "min": 0.3360840000004828,
+    "p50": 15.440458000000945,
+    "p95": 50.73441699999967,
+    "p99": 51.48370900000009,
+    "max": 52.01391599999988,
+    "mean": 21.422008179999956,
+    "lost": 0
+  },
+  "face": {
+    "n": 300,
+    "min": 0.24620799999684095,
+    "p50": 0.6402500000112923,
+    "p95": 0.9222909999953117,
+    "p99": 1.0332089999938034,
+    "max": 12.274916999995185,
+    "mean": 0.666083163333072,
+    "lost": 0
+  },
+  "onScreenMove": {
+    "p50": 135.44045800000094,
+    "p95": 170.73441699999967
+  }
+}

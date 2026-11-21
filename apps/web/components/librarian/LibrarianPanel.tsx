@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useEffectEvent, useId, useRef, useState, useSyncExternalStore } from "react";
 import { LessonPlayerView } from "@/components/learning-studio/LessonPlayer";
+import { DemoLibrarianFallback } from "@/components/demo/DemoFallbacks";
 import { PushToTalk } from "./PushToTalk";
 import {
   type ApiError,
@@ -960,6 +961,18 @@ export function LibrarianPanel({
   const failureAlert = failure && (
     <FailureAlert failure={failure} notesAttached={withNotes} onRetry={run} />
   );
+  // The judge demo only (renders nothing otherwise): a saved example answer when she's slow or a
+  // request fails, so a demo never stalls on a spinner.
+  const demoFallback = (
+    <DemoLibrarianFallback
+      waiting={pending !== null || busy}
+      failed={
+        !!failure || !!setupMessage || serviceDown || !!pollTrouble || task?.status === "failed"
+      }
+      requestKey={task?.id ?? "home"}
+      boardLesson={dialogue && task?.status === "generating_lesson"}
+    />
+  );
   const composer = composerOpen && (
     <Composer
       task={task}
@@ -1110,6 +1123,7 @@ export function LibrarianPanel({
                 </p>
                 <ReplyOptions options={options} onChoose={choose} />
                 <div className="mt-6 space-y-5 empty:hidden">
+                  {demoFallback}
                   {failureAlert}
                   {setupNotice}
                   {composerOpen && (withNotes || notes.problems.length > 0) && (
@@ -1190,6 +1204,7 @@ export function LibrarianPanel({
               ) : (
                 homeView
               )}
+              {demoFallback}
               {failureAlert}
             </div>
           </div>

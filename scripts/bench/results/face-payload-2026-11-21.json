@@ -1,0 +1,73 @@
+{
+  "measuredAt": "2026-11-21T19:44:58.005Z",
+  "rules": {
+    "faceHz": 8,
+    "faceEpsilon": 0.02,
+    "keepAliveMs": 1000,
+    "values": 8
+  },
+  "frame": {
+    "clientBytes": 160,
+    "clientWireBytesEstimate": 242,
+    "relayBytesPerViewer": 184,
+    "trackingOffBytes": 7
+  },
+  "worstCase": {
+    "messagesPerSecond": 8,
+    "payloadBytesPerSecond": 1280,
+    "wireBytesPerSecond": 1936,
+    "kbpsPayload": 10.24,
+    "kbpsWire": 15.488
+  },
+  "scenarios": [
+    {
+      "scenario": "still",
+      "seconds": 120,
+      "messagesPerSecond": 1,
+      "payloadBytesPerSecond": 160,
+      "wireBytesPerSecond": 242,
+      "relayPayloadBytesPerSecondPerViewer": 184,
+      "relayWireBytesPerSecondPerViewer": 262,
+      "maxFrameBytes": 160,
+      "times720pVideoWire": 619.8347107438017
+    },
+    {
+      "scenario": "reading",
+      "seconds": 120,
+      "messagesPerSecond": 1.35,
+      "payloadBytesPerSecond": 216,
+      "wireBytesPerSecond": 326.7,
+      "relayPayloadBytesPerSecondPerViewer": 248.4,
+      "relayWireBytesPerSecondPerViewer": 353.7,
+      "maxFrameBytes": 160,
+      "times720pVideoWire": 459.13682277318645
+    },
+    {
+      "scenario": "animated",
+      "seconds": 120,
+      "messagesPerSecond": 6.916666666666667,
+      "payloadBytesPerSecond": 1106.6666666666667,
+      "wireBytesPerSecond": 1673.8333333333333,
+      "relayPayloadBytesPerSecondPerViewer": 1272.6666666666667,
+      "relayWireBytesPerSecondPerViewer": 1812.1666666666667,
+      "maxFrameBytes": 160,
+      "times720pVideoWire": 89.61465697500748
+    }
+  ],
+  "video": [
+    {
+      "label": "Zoom 1:1 'high quality' video",
+      "bitsPerSecond": 600000,
+      "timesWorstCaseWire": 38.739669421487605,
+      "timesWorstCasePayload": 58.59375
+    },
+    {
+      "label": "Zoom 1:1 720p HD video",
+      "bitsPerSecond": 1200000,
+      "timesWorstCaseWire": 77.47933884297521,
+      "timesWorstCasePayload": 117.1875
+    }
+  ],
+  "perPomodoroWorstCaseKB": 1920,
+  "perPomodoro720pVideoMB": 225
+}

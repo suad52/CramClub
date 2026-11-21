@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_AVATAR, resolveAvatar } from "@ovr/shared";
+import { useDevicePrefs } from "@/lib/devices/prefs";
 import {
   DEFAULT_HEAD,
   FACE_PHOTO_MAX_LENGTH,
@@ -8,11 +9,22 @@ import {
   isChibiHeadPart,
   isFacePhoto,
   landmarkBox,
+  openFaceCamera,
   sanitizeHead,
   showsFaceHead,
   videoCrop,
 } from "./facePhoto";
 import { sanitizeProfile } from "./profile";
+
+// Saved device choices live in localStorage, which plain Node doesn't have.
+vi.hoisted(() => {
+  const data = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (k: string) => data.get(k) ?? null,
+    setItem: (k: string, v: string) => void data.set(k, v),
+    removeItem: (k: string) => void data.delete(k),
+  });
+});
 
 const PHOTO = `data:image/jpeg;base64,${"A".repeat(400)}==`;
 
@@ -138,5 +150,40 @@ describe("face crops", () => {
     expect(mirrored.offset[0] + 1 * mirrored.repeat[0]).toBeCloseTo(0.125);
     const unknown = videoCrop(0, 0);
     expect(unknown.repeat.every(Number.isFinite)).toBe(true);
+  });
+});
+
+describe("face photo camera", () => {
+  const live = () => {
+    const track = { readyState: "live", stop: () => (track.readyState = "ended") };
+    return {
+      track,
+      stream: { getTracks: () => [track], getVideoTracks: () => [track] } as unknown as MediaStream,
+    };
+  };
+
+  it("reuses expression tracking's live camera without asking again", async () => {
+    const getUserMedia = vi.fn();
+    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia } });
+    const shared = live();
+    const cam = await openFaceCamera(shared.stream);
+    expect(cam.stream).toBe(shared.stream);
+    cam.release();
+    expect(shared.track.readyState).toBe("live");
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+
+  it("otherwise opens the student's camera, and release closes it", async () => {
+    const own = live();
+    const getUserMedia = vi.fn(async () => own.stream);
+    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia } });
+    useDevicePrefs.setState({ cameraId: "cam-2" });
+    const cam = await openFaceCamera(null);
+    expect(getUserMedia).toHaveBeenCalledWith({
+      audio: false,
+      video: expect.objectContaining({ facingMode: "user", deviceId: { exact: "cam-2" } }),
+    });
+    cam.release();
+    expect(own.track.readyState).toBe("ended");
   });
 });

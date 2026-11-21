@@ -5,7 +5,7 @@ import { BTN_SM, PAGE } from "@/components/ui/styles";
 
 /** The token is the invite itself: keep it out of Referer headers and search engines. */
 export const metadata: Metadata = {
-  title: "Join a private table · OVR",
+  title: "Join a private table · Cram Club",
   referrer: "no-referrer",
   robots: { index: false, follow: false },
 };

@@ -3,7 +3,7 @@ import { SiteHeader } from "@/components/landing/SiteHeader";
 import { LibrarianPanel } from "@/components/librarian/LibrarianPanel";
 import { BTN_SM } from "@/components/ui/styles";
 
-export const metadata: Metadata = { title: "Ask the Librarian · OVR" };
+export const metadata: Metadata = { title: "Ask the Librarian · Cram Club" };
 
 /**
  * The AI Librarian on her own page: for small screens, and for anyone not in the 3D library. Her

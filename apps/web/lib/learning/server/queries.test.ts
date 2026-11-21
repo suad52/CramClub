@@ -28,6 +28,7 @@ const row = (n: number, extra: Record<string, unknown> = {}) => ({
   xp: 1000 - n,
   focus: 60 * (100 - n),
   days: 3,
+  seen: 60 * (50 - n),
   ...extra,
 });
 
@@ -47,11 +48,17 @@ describe("leaderboard", () => {
     expect(q.text).toMatch(/ORDER BY CASE WHEN \$ = 'focus' THEN t\.focus ELSE t\.xp END DESC/);
     expect(q.text).toMatch(/WHERE CASE WHEN \$ = 'focus' THEN t\.focus ELSE t\.xp END > 0/);
     expect(q.text).toContain("l.leaderboard_opt_in");
+    // Verified ("seen at the desk") time comes along from its own aggregate, but never orders.
+    expect(q.text).toContain("FROM focus_presence_daily f");
+    const order = q.text.slice(q.text.indexOf("row_number()"), q.text.indexOf("AS rank"));
+    expect(order).not.toContain("seen");
   });
 
   it("sends the top 25 without user ids, marking your own row", async () => {
     const ranked = Array.from({ length: 30 }, (_, i) => row(i + 1));
-    const { sql } = fakeSql(ranked, [{ leaderboard_opt_in: true, xp: 997, focus: 97 * 60 + 20 }]);
+    const { sql } = fakeSql(ranked, [
+      { leaderboard_opt_in: true, xp: 997, focus: 97 * 60 + 20, seen: 47 * 60 },
+    ]);
     const board = await leaderboard(sql, "user-3", "week", "focus");
     expect(board.rows).toHaveLength(25);
     expect(board.participants).toBe(30);
@@ -60,21 +67,45 @@ describe("leaderboard", () => {
       displayName: "Reader 3",
       xp: 997,
       focusMinutes: 97,
+      verifiedMinutes: 47,
       activeDays: 3,
       isMe: true,
       isDemo: false,
     });
     expect(board.rows.filter((r) => r.isMe)).toHaveLength(1);
-    expect(board.me).toEqual({ rank: 3, xp: 997, focusMinutes: 97, optedIn: true });
+    expect(board.me).toEqual({
+      rank: 3,
+      xp: 997,
+      focusMinutes: 97,
+      verifiedMinutes: 47,
+      optedIn: true,
+    });
     expect(JSON.stringify(board)).not.toContain("user-");
     expect(board.from).toBe("2026-11-16T05:00:00.000Z");
   });
 
   it("still tells an opted-out or unranked learner their own totals", async () => {
-    const { sql } = fakeSql([row(1)], [{ leaderboard_opt_in: false, xp: 40, focus: 1500 }]);
+    const { sql } = fakeSql(
+      [row(1)],
+      [{ leaderboard_opt_in: false, xp: 40, focus: 1500, seen: 0 }],
+    );
     const board = await leaderboard(sql, "someone-else", "month", "focus");
     expect(board.rows.some((r) => r.isMe)).toBe(false);
-    expect(board.me).toEqual({ rank: null, xp: 40, focusMinutes: 25, optedIn: false });
+    expect(board.me).toEqual({
+      rank: null,
+      xp: 40,
+      focusMinutes: 25,
+      verifiedMinutes: 0,
+      optedIn: false,
+    });
     expect(board.period).toBe("month");
+  });
+
+  it("shows no verified time for learners who keep their camera off", async () => {
+    const { sql } = fakeSql([row(1, { seen: 0 }), row(2, { seen: null })]);
+    const board = await leaderboard(sql, null, "week", "focus");
+    expect(board.rows.map((r) => r.verifiedMinutes)).toEqual([0, 0]);
+    // Ranked exactly as the database ranked them: verified time doesn't move anyone.
+    expect(board.rows.map((r) => r.rank)).toEqual([1, 2]);
   });
 });

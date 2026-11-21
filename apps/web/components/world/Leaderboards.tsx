@@ -27,7 +27,9 @@ import {
 /*
  * The hall's two leaderboards: sturdy walnut notice boards on two feet, each with a brass
  * "Leaderboard" plaque on an arched crest and two little picture lamps over a painted face that
- * shows this week's top eight (lib/world/leaderboardFace.ts). One ranks focus time, the other XP.
+ * shows this week's top eight (lib/world/leaderboardFace.ts). One ranks focus time, the other XP;
+ * the focus board notes under a row how much of it was seen at the desk ("✓ 45 m at desk"), for
+ * students who turned their own face tracking on, without changing the order.
  * Layout and collision live in @ovr/shared (leaderboards.ts).
  *
  * In a board's frame (metres): origin on the floor under its middle, the face looking along +Z.

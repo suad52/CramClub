@@ -1,4 +1,6 @@
 import type { FaceLandmarker } from "@mediapipe/tasks-vision";
+import { openMedia } from "@/lib/devices/prefs";
+import { withQuietInfo } from "@/lib/facial-tracking/quietInfo";
 
 /**
  * "My real face": the player's avatar head can be the chibi head or a cartoon disc showing a
@@ -179,9 +181,9 @@ export function loadFaceFinder(): Promise<FaceLandmarker | null> {
         numFaces: 1,
       });
       try {
-        return await FaceLandmarker.createFromOptions(fileset, options("GPU"));
+        return await withQuietInfo(() => FaceLandmarker.createFromOptions(fileset, options("GPU")));
       } catch {
-        return await FaceLandmarker.createFromOptions(fileset, options("CPU"));
+        return await withQuietInfo(() => FaceLandmarker.createFromOptions(fileset, options("CPU")));
       }
     } catch {
       return null;
@@ -205,15 +207,16 @@ export interface FaceCamera {
 
 /**
  * Opens the webcam for a photo. Call only from a click. Reuses expression tracking's camera
- * when it's already on, so the browser doesn't open a second one.
+ * when it's already on, so the browser doesn't open a second one; otherwise opens the camera the
+ * student picked (lib/devices/prefs.ts), or the default one.
  */
 export async function openFaceCamera(shared: MediaStream | null): Promise<FaceCamera> {
   if (shared && shared.getVideoTracks().some((t) => t.readyState === "live"))
     return { stream: shared, release: () => {} };
-  if (!navigator.mediaDevices?.getUserMedia) throw new Error("Unsupported");
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: false,
-    video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+  const stream = await openMedia("camera", {
+    facingMode: "user",
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
   });
   return { stream, release: () => stream.getTracks().forEach((t) => t.stop()) };
 }

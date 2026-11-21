@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { ZONES } from "@ovr/shared";
 import { useIsTouchOnly } from "@/components/ui/DesktopNotice";
-import { IconArrowUpRight, IconChevronDown } from "@/components/ui/icons";
+import { IconBook, IconChevronDown } from "@/components/ui/icons";
 import { BODY, BTN, BTN_SM, FOCUS, HUD_CHIP, PANEL, RIBBON, TITLE } from "@/components/ui/styles";
 import { useTrackingStore } from "@/lib/facial-tracking/tracker";
 import { LOGOUT_HREF, loginHref } from "@/lib/auth/links";
@@ -16,6 +16,7 @@ import { exitPointerLock, requestPointerLock } from "@/lib/game/pointer";
 import { formatClock, isFocusing, remainingMs, usePomodoro } from "@/lib/game/pomodoro";
 import { isLessonOverlayOpen, useBoardLessons } from "@/lib/learning-studio/boardLessons";
 import { useWhiteboardStore } from "@/lib/whiteboard/store";
+import { CONTROLS } from "@/lib/game/controls";
 import { DEFAULT_SETTINGS, type Quality, useGameStore } from "@/lib/game/store";
 import { CameraDot, CheckBox } from "./ExpressionTracking";
 import { openProgress, trapTab } from "./ProgressOverlay";
@@ -88,9 +89,10 @@ export function LoadingScreen() {
       <div className="flex w-full max-w-xs flex-col items-center text-center">
         <p
           aria-hidden
-          className="title-pop font-display text-[88px] leading-none font-bold tracking-tight text-surface [paint-order:stroke_fill] [text-shadow:0_7px_0_#1f1a16] [-webkit-text-stroke:10px_#1f1a16]"
+          className="title-pop font-display text-[64px] leading-[0.9] font-bold tracking-tight text-surface [paint-order:stroke_fill] [text-shadow:0_7px_0_#1f1a16] [-webkit-text-stroke:10px_#1f1a16]"
         >
-          OVR
+          <span className="block">Cram</span>
+          <span className="block">Club</span>
         </p>
         <span
           aria-hidden
@@ -125,7 +127,7 @@ export function ClickToLook() {
   const cursorFree = useGameStore((s) => s.cursorFree);
   const menuOpen = useGameStore((s) => s.menuOpen);
   const guideOpen = useGameStore((s) => s.guideOpen);
-  const progressOpen = useGameStore((s) => s.progressOpen);
+  const progressOpen = useGameStore((s) => s.progressOpen || s.studioOpen);
   const librarianOpen = useGameStore((s) => s.librarianOpen);
   const boardOpen = useWhiteboardStore((s) => s.openId !== null);
   const lessonOpen = useBoardLessons((s) => s.fullscreen || s.pickerBoardId !== null);
@@ -165,23 +167,6 @@ export function ClickToLook() {
   );
 }
 
-const CONTROLS: { keys: string[]; label: string }[] = [
-  { keys: ["W", "A", "S", "D"], label: "Walk (arrow keys work too)" },
-  { keys: ["Mouse"], label: "Look around" },
-  { keys: ["Shift"], label: "Hold to free the cursor and click buttons" },
-  { keys: ["R"], label: "Walk faster, on or off" },
-  { keys: ["E"], label: "Use desk or stand up · speak with the Librarian at her desk" },
-  { keys: ["B"], label: "Open your table's whiteboard" },
-  { keys: ["L"], label: "Play a lesson on a whiteboard" },
-  { keys: ["J", "N"], label: "Join a lesson, or not now" },
-  { keys: ["F"], label: "Lesson full screen" },
-  { keys: ["P"], label: "Start a pomodoro (at a desk)" },
-  { keys: ["V"], label: "Switch between first and third person" },
-  { keys: ["Scroll"], label: "Zoom the third-person camera" },
-  { keys: ["Esc"], label: "Open the menu" },
-  { keys: ["?"], label: "Show these controls" },
-];
-
 /** Typing somewhere (the Librarian's question box, a form): keys are text, not shortcuts. */
 function isTyping(target: EventTarget | null) {
   const el = target as HTMLElement | null;
@@ -209,7 +194,9 @@ export function ControlsGuide() {
         s.phase !== "playing" ||
         s.guideOpen ||
         s.progressOpen ||
+        s.studioOpen ||
         s.librarianOpen ||
+        s.devicesOpen ||
         useWhiteboardStore.getState().openId ||
         isLessonOverlayOpen() ||
         isTimerPanelOpen()
@@ -475,15 +462,18 @@ function LookSettings({ id }: { id: string }) {
 /**
  * The menu (Esc, or the HUD's Menu): a sheet on the right over a light walnut scrim. The library
  * keeps running behind it. Its rows open the Librarian, the Learning Studio, My progress, the
- * camera panel, the character studio, the view, the controls guide and the mouse and graphics
- * settings. The guide, My progress and the Librarian open over it (it steps aside while they're
- * up, and Esc there comes back here); the camera panel and the character studio close it.
+ * camera panel, Camera and microphone, the character studio, the view, the controls guide and the mouse and graphics
+ * settings. The guide, My progress, the Librarian and Camera and microphone open over it (it steps
+ * aside while they're up, and Esc there comes back here); the camera panel and the character
+ * studio close it.
  */
 export function PauseMenu() {
   const open = useGameStore((s) => s.menuOpen);
   const guideOpen = useGameStore((s) => s.guideOpen);
-  const progressOpen = useGameStore((s) => s.progressOpen);
+  const progressOpen = useGameStore((s) => s.progressOpen || s.studioOpen);
   const librarianOpen = useGameStore((s) => s.librarianOpen);
+  const devicesOpen = useGameStore((s) => s.devicesOpen);
+  const setDevicesOpen = useGameStore((s) => s.setDevicesOpen);
   const setOpen = useGameStore((s) => s.setMenuOpen);
   const setGuideOpen = useGameStore((s) => s.setGuideOpen);
   const cameraMode = useGameStore((s) => s.cameraMode);
@@ -509,7 +499,7 @@ export function PauseMenu() {
         : (VOICE_PRESETS.find((p) => p.id === v.preset)?.label ?? "On"),
   );
   const sheet = useRef<HTMLDivElement>(null);
-  const shown = open && !guideOpen && !progressOpen && !librarianOpen;
+  const shown = open && !guideOpen && !progressOpen && !librarianOpen && !devicesOpen;
 
   // Esc toggles the menu when the pointer isn't locked (while locked, the browser's own Esc
   // releases the pointer and CameraRig opens the menu). The lesson picker and full-screen lesson
@@ -526,7 +516,9 @@ export function PauseMenu() {
         s.phase !== "playing" ||
         s.guideOpen ||
         s.progressOpen ||
+        s.studioOpen ||
         s.librarianOpen ||
+        s.devicesOpen ||
         useWhiteboardStore.getState().openId ||
         isLessonOverlayOpen()
       )
@@ -617,16 +609,15 @@ export function PauseMenu() {
             <MenuRow
               title="Learning Studio"
               description="Turn your notes into a narrated lesson"
-              unavailable={focusing ? "Opens a new tab — available after your pomodoro" : undefined}
               meta={
                 <>
-                  Opens a tab
-                  <IconArrowUpRight size={14} />
+                  Opens a book
+                  <IconBook size={14} />
                 </>
               }
               onClick={() => {
                 exitPointerLock();
-                window.open("/learning-studio", "_blank", "noopener");
+                useGameStore.getState().setStudioOpen(true);
               }}
             />
             <MenuRow
@@ -656,6 +647,12 @@ export function PauseMenu() {
                 setOpen(false);
                 setTrackingOpen(true);
               }}
+            />
+            <MenuRow
+              title="Camera and microphone"
+              description="Test your microphone, or pick another camera or mic"
+              // Opens over this sheet, which steps aside and comes back on Done.
+              onClick={() => setDevicesOpen(true)}
             />
             <MenuRow
               title="Your character"

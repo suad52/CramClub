@@ -25,6 +25,12 @@ describe("minutesLeft", () => {
 });
 
 describe("shouldWarn", () => {
+  it("can warn later for a shorter hold (the judge demo's minute)", () => {
+    expect(shouldWarn(at(90_000), NOW, MIN)).toBe(false);
+    expect(shouldWarn(at(MIN), NOW, MIN)).toBe(true);
+    expect(shouldWarn(at(-1), NOW, MIN)).toBe(false);
+  });
+
   it("warns only in the last WARN_MINUTES, and not once it's over", () => {
     expect(WARN_MINUTES).toBe(5);
     expect(shouldWarn(at(30 * MIN), NOW)).toBe(false);

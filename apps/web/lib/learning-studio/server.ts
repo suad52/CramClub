@@ -10,16 +10,29 @@ import {
   withTimeout,
 } from "@/lib/ai/gemini";
 import {
+  QUIZ_CHECK_JSON_SCHEMA,
+  QUOTE_MAX_WORDS,
+  applyQuizCheck,
+  describeQuizCheck,
+  parseVerdicts,
+  quizCheckPrompt,
+  quizItems,
+} from "./quizCheck";
+import {
   type Chunk,
   type Lesson,
   type LessonLength,
   type Level,
+  type QuizCheck,
   SCENE_COUNT,
   VISUAL_TEMPLATES,
   parseLesson,
 } from "./schema";
 
-/** Server side of the AI Learning Studio: PDF text, lesson generation, the grounded teacher, narration. */
+/**
+ * Server side of the AI Learning Studio: PDF text, lesson generation, the quiz self-check (one
+ * extra Gemini call per lesson, see quizCheck.ts), the grounded teacher, narration.
+ */
 
 export class StudioError extends Error {
   constructor(
@@ -121,6 +134,8 @@ const LESSON_JSON_SCHEMA = {
               correctIndex: { type: "integer" },
               explanation: { type: "string" },
               suggestedAnswer: { type: "string" },
+              hint: { type: "string" },
+              quote: { type: "string" },
             },
             required: ["type", "question"],
           },
@@ -176,6 +191,13 @@ Rules:
   describing an illustration. Keep labels short (under 6 words).
 - Include at least one knowledge check: a multiple-choice question (3–4 options, correctIndex 0-based,
   explanation citing the page) on a scene where it fits. You may add one reflection question.
+  Each question has exactly one right option that the notes clearly support. Give every
+  multiple-choice question a "hint": one short sentence that points toward the right idea without
+  giving the answer away (it is shown after a wrong first try). Give every question a "quote": up
+  to ${QUOTE_MAX_WORDS} words copied exactly from the notes that back the answer (one unbroken
+  stretch, no ellipsis, no changes).
+- The narration must make sense without its question: questions appear on screen after the
+  narration ends, so don't refer to them ("pick your answer below").
 - sourceReferences: the page numbers ([page N] tags) that support the scene, with a short excerpt
   copied from that page. Never invent page numbers. Use only pages that exist.
 ${o.guidance ? `- ${o.guidance}\n` : ""}- If the notes are ambiguous, contradictory or incomplete, say so briefly in "warnings".
@@ -270,6 +292,60 @@ export async function generateLesson(o: {
       );
     }
   }
+}
+
+/** The self-check's model (a quick one: it reads the notes and answers a few questions). */
+const QUIZ_CHECK_MODEL = process.env.GEMINI_QUIZ_CHECK_MODEL || TEXT_FALLBACK_MODEL;
+
+/**
+ * The quiz self-check: ONE batched Gemini call re-answers every multiple-choice question from the
+ * source alone (no answer key in the prompt) and the verdicts are applied (quizCheck.ts). Fails
+ * open: on any error or timeout the quiz is kept as written, with quizCheck.checked false. Never
+ * throws. `pages` are what the lesson was made from (notes, or a cloud lesson's web sources).
+ */
+export async function checkLessonQuiz(
+  lesson: Lesson,
+  pages: readonly string[],
+  o: { from: QuizCheck["from"]; model?: string; timeoutMs?: number },
+): Promise<Lesson> {
+  const items = quizItems(lesson);
+  if (!items.length) return applyQuizCheck(lesson, null, pages, o.from);
+  const model = o.model || QUIZ_CHECK_MODEL;
+  const t0 = Date.now();
+  let checked: Lesson;
+  try {
+    const res = await withTimeout(
+      getGemini().models.generateContent({
+        model,
+        contents: [
+          { role: "user", parts: [{ text: quizCheckPrompt(items, notesForPrompt(pages)) }] },
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseJsonSchema: QUIZ_CHECK_JSON_SCHEMA,
+          // Checking, not writing: as repeatable as the model allows (a call that stalls at a low
+          // temperature just times out, and the quiz ships as written).
+          temperature: 0.1,
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        },
+      }),
+      o.timeoutMs ?? 40_000,
+      "Checking the quiz",
+    );
+    const verdicts = parseVerdicts(JSON.parse(res.text ?? ""), items);
+    if (!verdicts) throw Object.assign(new Error("no usable verdicts"), { name: "NoVerdicts" });
+    checked = applyQuizCheck(lesson, verdicts, pages, o.from);
+  } catch (err) {
+    // Only the error's kind is logged: never the notes, the quiz or a provider's raw reply.
+    console.info(
+      `[learning-studio] quiz check skipped (${(err as Error)?.name ?? "error"}); keeping the quiz as written`,
+    );
+    return applyQuizCheck(lesson, null, pages, o.from);
+  }
+  console.info(
+    `[learning-studio] ${describeQuizCheck(checked.quizCheck)} (${model}, ${Math.round((Date.now() - t0) / 1000)}s)`,
+  );
+  return checked;
 }
 
 const ANSWER_SCHEMA = {

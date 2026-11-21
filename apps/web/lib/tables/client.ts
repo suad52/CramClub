@@ -6,6 +6,8 @@ import { SEATS } from "@ovr/shared";
 import { type ApiError, asApiError, getJson, send } from "@/components/circles/api";
 import type { CircleSummary } from "@/lib/circles/types";
 import { useGameStore } from "@/lib/game/store";
+import { isDemoOn } from "@/lib/demo/mode";
+import { holdMinutes, holdNoun, holdText, warnMinutes } from "@/lib/demo/settings";
 import { clockOffset, msLeft, shouldWarn } from "./time";
 import {
   HOLD_MINUTES,
@@ -24,6 +26,8 @@ import {
  * card, the 5-minute warning and "time's up". The server decides who may sit; this only asks,
  * and shows its answers. Nothing here holds a learner id, an email or a guest list: the holder's
  * email invites come back from the server masked, and what the holder types goes straight to it.
+ * In the judge demo (lib/demo) a new hold asks the server for DEMO_HOLD_MINUTES (it can only ever
+ * shorten one) and its "nearly up" notice comes DEMO_WARN_MINUTES before the end.
  */
 
 export const REFRESH_MS = 30_000;
@@ -52,14 +56,14 @@ export function tableName(tableId: string) {
 }
 
 /** How long a hold lasts, in words: "1 hour", "90 minutes". */
-export const HOLD_TEXT =
-  HOLD_MINUTES % 60 === 0
-    ? HOLD_MINUTES === 60
-      ? "1 hour"
-      : `${HOLD_MINUTES / 60} hours`
-    : `${HOLD_MINUTES} minutes`;
+export const HOLD_TEXT = holdText(HOLD_MINUTES);
 /** "Your hour at Table 3", "your 90 minutes at Table 3". */
-export const HOLD_NOUN = HOLD_MINUTES === 60 ? "hour" : HOLD_TEXT;
+export const HOLD_NOUN = holdNoun(HOLD_MINUTES);
+/** A new hold's length here and now (the judge demo's is short), in words and as a noun. */
+export const holdTextNow = () => holdText(holdMinutes(isDemoOn()));
+export const holdNounNow = () => holdNoun(holdMinutes(isDemoOn()));
+/** How long before the end the holder hears "nearly up" (ms). */
+export const warnMsNow = () => warnMinutes(isDemoOn()) * 60_000;
 
 /** "3:42 PM", in the student's own clock. */
 export function clockTime(iso: string | null) {
@@ -311,10 +315,14 @@ async function run<T>(busy: string, work: () => Promise<T>): Promise<T | null> {
   }
 }
 
-/** Hold the table you're sitting at, open or private, for HOLD_MINUTES. */
+/** Hold the table you're sitting at, open or private, for HOLD_MINUTES (the demo: shorter). */
 export function claimTable(tableId: string, visibility: TableVisibility) {
   return run("claim", async () => {
-    const status = await send<TableStatus>("POST", tableUrl(tableId, "claim"), { visibility });
+    const status = await send<TableStatus>(
+      "POST",
+      tableUrl(tableId, "claim"),
+      isDemoOn() ? { visibility, minutes: holdMinutes(true) } : { visibility },
+    );
     applyStatus(status);
     // Claiming a table you already hold changes nothing on the server, so go by its answer.
     const isPrivate = status.visibility === "private";
@@ -527,7 +535,7 @@ export function checkClock(now = serverNow()) {
     if (mine && running(mine)) {
       lastMine = mine;
       const key = holdKey(mine);
-      if (mine.endsAt && shouldWarn(mine.endsAt, now) && !warned.has(key)) {
+      if (mine.endsAt && shouldWarn(mine.endsAt, now, warnMsNow()) && !warned.has(key)) {
         warned.add(key);
         const left = Math.max(1, Math.ceil(msLeft(mine.endsAt, now) / 60_000));
         toastId += 1;

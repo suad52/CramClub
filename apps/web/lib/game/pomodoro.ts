@@ -17,6 +17,15 @@ import { createJSONStorage, persist } from "zustand/middleware";
  *
  * Every transition takes `now` (ms) so the rules are testable without real time. The state is
  * plain data, ready to be shared with other players once multiplayer exists.
+ *
+ * The focus loop around it (verified focus minutes, Ms. Fenwick's shushes, the "You showed up"
+ * card) lives in lib/focus/ and only reads this store; `fenwickShush` is its one setting here.
+ *
+ * The judge demo (lib/demo) runs on quick timings for its own tab: setQuickTimings() puts them in
+ * `settings` (fractions of a minute allowed, e.g. a 15-second break) and keeps the student's own
+ * in `savedSettings`, which is what's saved and what comes back. Its "Finish this pomodoro now"
+ * is finishNow(): rung for real only when the server would agree it ran its length, else marked
+ * `preview` (shown, never counted: the session is abandoned, not completed).
  */
 
 export type PomodoroPhase = "idle" | "focus" | "shortBreak" | "longBreak";
@@ -34,6 +43,11 @@ export interface PomodoroSettings {
   ticking: boolean;
   /** Go full screen while a pomodoro runs (where the browser allows it). */
   screenLock: boolean;
+  /**
+   * "Ms. Fenwick keeps you honest": she shushes you (kindly) when you drift off mid-pomodoro.
+   * See lib/focus/shush.ts. Changeable any time, even mid-pomodoro.
+   */
+  fenwickShush: boolean;
 }
 
 export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
@@ -44,6 +58,7 @@ export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
   strict: true,
   ticking: false,
   screenLock: true,
+  fenwickShush: true,
 };
 
 /** [min, max, step] for each adjustable number. */
@@ -78,13 +93,27 @@ export type PomodoroNotice =
   | { kind: "warned"; awayMs: number; at: number }
   /** Gentle mode: the pomodoro waited while you were away. */
   | { kind: "paused"; awayMs: number; at: number }
-  /** A pomodoro rang; a break has started. */
-  | { kind: "focusDone"; count: number; breakPhase: "shortBreak" | "longBreak"; at: number }
+  /**
+   * A pomodoro rang; a break has started. `preview`: the judge demo rang it early, so it's only
+   * shown (no XP, not in today's tally).
+   */
+  | {
+      kind: "focusDone";
+      count: number;
+      breakPhase: "shortBreak" | "longBreak";
+      at: number;
+      preview?: true;
+    }
   /** A break rang (or was skipped); ready for the next pomodoro. */
   | { kind: "breakDone"; skipped: boolean; at: number };
 
 export interface PomodoroState {
   settings: PomodoroSettings;
+  /**
+   * The student's own settings while the judge demo's quick timings are in `settings` (null
+   * otherwise). These are what's saved, and what setQuickTimings(null) puts back.
+   */
+  savedSettings: PomodoroSettings | null;
   phase: PomodoroPhase;
   /** When the current phase started and ends (ms since epoch); null while idle. */
   startedAt: number | null;
@@ -139,6 +168,16 @@ export function phaseProgress(s: PomodoroState, now: number) {
   const total = s.endsAt - s.startedAt;
   if (!(total > 0)) return 1;
   return Math.min(1, Math.max(0, 1 - remainingMs(s, now) / total));
+}
+
+/** A phase's length as an adjective: "5-minute", or "15-second" for the demo's quick breaks. */
+export function lengthWord(minutes: number) {
+  return minutes >= 1 || minutes <= 0 ? `${minutes}-minute` : `${Math.round(minutes * 60)}-second`;
+}
+
+/** A phase's length in a stepper: "25 min", or "15 s" for the demo's quick breaks. */
+export function lengthShort(minutes: number) {
+  return minutes >= 1 || minutes <= 0 ? `${minutes} min` : `${Math.round(minutes * 60)} s`;
 }
 
 /** "24:59" style. */
@@ -308,10 +347,13 @@ export function skipBreakPatch(s: PomodoroState, now: number): Patch {
 
 export function settingsPatch(s: PomodoroState, change: Partial<PomodoroSettings>): Patch {
   const next = { ...s.settings };
+  const saved = s.savedSettings ? { ...s.savedSettings } : null;
   for (const key of Object.keys(change) as (keyof PomodoroSettings)[]) {
     const value = change[key];
     if (value === undefined) continue;
     if (key in POMODORO_LIMITS) {
+      // The demo's quick timings stay as they are; the student's own lengths come back after.
+      if (saved) continue;
       const k = key as keyof typeof POMODORO_LIMITS;
       // A running pomodoro keeps the length it started with.
       if (k === "focusMinutes" && s.phase === "focus") continue;
@@ -320,9 +362,45 @@ export function settingsPatch(s: PomodoroState, change: Partial<PomodoroSettings
       // Strictness can't be relaxed in the middle of a pomodoro.
       if (key === "strict" && s.phase === "focus") continue;
       (next as Record<string, unknown>)[key] = value;
+      // A switch flipped during the demo is the student's own choice: it's kept after, too.
+      if (saved) (saved as Record<string, unknown>)[key] = value;
     }
   }
-  return { settings: next };
+  return saved ? { settings: next, savedSettings: saved } : { settings: next };
+}
+
+/** The phase lengths the judge demo swaps in (fractions of a minute are fine here). */
+export type QuickTimings = Pick<
+  PomodoroSettings,
+  "focusMinutes" | "shortBreakMinutes" | "longBreakMinutes" | "longBreakEvery"
+>;
+
+/**
+ * Puts quick timings in (keeping the student's own settings aside), or with null puts the
+ * student's own back. A pomodoro already running keeps the length it started with.
+ */
+export function quickTimingsPatch(s: PomodoroState, timings: QuickTimings | null): Patch {
+  if (timings) {
+    const own = s.savedSettings ?? s.settings;
+    return { savedSettings: own, settings: { ...s.settings, ...timings } };
+  }
+  if (!s.savedSettings) return {};
+  return { settings: s.savedSettings, savedSettings: null };
+}
+
+/**
+ * Rings the running pomodoro now (the judge demo's "Finish this pomodoro now"). With `preview`
+ * it was rung early, so it's only shown: the notice says so and today's tally is left alone
+ * (lib/learning/client.ts abandons the session instead of completing it, so no XP).
+ */
+export function finishNowPatch(s: PomodoroState, now: number, preview: boolean): Patch {
+  if (s.phase !== "focus") return {};
+  const rung = tickPatch(
+    { ...s, endsAt: Math.min(s.endsAt ?? now, now), awaySince: null, pausedRemaining: null },
+    now,
+  );
+  if (!preview || rung.notice?.kind !== "focusDone") return rung;
+  return { ...rung, today: s.today, notice: { ...rung.notice, preview: true } };
 }
 
 export interface PomodoroStore extends PomodoroState {
@@ -336,10 +414,15 @@ export interface PomodoroStore extends PomodoroState {
   setTask: (task: string) => void;
   updateSettings: (change: Partial<PomodoroSettings>) => void;
   dismissNotice: () => void;
+  /** The judge demo's quick timings on (or, with null, off). Never saved. */
+  setQuickTimings: (timings: QuickTimings | null) => void;
+  /** The judge demo's "Finish this pomodoro now" (see finishNowPatch). */
+  finishNow: (preview: boolean, now?: number) => void;
 }
 
 const INITIAL_STATE: PomodoroState = {
   settings: DEFAULT_POMODORO_SETTINGS,
+  savedSettings: null,
   phase: "idle",
   startedAt: null,
   endsAt: null,
@@ -371,6 +454,8 @@ export const usePomodoro = create<PomodoroStore>()(
         setTask: (task) => set({ task: task.slice(0, 80) }),
         updateSettings: (change) => set(settingsPatch(get(), change)),
         dismissNotice: () => set({ notice: null }),
+        setQuickTimings: (timings) => set(quickTimingsPatch(get(), timings)),
+        finishNow: (preview, now) => apply((s, t) => finishNowPatch(s, t, preview), now),
       };
     },
     {
@@ -378,13 +463,23 @@ export const usePomodoro = create<PomodoroStore>()(
       version: 1,
       storage: createJSONStorage(() => localStorage),
       // Preferences and today's tally survive a visit; a running pomodoro never does (leaving the
-      // page is leaving the tab).
-      partialize: (s) => ({ settings: s.settings, today: s.today, task: s.task }),
+      // page is leaving the tab). The demo's quick timings never do: the student's own are saved.
+      partialize: (s) => ({
+        settings: s.savedSettings ?? s.settings,
+        today: s.today,
+        task: s.task,
+      }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<PomodoroState>;
         const settings = { ...DEFAULT_POMODORO_SETTINGS, ...p.settings };
         for (const k of Object.keys(POMODORO_LIMITS) as (keyof typeof POMODORO_LIMITS)[])
           settings[k] = clampSetting(k, settings[k]);
+        // A saved switch that isn't true or false (an old or hand-edited save) is the default.
+        for (const k of Object.keys(DEFAULT_POMODORO_SETTINGS) as (keyof PomodoroSettings)[]) {
+          const d = DEFAULT_POMODORO_SETTINGS[k];
+          if (typeof d === "boolean" && typeof settings[k] !== "boolean")
+            (settings as Record<string, unknown>)[k] = d;
+        }
         return {
           ...current,
           settings,

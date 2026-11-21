@@ -1,7 +1,7 @@
 {
   "name": "ovr",
   "private": true,
-  "description": "OVR \u2014 a cozy multiplayer virtual library to study together.",
+  "description": "Cram Club \u2014 a cozy 3D multiplayer study library for body doubling: study beside other students as avatars, with verified focus minutes and Ms. Fenwick, the Librarian.",
   "packageManager": "pnpm@12.21.0",
   "engines": {
     "node": ">=22.12"

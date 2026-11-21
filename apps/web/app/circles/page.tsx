@@ -4,7 +4,7 @@ import { CirclesHome } from "@/components/circles/CirclesHome";
 import { DotRow } from "@/components/progress/ui";
 import { BODY_L, DISPLAY_L } from "@/components/ui/styles";
 
-export const metadata: Metadata = { title: "Study Circles · OVR" };
+export const metadata: Metadata = { title: "Study Circles · Cram Club" };
 
 export default function CirclesPage() {
   return (

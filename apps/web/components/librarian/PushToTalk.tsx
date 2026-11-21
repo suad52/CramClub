@@ -2,18 +2,39 @@
 
 import { useEffect, useRef, useState } from "react";
 import { IconMic, IconStop } from "@/components/ui/icons";
+import { openMedia } from "@/lib/devices/prefs";
 import { stopSpeaking } from "@/lib/librarian/voice";
 import { SQUARE_BTN } from "./parts";
 
 /** Longest recording (ms): a question, not a lecture. */
 const MAX_MS = 30_000;
 
-type State = "idle" | "recording" | "transcribing";
+type State = "idle" | "opening" | "recording" | "transcribing";
+
+/** A short, plain reason the microphone didn't open, with where to fix it. */
+function micProblem(err: unknown): string {
+  switch ((err as { name?: string } | null)?.name) {
+    case "NotAllowedError":
+    case "SecurityError":
+      return "Your microphone is blocked. Allow it from the address bar and try again, or see Camera and microphone in the menu (Esc).";
+    case "NotFoundError":
+    case "OverconstrainedError":
+      return "No microphone was found. Plug one in, or pick one under Camera and microphone in the menu (Esc).";
+    case "NotReadableError":
+    case "AbortError":
+      return "Your microphone is busy in another app. Close it there and try again.";
+    case "NotSupportedError":
+      return "This browser can't record your voice here. Try Chrome, Edge, Firefox or Safari.";
+    default:
+      return "Your microphone didn't start. Try again, or check Camera and microphone in the menu (Esc).";
+  }
+}
 
 /**
  * Talk to the Librarian: tap to start, tap to stop. The recording goes to the server, which asks
  * ElevenLabs Speech to Text what you said; the words land in the message box for you to check and
- * send. The microphone is only on while recording (the browser asks the first time).
+ * send. The microphone is only on while recording (the browser asks the first time), and it is
+ * the one the student picked on the "Before you go in" step (lib/devices/prefs.ts).
  */
 export function PushToTalk({
   onText,
@@ -26,15 +47,18 @@ export function PushToTalk({
   const [error, setError] = useState<string | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** False once unmounted: a microphone that opens late is closed, a recording is discarded. */
+  const alive = useRef(true);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
       if (timer.current) clearTimeout(timer.current);
       const r = recorder.current;
       if (r && r.state !== "inactive") r.stop();
-    },
-    [],
-  );
+    };
+  }, []);
 
   async function transcribe(blob: Blob) {
     setState("transcribing");
@@ -58,27 +82,50 @@ export function PushToTalk({
   }
 
   async function start() {
+    if (state !== "idle") return;
     setError(null);
     stopSpeaking();
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setError("Your microphone is blocked. Allow it in the browser to talk to her.");
+    if (typeof MediaRecorder === "undefined") {
+      setError(micProblem({ name: "NotSupportedError" }));
       return;
     }
-    const type = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((t) =>
-      MediaRecorder.isTypeSupported(t),
-    );
-    const r = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    setState("opening");
+    let stream: MediaStream;
+    try {
+      stream = await openMedia("mic", {});
+    } catch (err) {
+      if (!alive.current) return;
+      setError(micProblem(err));
+      setState("idle");
+      return;
+    }
+    const release = () => {
+      for (const t of stream.getTracks()) t.stop();
+    };
+    // Closed while the browser was asking: never keep that microphone open.
+    if (!alive.current) return release();
+    let r: MediaRecorder;
+    try {
+      const type = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((t) =>
+        MediaRecorder.isTypeSupported(t),
+      );
+      r = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    } catch {
+      release();
+      setError(micProblem({ name: "NotSupportedError" }));
+      setState("idle");
+      return;
+    }
     const chunks: Blob[] = [];
     r.ondataavailable = (e) => {
       if (e.data.size) chunks.push(e.data);
     };
     r.onstop = () => {
-      for (const t of stream.getTracks()) t.stop();
+      release();
       if (timer.current) clearTimeout(timer.current);
       recorder.current = null;
+      // Closed mid-sentence: the recording is dropped, not sent.
+      if (!alive.current) return;
       const blob = new Blob(chunks, { type: r.mimeType || "audio/webm" });
       if (blob.size > 1000) void transcribe(blob);
       else setState("idle");
@@ -100,7 +147,7 @@ export function PushToTalk({
       <button
         type="button"
         onClick={() => (recording ? stop() : void start())}
-        disabled={disabled || state === "transcribing"}
+        disabled={disabled || state === "opening" || state === "transcribing"}
         aria-pressed={recording}
         aria-label={recording ? "Stop and send what you said" : "Talk to Ms. Fenwick"}
         title={recording ? "Tap to stop" : "Tap to talk (tap again to stop)"}
@@ -116,7 +163,7 @@ export function PushToTalk({
           <IconMic size={19} strokeWidth={2.25} />
         )}
       </button>
-      {(recording || state === "transcribing" || error) && (
+      {(state !== "idle" || error) && (
         <p
           role="status"
           // A dark sticker bubble above the mic, its tail pointing down at it.
@@ -135,9 +182,11 @@ export function PushToTalk({
           <span>
             {recording
               ? "Listening. Tap the stop button when you're done."
-              : state === "transcribing"
-                ? "Working out what you said…"
-                : error}
+              : state === "opening"
+                ? "Opening your microphone. Allow it if your browser asks."
+                : state === "transcribing"
+                  ? "Working out what you said…"
+                  : error}
           </span>
         </p>
       )}

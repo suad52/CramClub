@@ -24,7 +24,9 @@ import { librarianPresence, prefersReducedMotion } from "@/lib/librarian/presenc
  * the rest: while it's open she keeps eye contact with the camera (the conversation close-up),
  * waving hello as it opens; while a request is busy she writes in her ledger, looking up now and
  * then; and while she talks she nods, tilts her head, sways and now and then gestures with a hand,
- * following the loudness of her voice.
+ * following the loudness of her voice. When she shushes you mid-pomodoro (lib/focus/watch.ts sets
+ * `shushUntil`), or answers you in the library chat (lib/chat/fenwick.ts sets it too), she turns
+ * her head toward you, wherever you're sitting.
  */
 
 const LOOK: AvatarConfig = {
@@ -290,10 +292,13 @@ export function Librarian() {
     const dist = Math.hypot(dx, dz);
     const inFront = dz > 0.2 && Math.abs(runtime.y) < 1;
     const near = inFront && dist < NOTICE_RANGE;
-    const { open, working, speakUntil, speaking } = librarianPresence;
+    const { open, working, speakUntil, speaking, shushUntil } = librarianPresence;
     const talking = performance.now() < speakUntil || speaking;
+    // She's just shushed you (mid-pomodoro) or answered you in the chat: she turns to you
+    // wherever you're sitting.
+    const shushing = performance.now() < shushUntil;
     // With her panel open she keeps her eyes on you from anywhere in front of the desk.
-    const watching = near || (open && dz > 0.2);
+    const watching = near || (open && dz > 0.2) || shushing;
     // Busy with a request: head down over the ledger (she looks up to say a reply).
     const writing = working && !talking;
     // Writing with her panel open, she looks up at you now and then.

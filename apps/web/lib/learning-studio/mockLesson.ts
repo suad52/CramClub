@@ -20,7 +20,11 @@ export const SAMPLE_NOTES: Chunk[] = [
   },
 ];
 
-/** The brief's first demo: a short cellular-respiration lesson (used before anything is uploaded). */
+/**
+ * The brief's first demo: a short cellular-respiration lesson (used before anything is uploaded).
+ * Hand-written, so it has a hint and a quote (word for word from SAMPLE_NOTES) but no quizCheck:
+ * it was never through the self-check, and its badge would be untrue.
+ */
 export const SAMPLE_LESSON: Lesson = {
   title: "Cellular respiration",
   subject: "Biology",
@@ -130,6 +134,8 @@ export const SAMPLE_LESSON: Lesson = {
         correctIndex: 2,
         explanation:
           "The electron transport chain uses the proton gradient to drive ATP synthase, making about 26–28 ATP per glucose (page 4).",
+        hint: "Think about which stage the proton gradient and ATP synthase belong to.",
+        quote: "Protons flow back through ATP synthase, which makes most of the cell's ATP",
       },
       sourceReferences: [{ page: 4 }],
     },

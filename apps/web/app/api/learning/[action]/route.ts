@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import { clientKey, createRateLimiter, readJson } from "@/lib/ai/http";
 import { crossOriginRefused, crossOriginWrite } from "@/lib/auth/sameOrigin";
 import { db } from "@/lib/learning/server/db";
@@ -22,6 +23,11 @@ import type { TimelineKind } from "@/lib/learning/types";
  * aggregate views; POST records validated activity. The learner always comes from the Auth0
  * session or the signed cookie (lib/learning/server/identity.ts), never from the request. POSTs
  * must come from this site (lib/auth/sameOrigin.ts), and the learner's own views aren't cached.
+ *
+ * POST session-complete takes { sessionId, presence?: { cameraSeconds, seenSeconds } } and
+ * answers { ok, xp, durationSeconds, presence: { cameraSeconds, seenSeconds, verifiedMinutes,
+ * clamped } | null } (see lib/learning/server/pipeline.ts: presence is optional and never
+ * required for the session to count).
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -111,8 +117,10 @@ export async function POST(request: Request, { params }: Ctx) {
       profile: () => updateProfile(sql, me.id, body),
       "session-start": () =>
         startSession(sql, me.id, (body as { plannedMinutes: number }).plannedMinutes),
-      "session-complete": () =>
-        completeSession(sql, me.id, (body as { sessionId: string }).sessionId),
+      "session-complete": () => {
+        const b = body as z.infer<(typeof Bodies)["session-complete"]>;
+        return completeSession(sql, me.id, b.sessionId, b.presence);
+      },
       "session-abandon": () =>
         abandonSession(sql, me.id, (body as { sessionId: string }).sessionId),
       "lesson-start": () => startLesson(sql, me.id, body),

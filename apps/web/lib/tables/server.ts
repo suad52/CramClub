@@ -7,13 +7,13 @@ import { hashInviteToken } from "@/lib/auth/inviteToken";
 import { timeLeftText } from "./time";
 import {
   EMAIL_INVITES_PER_HOLD,
-  HOLD_MINUTES,
   type SitResult,
   type TableEmailInvite,
   type TableInvitation,
   type TableStatus,
   type TableVisibility,
   type TablesView,
+  holdMinutesFor,
 } from "./types";
 
 /**
@@ -347,18 +347,20 @@ const lostRace = (error: unknown) => {
 const LOCK = { table: 7301, student: 7302 } as const;
 
 /**
- * Hold a free table for HOLD_MINUTES (the first sitter). 409 table_taken if someone holds it,
- * 409 already_holding if the viewer holds another. Holding your own table again changes nothing.
+ * Hold a free table for HOLD_MINUTES, or the shorter `minutes` asked for (holdMinutesFor: never
+ * longer), as the first sitter. 409 table_taken if someone holds it, 409 already_holding if the
+ * viewer holds another. Holding your own table again changes nothing.
  */
 export async function claimTable(
   sql: Sql,
   viewer: Viewer,
   tableId: string,
-  input: { visibility: TableVisibility; circleId?: string | null },
+  input: { visibility: TableVisibility; circleId?: string | null; minutes?: number },
   privateAvailable: boolean,
 ): Promise<Outcome<TableStatus>> {
   const me = viewer.learnerId;
   const circleId = input.circleId ?? null;
+  const minutes = holdMinutesFor(input.minutes);
   const gate = privateGate(viewer, privateAvailable, input.visibility === "private", !!circleId);
   if (gate) return gate;
   // Signed out with no learner: only when the server can't make one (no LEARNER_SECRET).
@@ -386,7 +388,7 @@ export async function claimTable(
       }
       await tx`INSERT INTO table_holds (id, table_id, holder_id, visibility, circle_id, ends_at)
         VALUES (${randomUUID()}, ${tableId}, ${me}, ${input.visibility}, ${circleId},
-          now() + make_interval(mins => ${HOLD_MINUTES}::int))`;
+          now() + make_interval(mins => ${minutes}::int))`;
       const [mine] = await liveHolds(tx, viewer, tableId);
       return ok(tableStatus(tableId, mine ?? null, viewer), 201);
     })) as Outcome<TableStatus>;

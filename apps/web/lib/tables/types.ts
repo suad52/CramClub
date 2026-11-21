@@ -9,8 +9,10 @@
  * Endpoints (same-origin; JSON bodies need `content-type: application/json`):
  *   GET  /api/tables                     → TablesView   (every table's public status + mine)
  *   POST /api/tables/:tableId/sit        → SitResult    (ask to sit: the server says yes/no)
- *   POST /api/tables/:tableId/claim  { visibility, circleId? } → TableStatus  (first sitter only;
- *        holds it for HOLD_MINUTES; 409 if someone already holds it)
+ *   POST /api/tables/:tableId/claim  { visibility, circleId?, minutes? } → TableStatus  (first
+ *        sitter only; holds it for HOLD_MINUTES, or `minutes` when sent: a whole number from
+ *        MIN_HOLD_MINUTES up to HOLD_MINUTES, never longer (the judge demo, lib/demo, asks for a
+ *        short hold); 409 if someone already holds it)
  *   PATCH /api/tables/:tableId       { visibility?, circleId? | null } → TableStatus   (holder)
  *   POST /api/tables/:tableId/invite → { link, path, expiresAt }  (holder of a private table)
  *   POST /api/tables/join { token }  → { tableId, status: TableStatus }  (signed in; adds you
@@ -27,8 +29,19 @@
 
 /** How long a hold lasts, like a library booking. */
 export const HOLD_MINUTES = 60;
+/** The shortest hold a claim may ask for (`minutes`; only ever shorter than HOLD_MINUTES). */
+export const MIN_HOLD_MINUTES = 1;
 /** When the holder gets a "time's nearly up" notice. */
 export const WARN_MINUTES = 5;
+
+/**
+ * The hold length a claim gets: HOLD_MINUTES, or the shorter whole number of minutes it asked
+ * for. Anything else (longer, fractional, not a number) can never lengthen a hold.
+ */
+export function holdMinutesFor(asked: unknown): number {
+  if (typeof asked !== "number" || !Number.isFinite(asked)) return HOLD_MINUTES;
+  return Math.min(HOLD_MINUTES, Math.max(MIN_HOLD_MINUTES, Math.floor(asked)));
+}
 /** Email invites one hold can have. */
 export const EMAIL_INVITES_PER_HOLD = 20;
 

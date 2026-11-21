@@ -6,3 +6,4 @@ export * from "./avatar/random";
 export * from "./world";
 export * from "./net/protocol";
 export * from "./net/ticket";
+export * from "./net/internal";

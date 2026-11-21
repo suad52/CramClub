@@ -10,9 +10,10 @@ const LibraryExperience = dynamic(() => import("@/components/library/LibraryExpe
       <div className="flex flex-col items-center text-center">
         <p
           aria-hidden
-          className="font-display text-[88px] leading-none font-bold tracking-tight text-surface [paint-order:stroke_fill] [text-shadow:0_7px_0_#1f1a16] [-webkit-text-stroke:10px_#1f1a16]"
+          className="font-display text-[64px] leading-[0.9] font-bold tracking-tight text-surface [paint-order:stroke_fill] [text-shadow:0_7px_0_#1f1a16] [-webkit-text-stroke:10px_#1f1a16]"
         >
-          OVR
+          <span className="block">Cram</span>
+          <span className="block">Club</span>
         </p>
         <p className="mt-8 font-display text-[19px] leading-6 font-semibold text-walnut">
           Opening the library…

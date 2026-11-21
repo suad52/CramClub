@@ -33,7 +33,7 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "OVR — the virtual library",
+  title: "Cram Club — a cozy library to study together",
   description:
     "A calm 3D university library for studying alone or together. Take a desk with a focus timer, ask the Librarian to research a topic, and turn your notes into lessons on a whiteboard.",
 };

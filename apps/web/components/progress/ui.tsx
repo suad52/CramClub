@@ -11,7 +11,7 @@ import {
 import { BODY, BTN, BTN_SM, FOCUS as SHARED_FOCUS, PANEL, TAG } from "@/components/ui/styles";
 import type { TimelineEntry } from "@/lib/learning/types";
 import { type Resource, useOnline } from "./api";
-import { entryKind, entryScore, entryTitle, formatSeconds } from "./format";
+import { entryKind, entryScore, entryTitle, formatSeconds, verifiedText } from "./format";
 
 /**
  * Shared pieces of the progress dashboard: panels, headings, states and timeline rows, in the
@@ -212,8 +212,8 @@ export function Gate<T>({
   if (error?.code === "not_configured") {
     return (
       <StateCard title="Progress tracking isn't set up on this server">
-        This copy of OVR has no progress database connected, so nothing is being recorded. Studying,
-        pomodoros and lessons all still work as usual.
+        This copy of Cram Club has no progress database connected, so nothing is being recorded.
+        Studying, pomodoros and lessons all still work as usual.
       </StateCard>
     );
   }
@@ -277,6 +277,8 @@ export function EntryRow({ entry, when }: { entry: TimelineEntry; when: React.Re
     entry.durationSeconds !== null ? formatSeconds(entry.durationSeconds) : null,
     score,
   ].filter(Boolean);
+  // Pomodoros with face tracking on: how much of it you were seen at your desk.
+  const seen = verifiedText(entry.seenSeconds === null ? 0 : Math.floor(entry.seenSeconds / 60));
   const Icon = KIND_ICON[entry.type];
   return (
     <li className="flex items-start gap-4 py-3">
@@ -294,6 +296,12 @@ export function EntryRow({ entry, when }: { entry: TimelineEntry; when: React.Re
           <span className="min-w-0">
             {entryKind(entry.type)}
             {meta.length > 0 && ` · ${meta.join(" · ")}`}
+            {seen && (
+              <>
+                {" · "}
+                <span className="font-semibold text-sage-dark">{seen}</span>
+              </>
+            )}
           </span>
         </p>
       </div>

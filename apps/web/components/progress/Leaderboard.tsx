@@ -6,7 +6,7 @@ import { PANEL, RIBBON } from "@/components/ui/styles";
 import { LIBRARY_TIME_ZONE } from "@/lib/learning/rules";
 import type { Dashboard, Leaderboard } from "@/lib/learning/types";
 import { type Resource, asApiError, postJson } from "./api";
-import { formatMinutes, formatNumber, formatRange, plural } from "./format";
+import { formatMinutes, formatNumber, formatRange, plural, verifiedText } from "./format";
 import { CARD, FOCUS, Gate, ICON_DOT, NOTE, Segmented, StateCard, Tag } from "./ui";
 
 type Period = Leaderboard["period"];
@@ -157,6 +157,14 @@ function Board({ lb }: { lb: Leaderboard }) {
                   </td>
                   <td className="px-2 py-2.5 text-right font-medium text-ink-soft">
                     {formatMinutes(r.focusMinutes)}
+                    {r.verifiedMinutes > 0 && (
+                      <span className="block font-display text-[12px] leading-4 font-semibold text-sage-dark">
+                        <span aria-hidden>{verifiedText(r.verifiedMinutes, "")}</span>
+                        <span className="sr-only">
+                          , {formatMinutes(r.verifiedMinutes)} seen at the desk
+                        </span>
+                      </span>
+                    )}
                   </td>
                   <td className="py-2.5 pr-4 pl-2 text-right font-medium text-ink-soft sm:pr-6">
                     {r.activeDays}
@@ -169,7 +177,9 @@ function Board({ lb }: { lb: Leaderboard }) {
       )}
       {!meShown && <YourStanding lb={lb} when={when} />}
       <p className="text-[13px] leading-5 font-medium text-ink-soft">
-        Ranked by XP. Ties go to more focus time, then to more active days.
+        Ranked by XP. Ties go to more focus time, then to more active days.{" "}
+        <span className="font-semibold text-sage-dark">✓</span> is focus time seen at the desk, for
+        students who turned on their own face tracking. It never changes anyone&apos;s rank.
       </p>
     </div>
   );
@@ -254,8 +264,9 @@ function OptIn({
                 You appear as <strong className="font-bold text-walnut">{name}</strong>.{" "}
               </>
             ) : null}
-            Only your name and totals (XP, focus time, active days) are shown, never your lesson
-            titles. Turning this off also leaves you out of the community charts.
+            Only your name and totals (XP, focus time, active days, and time seen at your desk if
+            you use face tracking) are shown, never your lesson titles. Turning this off also leaves
+            you out of the community charts.
           </p>
         </div>
         <button

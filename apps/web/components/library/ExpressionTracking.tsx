@@ -14,7 +14,13 @@ import { BODY, BTN, HUD_BTN, ICON_BTN, PANEL, TAG } from "@/components/ui/styles
 import { FACE_PREVIEW } from "@/components/world/FacePreview";
 import { useFaceTracking } from "@/hooks/useFaceTracking";
 import { exitPointerLock } from "@/lib/game/pointer";
-import { faceState, useTrackingStore } from "@/lib/facial-tracking/tracker";
+import { useGameStore } from "@/lib/game/store";
+import {
+  faceState,
+  turnCameraOff,
+  turnCameraOn,
+  useTrackingStore,
+} from "@/lib/facial-tracking/tracker";
 
 /** The "camera is live" light: a steady red dot (always next to words that say so). */
 export function CameraDot() {
@@ -183,7 +189,11 @@ function Toggle({
   );
 }
 
-/** The opt-in panel: explains what happens, starts/stops the camera and shows live feedback. */
+/**
+ * The opt-in panel: explains what happens, starts/stops the camera and shows live feedback. Its
+ * on and off buttons are the student's own choice, so they are remembered for the "Before you go
+ * in" step (turnCameraOn / turnCameraOff).
+ */
 export function TrackingPanel() {
   const open = useTrackingStore((s) => s.panelOpen);
   const setOpen = useTrackingStore((s) => s.setPanelOpen);
@@ -194,7 +204,7 @@ export function TrackingPanel() {
   const setHeadLook = useTrackingStore((s) => s.setHeadLook);
   const setShowFaceView = useTrackingStore((s) => s.setShowFaceView);
   const [showCamera, setShowCamera] = useState(true);
-  const { status, error, calibration, active, start, stop, recalibrate } = useFaceTracking();
+  const { status, error, calibration, active, recalibrate } = useFaceTracking();
   if (!open) return null;
 
   return (
@@ -245,7 +255,11 @@ export function TrackingPanel() {
               <span>{error}</span>
             </p>
           )}
-          <button type="button" onClick={() => void start()} className={`${BTN.primary} w-full`}>
+          <button
+            type="button"
+            onClick={() => void turnCameraOn()}
+            className={`${BTN.primary} w-full`}
+          >
             <IconCamera size={18} />
             {error ? "Try again" : "Turn on camera"}
           </button>
@@ -315,7 +329,7 @@ export function TrackingPanel() {
               <IconRefresh size={16} />
               Recalibrate
             </button>
-            <button type="button" onClick={stop} className={BTN.primary}>
+            <button type="button" onClick={turnCameraOff} className={BTN.primary}>
               Turn off camera
             </button>
           </div>
@@ -329,7 +343,9 @@ export function TrackingPanel() {
 export function FaceViewFrame() {
   const { active } = useFaceTracking();
   const showFaceView = useTrackingStore((s) => s.showFaceView);
-  if (!active || !showFaceView) return null;
+  // Matches the in-canvas preview (components/world/LocalPlayer.tsx): in the library only.
+  const playing = useGameStore((s) => s.phase === "playing" && !s.devicesOpen);
+  if (!active || !showFaceView || !playing) return null;
   const { size, margin } = FACE_PREVIEW;
   return (
     <div
