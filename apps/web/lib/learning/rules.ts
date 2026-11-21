@@ -14,6 +14,8 @@ export const XP = {
   quizCompleted: 10,
   /** Extra for getting it right on the first try (later tries can't: the answer was shown). */
   quizPassed: 15,
+  /** Ticking off an activity in a study plan the Librarian made, once per activity. */
+  planItemCompleted: 10,
 } as const;
 
 /** How many of each activity can earn XP per day; more still count, for 0 XP. */
@@ -21,6 +23,7 @@ export const DAILY_CAPS = {
   sessions: 12,
   lessons: 10,
   quizzes: 40,
+  planItems: 12,
 } as const;
 
 /** The library's time zone: days, weeks and streaks follow its midnight. */

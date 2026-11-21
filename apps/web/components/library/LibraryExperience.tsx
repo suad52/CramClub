@@ -33,6 +33,7 @@ import {
   TouchDeviceNotice,
 } from "./Overlays";
 import { PomodoroLayer } from "./Pomodoro";
+import { LibrarianOverlay } from "./LibrarianOverlay";
 import { ProgressOverlay } from "./ProgressOverlay";
 
 // Stable reference: R3F re-applies renderer props whenever this object changes identity.
@@ -116,9 +117,11 @@ export default function LibraryExperience() {
     s.setSeat(null);
     s.setNearbySeat(null);
     s.setNearbyBoard(null);
+    s.setNearbyLibrarian(false);
     s.setMenuOpen(false);
     s.setGuideOpen(false);
     s.setProgressOpen(false);
+    s.setLibrarianOpen(false);
     // Every visit starts on the title screen; the controls guide opens after entering.
     s.setPhase("title");
     if (process.env.NODE_ENV !== "production") {
@@ -189,6 +192,7 @@ export default function LibraryExperience() {
       <WhiteboardPanel />
       <PauseMenu />
       <ProgressOverlay />
+      <LibrarianOverlay />
       <ControlsGuide />
       <TitleScreen />
       {phase === "creator" && <Studio />}

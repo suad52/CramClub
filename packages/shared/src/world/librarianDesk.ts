@@ -18,7 +18,10 @@ export const LIBRARIAN = {
   counterHeight: 1.1,
   workDepth: 0.54,
   workHeight: 0.76,
-  chair: { x: 0.3, z: -8.75 },
+  /** Where the librarian stands, behind the work surface. */
+  librarian: { x: 0, z: -8.6 },
+  /** The librarian's chair, pushed aside while she stands. */
+  chair: { x: 1.05, z: -8.95, rotationY: -0.55 },
   catalogue: { x: -1.75, z: -9.3, width: 0.86, depth: 0.45, height: 1.2 },
   cart: { x: 1.8, z: -8.9, width: 0.8, depth: 0.4, height: 0.95 },
   /** The hanging sign's centre (it hangs from the gallery's underside at 4.2 m). */
@@ -27,6 +30,15 @@ export const LIBRARIAN = {
 
 const L = LIBRARIAN;
 const deskDepth = L.counterDepth + L.workDepth;
+
+/** Things in the Blender model the desk area replaced: hidden at load, colliders dropped. */
+export const REMOVED_MODEL_OBJECTS = ["Furniture_Globe_Floor_01"] as const;
+export const REMOVED_PLAN_ITEMS = ["hall-globe"] as const;
+/**
+ * Where removed objects stood. The model's export joined some of their parts (the globe's
+ * horizon ring) into shared meshes, so triangles wholly inside these cylinders are dropped too.
+ */
+export const REMOVED_MODEL_REGIONS = [{ x: 0, z: -6.2, radius: 0.62, y0: 0.02, y1: 1.4 }] as const;
 
 export const LIBRARIAN_COLLIDERS: Collider[] = [
   {
@@ -41,6 +53,15 @@ export const LIBRARIAN_COLLIDERS: Collider[] = [
     y1: L.counterHeight,
   },
   { kind: "circle", id: "librarian_chair", x: L.chair.x, z: L.chair.z, radius: 0.28, y0: 0, y1: 1 },
+  {
+    kind: "circle",
+    id: "librarian",
+    x: L.librarian.x,
+    z: L.librarian.z,
+    radius: 0.25,
+    y0: 0,
+    y1: 1.6,
+  },
   {
     kind: "box",
     id: "librarian_catalogue",

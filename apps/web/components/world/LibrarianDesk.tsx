@@ -333,7 +333,7 @@ export function LibrarianDesk() {
       />
 
       {/* The librarian's chair, facing the counter. */}
-      <group position={[L.chair.x, 0, L.chair.z]}>
+      <group position={[L.chair.x, 0, L.chair.z]} rotation={[0, L.chair.rotationY, 0]}>
         <Box size={[0.46, 0.06, 0.44]} at={[0, 0.47, 0]} material={m.leather} />
         <Box size={[0.46, 0.5, 0.05]} at={[0, 0.75, -0.22]} material={m.wood} />
         {[

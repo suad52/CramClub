@@ -37,6 +37,8 @@ interface GameStore {
   guideOpen: boolean;
   /** "My Progress" panel over the library (holds the game still, like the guide). */
   progressOpen: boolean;
+  /** The AI Librarian's panel over the library (holds the game still, like My Progress). */
+  librarianOpen: boolean;
   zoneId: ZoneId | null;
   /** Seat the player could sit in right now, if any. */
   nearbySeatId: string | null;
@@ -44,6 +46,8 @@ interface GameStore {
   nearbyBoardId: string | null;
   /** Lift call point the player is standing at, if any. */
   nearbyLiftId: string | null;
+  /** The player is standing at the librarian's desk (E asks her). */
+  nearbyLibrarian: boolean;
   /** Seat the player is sitting in, if any. */
   seatId: string | null;
   settings: Settings;
@@ -62,10 +66,12 @@ interface GameStore {
   setMenuOpen: (open: boolean) => void;
   setGuideOpen: (open: boolean) => void;
   setProgressOpen: (open: boolean) => void;
+  setLibrarianOpen: (open: boolean) => void;
   setZone: (zone: ZoneId | null) => void;
   setNearbySeat: (seatId: string | null) => void;
   setNearbyBoard: (boardId: string | null) => void;
   setNearbyLift: (liftId: string | null) => void;
+  setNearbyLibrarian: (near: boolean) => void;
   setSeat: (seatId: string | null) => void;
   updateSettings: (patch: Partial<Settings>) => void;
 }
@@ -90,10 +96,12 @@ export const useGameStore = create<GameStore>()(
       menuOpen: false,
       guideOpen: false,
       progressOpen: false,
+      librarianOpen: false,
       zoneId: null,
       nearbySeatId: null,
       nearbyBoardId: null,
       nearbyLiftId: null,
+      nearbyLibrarian: false,
       seatId: null,
       settings: DEFAULT_SETTINGS,
       guideSeen: false,
@@ -114,10 +122,12 @@ export const useGameStore = create<GameStore>()(
       setGuideOpen: (guideOpen) =>
         set((s) => ({ guideOpen, guideSeen: s.guideSeen || !guideOpen })),
       setProgressOpen: (progressOpen) => set({ progressOpen }),
+      setLibrarianOpen: (librarianOpen) => set({ librarianOpen }),
       setZone: (zoneId) => set({ zoneId }),
       setNearbySeat: (nearbySeatId) => set({ nearbySeatId }),
       setNearbyBoard: (nearbyBoardId) => set({ nearbyBoardId }),
       setNearbyLift: (nearbyLiftId) => set({ nearbyLiftId }),
+      setNearbyLibrarian: (nearbyLibrarian) => set({ nearbyLibrarian }),
       setSeat: (seatId) => set({ seatId }),
       updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
     }),

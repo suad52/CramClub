@@ -83,10 +83,12 @@ export function ClickToLook() {
   const menuOpen = useGameStore((s) => s.menuOpen);
   const guideOpen = useGameStore((s) => s.guideOpen);
   const progressOpen = useGameStore((s) => s.progressOpen);
+  const librarianOpen = useGameStore((s) => s.librarianOpen);
   const boardOpen = useWhiteboardStore((s) => s.openId !== null);
   const lessonOpen = useBoardLessons((s) => s.fullscreen || s.pickerBoardId !== null);
   const phase = useGameStore((s) => s.phase);
-  const panelOpen = menuOpen || guideOpen || progressOpen || boardOpen || lessonOpen;
+  const panelOpen =
+    menuOpen || guideOpen || progressOpen || librarianOpen || boardOpen || lessonOpen;
   if (!ready || phase !== "playing" || locked || panelOpen) return null;
   if (cursorFree) {
     // Shift is held: get out of the way so every button can be clicked.
@@ -127,7 +129,7 @@ const CONTROLS: { keys: string[]; label: string }[] = [
   { keys: ["L"], label: "Play a lesson on a whiteboard" },
   { keys: ["J", "N"], label: "Join a lesson / not now" },
   { keys: ["F"], label: "Lesson full screen" },
-  { keys: ["E"], label: "Sit down / stand up" },
+  { keys: ["E"], label: "Sit / stand · ask the librarian at her desk" },
   { keys: ["P"], label: "Start a pomodoro (at a table)" },
   { keys: ["V"], label: "Switch first / third person" },
   { keys: ["Scroll"], label: "Zoom the third-person camera" },
@@ -187,6 +189,7 @@ export function PauseMenu() {
   const open = useGameStore((s) => s.menuOpen);
   const guideOpen = useGameStore((s) => s.guideOpen);
   const progressOpen = useGameStore((s) => s.progressOpen);
+  const librarianOpen = useGameStore((s) => s.librarianOpen);
   const setOpen = useGameStore((s) => s.setMenuOpen);
   const setGuideOpen = useGameStore((s) => s.setGuideOpen);
   const settings = useGameStore((s) => s.settings);
@@ -214,6 +217,7 @@ export function PauseMenu() {
         s.phase !== "playing" ||
         s.guideOpen ||
         s.progressOpen ||
+        s.librarianOpen ||
         useWhiteboardStore.getState().openId ||
         isLessonOverlayOpen()
       )
@@ -228,7 +232,7 @@ export function PauseMenu() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  if (!open || guideOpen || progressOpen) return null;
+  if (!open || guideOpen || progressOpen || librarianOpen) return null;
   return (
     <div className="absolute inset-0 z-20 grid place-items-center bg-ink/35 p-6 backdrop-blur-[2px]">
       <Card labelledBy="menu-title">

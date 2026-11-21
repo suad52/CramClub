@@ -3,8 +3,17 @@
 import { useGLTF } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useEffect } from "react";
-import type { InstancedMesh, Material, Mesh, MeshStandardMaterial, Texture } from "three";
+import {
+  type InstancedMesh,
+  type Material,
+  type Mesh,
+  type MeshStandardMaterial,
+  type Object3D,
+  type Texture,
+  Vector3,
+} from "three";
 import type { Quality } from "@/lib/game/store";
+import { REMOVED_MODEL_OBJECTS, REMOVED_MODEL_REGIONS } from "@ovr/shared";
 
 /**
  * The library building and its furniture, modelled in Blender (art/library) and exported as one
@@ -38,6 +47,47 @@ function keepGiltUntinted(m: MeshStandardMaterial) {
   m.needsUpdate = true;
 }
 
+type Region = (typeof REMOVED_MODEL_REGIONS)[number];
+
+/**
+ * Drops every triangle of the model that lies wholly inside one of the regions (a vertical
+ * cylinder), for parts of removed objects that the export joined into shared meshes.
+ */
+function carveOut(scene: Object3D, regions: readonly Region[]) {
+  const v = new Vector3();
+  const inside = (r: Region) =>
+    Math.hypot(v.x - r.x, v.z - r.z) < r.radius && v.y > r.y0 && v.y < r.y1;
+  scene.updateMatrixWorld(true);
+  scene.traverse((o) => {
+    const mesh = o as Mesh;
+    if (!mesh.isMesh || (mesh as InstancedMesh).isInstancedMesh) return;
+    const geo = mesh.geometry;
+    const pos = geo.attributes.position;
+    if (!pos || !geo.index) return;
+    const hit = new Uint8Array(pos.count);
+    let any = false;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+      if (regions.some(inside)) {
+        hit[i] = 1;
+        any = true;
+      }
+    }
+    if (!any) return;
+    const index = geo.index;
+    for (let t = 0; t < index.count; t += 3) {
+      const a = index.getX(t);
+      const b = index.getX(t + 1);
+      const c = index.getX(t + 2);
+      if (hit[a] && hit[b] && hit[c]) {
+        index.setX(t + 1, a);
+        index.setX(t + 2, a);
+      }
+    }
+    index.needsUpdate = true;
+  });
+}
+
 export function LibraryModel({ quality }: { quality: Quality }) {
   const { scene } = useGLTF(LIBRARY_URL);
   const maxAnisotropy = useThree((s) => s.gl.capabilities.getMaxAnisotropy());
@@ -46,6 +96,13 @@ export function LibraryModel({ quality }: { quality: Quality }) {
     const shadows = quality !== "low";
     const anisotropy = quality === "high" ? Math.min(8, maxAnisotropy) : 4;
     const seen = new Set<Material>();
+    // The floor globe stood in front of the librarian's desk; the plan's collider is dropped too
+    // (REMOVED_PLAN_ITEMS in @ovr/shared).
+    for (const name of REMOVED_MODEL_OBJECTS) {
+      const gone = scene.getObjectByName(name);
+      if (gone) gone.visible = false;
+    }
+    carveOut(scene, REMOVED_MODEL_REGIONS);
     scene.traverse((o) => {
       const mesh = o as Mesh;
       if (!mesh.isMesh) return;

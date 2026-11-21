@@ -745,10 +745,10 @@ function TimerSettings({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     panel.current?.querySelector<HTMLElement>("button")?.focus();
     // Esc closes the settings (not the game: marked handled before the pause menu hears it).
-    // With the pause menu or My Progress open over them, Esc is theirs.
+    // With the pause menu, My Progress or the Librarian open over them, Esc is theirs.
     const onKey = (e: KeyboardEvent) => {
       const game = useGameStore.getState();
-      if (e.key !== "Escape" || game.menuOpen || game.progressOpen) return;
+      if (e.key !== "Escape" || game.menuOpen || game.progressOpen || game.librarianOpen) return;
       e.preventDefault();
       onDone();
     };

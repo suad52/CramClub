@@ -9,7 +9,7 @@
  */
 import type { Rect, Vec2 } from "./geometry";
 import plan from "./library-plan.json";
-import { LIBRARIAN_COLLIDERS } from "./librarianDesk";
+import { LIBRARIAN_COLLIDERS, REMOVED_PLAN_ITEMS } from "./librarianDesk";
 
 export type ZoneId =
   | "entrance"
@@ -178,7 +178,10 @@ export const ZONES: readonly Zone[] = data.zones;
 export const SURFACES: readonly Surface[] = data.surfaces;
 export const CEILINGS: readonly CeilingRegion[] = data.ceilings;
 /** The plan's colliders plus the librarian's desk area, which is built in code (librarianDesk.ts). */
-export const COLLIDERS: readonly Collider[] = [...data.colliders, ...LIBRARIAN_COLLIDERS];
+export const COLLIDERS: readonly Collider[] = [
+  ...data.colliders.filter((c) => !(REMOVED_PLAN_ITEMS as readonly string[]).includes(c.id)),
+  ...LIBRARIAN_COLLIDERS,
+];
 export const SEATS: readonly Seat[] = data.seats;
 export const SPAWN_POINTS: readonly SpawnPoint[] = data.spawnPoints.map((s) => ({
   x: s.x,
@@ -190,7 +193,9 @@ export const ANCHORS: readonly Anchor[] = data.anchors;
 export const LIBRARY_LIGHTS: readonly LibraryLight[] = data.lights;
 /** Desk lamps on the hall's long tables and the rotunda's green lamps (for light pools). */
 export const DESK_LAMPS = data.lamps;
-export const PLACED_ITEMS: readonly PlacedItem[] = data.items;
+export const PLACED_ITEMS: readonly PlacedItem[] = data.items.filter(
+  (i) => !(REMOVED_PLAN_ITEMS as readonly string[]).includes(i.id),
+);
 export const LIFT = data.lift;
 
 const inRect = (r: Rect, p: Vec2) =>

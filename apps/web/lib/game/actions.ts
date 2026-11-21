@@ -233,14 +233,28 @@ export function standUp() {
 }
 
 /**
+ * "Ask the Librarian" (the HUD button, or E at her desk): her panel over the library, holding the
+ * game still like My Progress. The flag goes up before the mouse is let go, so that isn't taken
+ * as "pause".
+ */
+export function openLibrarian() {
+  runtime.vx = 0;
+  runtime.vz = 0;
+  useGameStore.getState().setLibrarianOpen(true);
+  exitPointerLock();
+}
+
+/**
  * The E key / prompt button: stand up if seated (not mid-pomodoro), otherwise use the whiteboard,
- * lift or seat nearby.
+ * lift, librarian's desk or seat nearby.
  */
 export function interact() {
-  const { seatId, nearbySeatId, nearbyBoardId, nearbyLiftId } = useGameStore.getState();
+  const { seatId, nearbySeatId, nearbyBoardId, nearbyLiftId, nearbyLibrarian } =
+    useGameStore.getState();
   if (seatId) standUp();
   else if (nearbyBoardId) openBoard(nearbyBoardId);
   else if (nearbyLiftId) rideLift(nearbyLiftId);
+  else if (nearbyLibrarian) openLibrarian();
   else if (nearbySeatId) sitDown(nearbySeatId);
 }
 
@@ -269,6 +283,7 @@ export function holdFreeCursor(held: boolean) {
     s.menuOpen ||
     s.guideOpen ||
     s.progressOpen ||
+    s.librarianOpen ||
     isBoardOpen() ||
     isLessonOverlayOpen() ||
     isTimerPanelOpen();

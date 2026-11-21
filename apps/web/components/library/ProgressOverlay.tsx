@@ -29,8 +29,8 @@ function closeProgress(recapture: boolean) {
 const FOCUSABLE =
   'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])';
 
-/** Keeps Tab inside the panel: the HUD's buttons are underneath. */
-function trapTab(box: HTMLElement, e: KeyboardEvent) {
+/** Keeps Tab inside the panel: the HUD's buttons are underneath. (The Librarian's panel too.) */
+export function trapTab(box: HTMLElement, e: KeyboardEvent) {
   const all = [...box.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
     (el) => el.tabIndex >= 0 && el.getClientRects().length > 0,
   );

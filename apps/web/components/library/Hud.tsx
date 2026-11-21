@@ -9,6 +9,7 @@ import {
   interact,
   joinNearbyLesson,
   openLessonPicker,
+  openLibrarian,
   openTableBoard,
 } from "@/lib/game/actions";
 import { exitPointerLock } from "@/lib/game/pointer";
@@ -100,6 +101,7 @@ function InteractionPrompt() {
   const nearby = useGameStore((s) => s.nearbySeatId);
   const nearbyBoard = useGameStore((s) => s.nearbyBoardId);
   const nearbyLift = useGameStore((s) => s.nearbyLiftId);
+  const nearbyLibrarian = useGameStore((s) => s.nearbyLibrarian);
   const seat = getSeat(seatId);
   const label = seatId
     ? "Stand up"
@@ -107,7 +109,9 @@ function InteractionPrompt() {
       ? "Use whiteboard"
       : nearbyLift
         ? getLift(nearbyLift)?.label
-        : getSeat(nearby)?.prompt;
+        : nearbyLibrarian
+          ? "Ask the librarian"
+          : getSeat(nearby)?.prompt;
   const tableBoard =
     seat?.tableId && WHITEBOARDS.some((b) => b.boardId === seat.tableId) ? seat.tableId : null;
   // The board L puts a lesson on (see lessonBoardId), and a nearby lesson you could join.
@@ -203,6 +207,13 @@ export function Hud() {
         >
           <span aria-hidden>📈</span>
           <span className="hidden lg:inline">My Progress</span>
+        </IconButton>
+        <IconButton
+          label="Ask the Librarian: research a topic, find sources, build a study plan or a lesson"
+          onClick={openLibrarian}
+        >
+          <span aria-hidden>📚</span>
+          <span className="hidden lg:inline">Ask the Librarian</span>
         </IconButton>
         <TrackingButton />
         <IconButton

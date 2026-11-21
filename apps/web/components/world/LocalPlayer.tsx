@@ -5,6 +5,7 @@ import { Suspense, useCallback, useRef } from "react";
 import { type Group, MathUtils, type Object3D } from "three";
 import {
   type AvatarConfig,
+  LIBRARIAN,
   PLAYER,
   SEATS,
   distance2D,
@@ -45,6 +46,8 @@ import { FacePreview } from "./FacePreview";
 const ACCELERATION = 12;
 /** Seats, boards and lifts more than this far above or below your feet are on another floor. */
 const SAME_FLOOR = 1.2;
+/** How far out from the librarian's counter you can stand and still ask her something (m). */
+const DESK_REACH = 2.6;
 
 function dampAngle(current: number, target: number, lambda: number, dt: number) {
   return current + wrapAngle(target - current) * (1 - Math.exp(-lambda * dt));
@@ -58,8 +61,8 @@ export function LocalPlayer({ config }: { config: AvatarConfig }) {
   const showFaceView = useTrackingStore((s) => s.showFaceView);
   const quality = useGameStore((s) => s.settings.quality);
   const toggleCamera = useGameStore((s) => s.toggleCameraMode);
-  // Game keys do nothing while a menu, the guide, My Progress, a whiteboard, the table timer's
-  // settings or dialog, or a lesson overlay is open.
+  // Game keys do nothing while a menu, the guide, My Progress, the Librarian, a whiteboard, the
+  // table timer's settings or dialog, or a lesson overlay is open.
   const covered = () => {
     const s = useGameStore.getState();
     return (
@@ -67,6 +70,7 @@ export function LocalPlayer({ config }: { config: AvatarConfig }) {
       s.menuOpen ||
       s.guideOpen ||
       s.progressOpen ||
+      s.librarianOpen ||
       isBoardOpen() ||
       isTimerPanelOpen()
     );
@@ -109,6 +113,7 @@ export function LocalPlayer({ config }: { config: AvatarConfig }) {
       store.menuOpen ||
       store.guideOpen ||
       store.progressOpen ||
+      store.librarianOpen ||
       isBoardOpen() ||
       isLessonOverlayOpen() ||
       isTimerPanelOpen();
@@ -186,6 +191,7 @@ export function LocalPlayer({ config }: { config: AvatarConfig }) {
     let nearby: string | null = null;
     let nearbyBoard: string | null = null;
     let nearbyLift: string | null = null;
+    let nearbyLibrarian = false;
     if (!store.seatId) {
       let best: number = PLAYER.interactRange;
       for (const s of SEATS) {
@@ -217,8 +223,24 @@ export function LocalPlayer({ config }: { config: AvatarConfig }) {
           nearbyBoard = null;
         }
       }
+      // The librarian's desk: anywhere along the front of the counter, out to DESK_REACH, on the
+      // ground floor. It wins unless a chair, board or lift is nearer than the counter is.
+      const deskGap = runtime.z - LIBRARIAN.frontZ;
+      const atDesk =
+        Math.abs(runtime.y) < SAME_FLOOR &&
+        deskGap > 0 &&
+        deskGap < DESK_REACH &&
+        Math.abs(runtime.x - LIBRARIAN.x) <= LIBRARIAN.width / 2;
+      const nothingElse = !nearby && !nearbyBoard && !nearbyLift;
+      if (atDesk && (nothingElse || deskGap - PLAYER.radius < best)) {
+        nearbyLibrarian = true;
+        nearby = null;
+        nearbyBoard = null;
+        nearbyLift = null;
+      }
     }
     if (nearby !== store.nearbySeatId) store.setNearbySeat(nearby);
+    if (nearbyLibrarian !== store.nearbyLibrarian) store.setNearbyLibrarian(nearbyLibrarian);
     if (nearbyBoard !== store.nearbyBoardId) store.setNearbyBoard(nearbyBoard);
     if (nearbyLift !== store.nearbyLiftId) store.setNearbyLift(nearbyLift);
 

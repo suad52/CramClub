@@ -76,8 +76,11 @@ export function useKeyboardMovement(actions: KeyActions) {
       }
       // Browser shortcuts (Cmd+F, Ctrl+L, …) aren't game keys.
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.code === "KeyE") actionsRef.current.onInteract?.();
-      else if (e.code === "KeyV") actionsRef.current.onToggleCamera?.();
+      if (e.code === "KeyE") {
+        // E can open a panel whose text box takes focus mid-keypress: don't let the "e" land in it.
+        e.preventDefault();
+        actionsRef.current.onInteract?.();
+      } else if (e.code === "KeyV") actionsRef.current.onToggleCamera?.();
       else if (e.code === "KeyR") actionsRef.current.onToggleWalkFast?.();
       else if (e.code === "KeyB") actionsRef.current.onOpenBoard?.();
       else if (e.code === "KeyL") actionsRef.current.onLessons?.();

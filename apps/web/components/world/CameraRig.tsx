@@ -100,13 +100,14 @@ export function CameraRig() {
     };
     const onMove = (e: MouseEvent) => {
       if (document.pointerLockElement !== el && !dragging) return;
-      const { settings, cameraMode, menuOpen, guideOpen, progressOpen, phase } =
+      const { settings, cameraMode, menuOpen, guideOpen, progressOpen, librarianOpen, phase } =
         useGameStore.getState();
       if (
         phase !== "playing" ||
         menuOpen ||
         guideOpen ||
         progressOpen ||
+        librarianOpen ||
         isBoardOpen() ||
         isLessonOverlayOpen()
       )
@@ -131,6 +132,7 @@ export function CameraRig() {
         s.menuOpen ||
         s.guideOpen ||
         s.progressOpen ||
+        s.librarianOpen ||
         isBoardOpen() ||
         isLessonOverlayOpen()
       )
@@ -146,11 +148,12 @@ export function CameraRig() {
       const store = useGameStore.getState();
       store.setPointerLocked(locked);
       // Esc releases the pointer: treat that as "pause" (but not when Shift freed the cursor, or
-      // when the lesson picker, a full-screen lesson or My Progress took the mouse).
+      // when the lesson picker, a full-screen lesson, My Progress or the Librarian took the mouse).
       if (
         !locked &&
         !store.guideOpen &&
         !store.progressOpen &&
+        !store.librarianOpen &&
         !store.cursorFree &&
         !isLessonOverlayOpen()
       )

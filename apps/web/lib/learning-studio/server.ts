@@ -184,7 +184,11 @@ The notes:
 ${notesForPrompt(o.pages)}`;
 }
 
-async function generateJson(prompt: string, timeoutMs: number): Promise<unknown> {
+async function generateJson(
+  prompt: string,
+  timeoutMs: number,
+  first: string = LESSON_MODEL,
+): Promise<unknown> {
   const ai = getGemini();
   const call = (model: string) =>
     withTimeout(
@@ -202,7 +206,7 @@ async function generateJson(prompt: string, timeoutMs: number): Promise<unknown>
     );
   const t0 = Date.now();
   let res;
-  let model = LESSON_MODEL;
+  let model = first;
   try {
     res = await call(model);
   } catch (err) {
@@ -226,9 +230,11 @@ export async function generateLesson(o: {
   level: Level;
   length: LessonLength;
   pages: readonly string[];
+  /** Try this model first (e.g. a faster one); the usual fallback still applies. */
+  model?: string;
 }): Promise<Lesson> {
   const prompt = lessonPrompt(o);
-  const first = await generateJson(prompt, 90_000);
+  const first = await generateJson(prompt, 90_000, o.model);
   try {
     return parseLesson(first, o.pages.length);
   } catch (err) {
@@ -243,6 +249,7 @@ export async function generateLesson(o: {
     const repaired = await generateJson(
       `${prompt}\n\nYour previous answer didn't match the required format. Fix these problems and answer again:\n${problems}\n\nPrevious answer:\n${JSON.stringify(first).slice(0, 20_000)}`,
       90_000,
+      o.model,
     );
     try {
       return parseLesson(repaired, o.pages.length);

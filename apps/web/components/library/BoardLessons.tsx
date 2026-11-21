@@ -78,12 +78,12 @@ function LiveDot() {
 }
 
 /**
- * A menu, the controls guide, My Progress, a whiteboard, the picker or the full-screen lesson is
- * over the library: the HUD cards step aside (and their hotkeys with them, so Enter in a menu
- * stays there).
+ * A menu, the controls guide, My Progress, the Librarian, a whiteboard, the picker or the
+ * full-screen lesson is over the library: the HUD cards step aside (and their hotkeys with them,
+ * so Enter in a menu stays there).
  */
 function useCovered() {
-  const menu = useGameStore((s) => s.menuOpen || s.guideOpen || s.progressOpen);
+  const menu = useGameStore((s) => s.menuOpen || s.guideOpen || s.progressOpen || s.librarianOpen);
   const board = useWhiteboardStore((s) => s.openId !== null);
   const lesson = useBoardLessons((s) => s.fullscreen || s.pickerBoardId !== null);
   return menu || board || lesson;

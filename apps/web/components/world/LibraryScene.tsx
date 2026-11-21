@@ -12,6 +12,7 @@ import { LibraryModel } from "./LibraryModel";
 import { Dust, Lighting } from "./Lighting";
 import { LiveWhiteboards } from "./LiveWhiteboards";
 import { LocalPlayer } from "./LocalPlayer";
+import { Librarian } from "./Librarian";
 import { LibrarianDesk } from "./LibrarianDesk";
 import { PomodoroTimer } from "./PomodoroTimer";
 import { SeatHighlight } from "./SeatHighlight";
@@ -77,6 +78,7 @@ export function LibraryScene() {
       {/* The Pomodoro timer on the table in front of you while you sit. */}
       <PomodoroTimer quality={quality} />
       <LibrarianDesk />
+      <Librarian />
       <Effects quality={quality} />
       <ResumeAfterStudio />
       <DevHandle />
