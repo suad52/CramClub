@@ -265,7 +265,7 @@ export async function generateLesson(o: {
             .join("; ")}`,
         );
       throw new StudioError(
-        "The AI couldn't build a valid lesson from these notes. Try again, or try a shorter lesson.",
+        "The librarian couldn't build a valid lesson from these notes. Try again, or try a shorter lesson.",
         502,
       );
     }
@@ -290,7 +290,7 @@ export async function answerQuestion(o: {
   chunks: Chunk[];
 }): Promise<{ answer: string; pages: number[] }> {
   const notes = o.chunks.map((c) => `[page ${c.page}] ${c.text}`).join("\n\n");
-  const prompt = `You are a friendly AI teacher helping a student with their lesson "${o.lessonTitle}".
+  const prompt = `You are Ms. Fenwick, the library's friendly teacher, helping a student with their lesson "${o.lessonTitle}".
 They are on the scene "${o.scene.title}" (visual: "${o.scene.visual}"). Its narration:
 ${o.scene.narration}
 

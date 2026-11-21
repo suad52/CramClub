@@ -297,13 +297,13 @@ describe("what she says", () => {
     expect(listJoin(["A", "B", "C"])).toBe("A, B and C");
   });
 
-  it("says what the notes cover and what TinyFish will look up", () => {
+  it("says what the notes cover and what she'll look up", () => {
     const outline = [{ heading: "Photosystem II" }, { heading: "Electron transport" }];
     expect(notesReply({ topic: "Light reactions", outline, gaps: ["chemiosmosis"] }, 2)).toBe(
-      "Your notes cover “Photosystem II” and “Electron transport”. I'm having TinyFish open the 2 links in them and look for sources on chemiosmosis, where they're thin.",
+      "Your notes cover “Photosystem II” and “Electron transport”. I'll open the 2 links in them and look for sources on chemiosmosis, where they're thin.",
     );
     expect(notesReply({ topic: "Light reactions", outline: [], gaps: [] }, 0)).toBe(
-      "Your notes cover Light reactions. I'm having TinyFish find sources that take Light reactions further.",
+      "Your notes cover Light reactions. I'll find sources that take Light reactions further.",
     );
   });
 

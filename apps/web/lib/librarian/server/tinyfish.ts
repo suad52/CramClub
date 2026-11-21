@@ -42,7 +42,7 @@ async function call<T>(url: string, init: RequestInit, timeoutMs: number): Promi
   } catch (err) {
     const timedOut = (err as Error).name === "TimeoutError";
     throw new TinyFishError(
-      timedOut ? "TinyFish took too long to answer." : "Couldn't reach TinyFish.",
+      timedOut ? "The web search took too long to answer." : "Couldn't reach the web search.",
       timedOut ? "timeout" : "network",
       504,
       true,
@@ -54,13 +54,13 @@ async function call<T>(url: string, init: RequestInit, timeoutMs: number): Promi
     } | null;
     const code = body?.error?.code ?? `http_${res.status}`;
     const messages: Record<number, string> = {
-      401: "The TinyFish API key was rejected.",
-      402: "The TinyFish wallet is out of credits.",
-      403: "This TinyFish account can't use that API.",
-      429: "TinyFish is busy with other runs. Try again in a moment.",
+      401: "Web research isn't available right now (the server's research key was rejected).",
+      402: "Web research isn't available right now (out of research credits).",
+      403: "Web research isn't available right now.",
+      429: "The web search is busy. Try again in a moment.",
     };
     throw new TinyFishError(
-      messages[res.status] ?? body?.error?.message ?? `TinyFish answered ${res.status}.`,
+      messages[res.status] ?? body?.error?.message ?? `The web search answered ${res.status}.`,
       code,
       res.status,
       res.status === 429 || res.status >= 500,
@@ -165,7 +165,7 @@ export async function startResearch(query: string) {
     30_000,
   );
   if (!data.research_run_id)
-    throw new TinyFishError("TinyFish didn't return a run id.", "bad_response", 502, true);
+    throw new TinyFishError("The deep research run didn't start.", "bad_response", 502, true);
   return data.research_run_id;
 }
 

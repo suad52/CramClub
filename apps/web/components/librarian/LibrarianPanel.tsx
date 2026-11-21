@@ -579,7 +579,6 @@ export function LibrarianPanel({
   const Heading = context === "page" ? "h1" : "h2";
   const sending = pending === "send" || pending === "notes";
   const working = busy || sending;
-  const attribution = task?.attribution ?? { research: "TinyFish", synthesis: "Gemini" };
   /** What she's doing with what was just sent ("Reading your message…"), or null. */
   const thinking =
     pending === "send"
@@ -701,13 +700,13 @@ export function LibrarianPanel({
       );
     }
     if (task.status === "awaiting_confirmation") {
-      const noKey = tinyfishReady ? undefined : "Live research needs a TinyFish API key";
+      const noKey = tinyfishReady ? undefined : "Live research isn't set up on this server yet";
       const starting = (mode: ResearchMode) => pending === "confirm" && confirmMode === mode;
       options.push(
         {
           key: "quick",
           label: starting("quick") ? "Starting…" : "Start quick research",
-          detail: noKey ?? "About a minute · TinyFish Search + Fetch",
+          detail: noKey ?? "About a minute",
           primary: task.mode === "quick",
           disabled: pending !== null || !tinyfishReady,
           action: { kind: "confirm", mode: "quick" },
@@ -715,7 +714,7 @@ export function LibrarianPanel({
         {
           key: "deep",
           label: starting("deep") ? "Starting…" : "Start deep research",
-          detail: noKey ?? "5–20 minutes · TinyFish Research · uses paid credits",
+          detail: noKey ?? "5–20 minutes · goes much deeper",
           primary: task.mode === "deep",
           disabled: pending !== null || !tinyfishReady,
           action: { kind: "confirm", mode: "deep" },
@@ -1125,10 +1124,6 @@ export function LibrarianPanel({
                   )}
                   {inConversation ? taskBody : homeView}
                 </div>
-                <p className="mt-6 text-center font-display text-xs leading-5 font-medium text-ink-soft">
-                  Research by {attribution.research} · Plans and lessons by {attribution.synthesis}{" "}
-                  · Progress kept in Tiger Data
-                </p>
               </div>
               {composer}
             </>
@@ -1157,7 +1152,7 @@ export function LibrarianPanel({
           </Heading>
           <p className="mt-1 flex min-w-0 items-center gap-1.5 font-display text-[13px] leading-5 font-semibold text-ink-soft">
             <span className="shrink-0 rounded-full border-2 border-walnut bg-tangerine px-2 text-[12px] text-walnut">
-              AI Librarian
+              Librarian
             </span>
             <StatusDot working={working} />
             <span aria-live="polite" className="truncate">
@@ -1201,11 +1196,6 @@ export function LibrarianPanel({
           {composer}
         </>
       )}
-
-      <footer className="shrink-0 border-t-2 border-walnut/15 bg-canvas px-4 py-2.5 text-center font-display text-xs leading-5 font-medium text-ink-soft sm:px-6">
-        Research by {attribution.research} · Plans and lessons by {attribution.synthesis} · Progress
-        kept in Tiger Data
-      </footer>
     </div>
   );
 }
@@ -2167,11 +2157,11 @@ function ConfirmCard({
   const uid = useId();
   const [mode, setMode] = useState<ResearchMode>(task.mode);
   const options: { id: ResearchMode; title: string; detail: string }[] = [
-    { id: "quick", title: "Quick", detail: "About a minute · TinyFish Search + Fetch" },
+    { id: "quick", title: "Quick", detail: "About a minute" },
     {
       id: "deep",
       title: "Deep",
-      detail: "5–20 minutes · TinyFish Research · uses paid credits",
+      detail: "5–20 minutes · goes much deeper",
     },
   ];
   return (
@@ -2221,7 +2211,7 @@ function ConfirmCard({
           type="button"
           className={BTN.primary}
           disabled={busy || !tinyfishReady}
-          title={tinyfishReady ? undefined : "Live research needs a TinyFish API key"}
+          title={tinyfishReady ? undefined : "Live research isn't set up on this server yet"}
           onClick={() => onConfirm(mode)}
         >
           {busy ? "Starting…" : "Start research"}
@@ -2303,8 +2293,8 @@ function Activity({
         researching && (
           <p className="mt-1.5 max-w-[62ch] text-[13px] leading-5 font-medium text-ink-soft">
             {task.mode === "deep"
-              ? "Deep research (TinyFish Research) usually takes 5–20 minutes, and can take longer. You can close this and come back: it's under Recent requests."
-              : "Quick research (TinyFish Search + Fetch) usually takes about a minute."}
+              ? "Deep research usually takes 5–20 minutes, and can take longer. You can close this and come back: it's under Recent requests."
+              : "Quick research usually takes about a minute."}
           </p>
         )
       )}

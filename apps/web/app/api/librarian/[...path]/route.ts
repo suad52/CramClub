@@ -119,7 +119,7 @@ async function listen(request: Request, sql: NonNullable<ReturnType<typeof setup
       signal: AbortSignal.timeout(30_000),
     });
     if (res.status === 401 || res.status === 403)
-      return fail("not_configured", "Your ElevenLabs key needs Speech to Text access.", 503);
+      return fail("not_configured", "Voice input isn't set up on this server.", 503);
     if (!res.ok) {
       console.error("[librarian] speech-to-text", res.status, (await res.text()).slice(0, 200));
       return fail("stt_failed", "She couldn't make that out. Try again?", 502);

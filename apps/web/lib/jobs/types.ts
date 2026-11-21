@@ -44,9 +44,9 @@ export const BUSY_JOB_STATUSES: readonly LessonJobStatus[] = [
 /** Human labels (truthful: what is actually happening). */
 export const JOB_STATUS_LABELS: Record<LessonJobStatus, string> = {
   queued: "Waiting for the library's worker",
-  researching: "TinyFish is researching the topic",
-  generating_lesson: "Gemini is writing the lesson and quiz",
-  generating_audio: "ElevenLabs is recording the narration",
+  researching: "Ms. Fenwick is researching the topic",
+  generating_lesson: "Ms. Fenwick is writing the lesson and quiz",
+  generating_audio: "Ms. Fenwick is recording the narration",
   saving: "Saving to the library's cloud storage",
   completed: "Ready",
   failed: "Something went wrong",

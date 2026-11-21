@@ -364,7 +364,7 @@ export function ItemCard({
           <ProgressBar value={lessonShare} className="mt-2 max-w-[260px]" />
           {lesson.notesTrimmed && (
             <p className="mt-2 text-[13px] leading-5 font-medium text-ink-soft">
-              Only the first part of the notes fitted, so the AI teacher answers from that part.
+              Only the first part of the notes fitted, so Ms. Fenwick answers from that part.
             </p>
           )}
         </div>

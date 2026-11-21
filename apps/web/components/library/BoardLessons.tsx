@@ -990,8 +990,8 @@ function PickerDialog({ boardId }: { boardId: string }) {
                   No lessons of your own yet
                 </p>
                 <p className="mt-1">
-                  The AI Learning Studio turns a PDF of your notes into a narrated lesson. Make one
-                  and it shows up here. Until then, try the sample.
+                  The Learning Studio turns a PDF of your notes into a narrated lesson. Make one and
+                  it shows up here. Until then, try the sample.
                 </p>
               </div>
             )}
@@ -1045,7 +1045,7 @@ function PickerDialog({ boardId }: { boardId: string }) {
                     <span className="mt-0.5 block text-[13px] leading-5 font-medium text-ink-soft">
                       {focusing
                         ? "Opens a new tab — available after your pomodoro"
-                        : "Opens the AI Learning Studio in a new tab"}
+                        : "Opens the Learning Studio in a new tab"}
                     </span>
                   </span>
                   {!focusing && <IconArrowUpRight size={16} className="mr-2.5 text-ink-soft" />}

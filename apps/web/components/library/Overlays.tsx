@@ -604,7 +604,7 @@ export function PauseMenu() {
 
           <MenuGroup label="Learning">
             <MenuRow
-              title="AI Librarian"
+              title="The Librarian"
               description="Research a topic, collect sources, plan your study"
               meta={
                 <>

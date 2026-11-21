@@ -35,6 +35,6 @@ export function drawWhiteboardPlaceholder(tableNumber: number): Draw {
     ctx.fillStyle = "#6b5d52";
     ctx.font = `700 ${Math.round(h * 0.06)}px ${uiFont()}`;
     ctx.fillText("PRESS E HERE TO DRAW", w / 2, h * 0.46);
-    ctx.fillText("OR B FROM YOUR SEAT · ✨ ASK AI", w / 2, h * 0.54);
+    ctx.fillText("OR B FROM YOUR SEAT · ASK THE LIBRARIAN", w / 2, h * 0.54);
   };
 }

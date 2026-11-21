@@ -21,11 +21,19 @@ export function studioErrorResponse(err: unknown, where: string) {
     );
   const status = (err as { status?: number }).status;
   if (status === 429)
-    return errorResponse("rate_limited", "The AI is busy right now. Try again in a minute.", 429);
+    return errorResponse(
+      "rate_limited",
+      "The librarian is busy right now. Try again in a minute.",
+      429,
+    );
   if (status === 503)
-    return errorResponse("ai_error", "The AI is overloaded right now. Try again in a minute.", 503);
+    return errorResponse(
+      "ai_error",
+      "The librarian is swamped right now. Try again in a minute.",
+      503,
+    );
   if (status === 504)
-    return errorResponse("ai_error", "The AI took too long. Try again in a moment.", 504);
+    return errorResponse("ai_error", "The librarian took too long. Try again in a moment.", 504);
   console.error(`[learning-studio/${where}]`, err instanceof Error ? err.message : "error");
   return errorResponse("ai_error", "Something went wrong on our side. Try again in a moment.", 502);
 }

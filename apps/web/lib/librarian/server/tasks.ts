@@ -199,7 +199,7 @@ async function failTask(sql: Sql, id: string, step: Details["failedStep"], err: 
   const message =
     tf?.message ??
     (busy
-      ? "Gemini is very busy right now, so I couldn't finish. Try again in a minute: nothing is lost."
+      ? "The library is very busy right now, so I couldn't finish. Try again in a minute: nothing is lost."
       : null) ??
     (step === "notes"
       ? "I couldn't read your notes this time. They're saved, so try again?"
@@ -319,8 +319,8 @@ export async function taskView(
         }
       : null,
     attribution: {
-      research: t.mode === "deep" ? "TinyFish Research" : "TinyFish Search + Fetch",
-      synthesis: "Gemini",
+      research: t.mode === "deep" ? "deep research" : "quick research",
+      synthesis: "the Librarian",
     },
   };
 }
@@ -511,7 +511,7 @@ async function beginDeep(sql: Sql, userId: string, id: string) {
       `For a student: ${request}\nFocus: ${topic}. Prefer educational institutions, reputable publishers and official documentation. Return the clearest explanations and learning resources.`,
     );
     await setStatus(sql, id, "researching", { provider_run_id: runId });
-    await addStep(sql, id, { kind: "status", label: "TinyFish Research run started" });
+    await addStep(sql, id, { kind: "status", label: "Deep research started" });
   } catch (err) {
     await failTask(sql, id, "research", err);
   }
@@ -535,7 +535,7 @@ async function pollDeep(sql: Sql, userId: string, id: string, defer: Defer) {
     await sql`UPDATE librarian_tasks SET details = details || ${sql.json({ runStatus: run.status })}::jsonb WHERE id = ${id}`;
     await addStep(sql, id, {
       kind: "status",
-      label: `TinyFish Research: ${run.status.toLowerCase().replace("_", " ")}`,
+      label: `Deep research: ${run.status.toLowerCase().replace("_", " ")}`,
     });
   }
   const steps = t.steps as ResearchStep[];
@@ -586,7 +586,7 @@ async function pollDeep(sql: Sql, userId: string, id: string, defer: Defer) {
       id,
       "research",
       new TinyFishError(
-        `The TinyFish Research run ${run.status === "FAILED" ? "failed" : "timed out"}.`,
+        `The deep research run ${run.status === "FAILED" ? "failed" : "timed out"}.`,
         run.status.toLowerCase(),
         502,
         true,
@@ -615,7 +615,7 @@ async function organizeAndSave(
   const org = sources.length
     ? await organize({
         request: report
-          ? `${request}\n(TinyFish's research report, untrusted: ${report.slice(0, 2000)})`
+          ? `${request}\n(The research report, untrusted: ${report.slice(0, 2000)})`
           : request,
         topic,
         level: d.level ?? "high-school",
@@ -664,7 +664,7 @@ async function organizeAndSave(
     );
   if (!rows.length)
     warnings.unshift(
-      "TinyFish didn't turn up reliable web sources for these notes, so what follows is built from your notes alone.",
+      "I didn't find reliable web sources for these notes, so what follows is built from your notes alone.",
     );
   else if (rows.length < 3)
     warnings.unshift("Only a few reliable sources turned up, so treat this as a starting point.");
@@ -807,7 +807,7 @@ async function runNotes(sql: Sql, userId: string, id: string, reuseReading = fal
       topic = a.topic || topic;
       await addStep(sql, id, {
         kind: "note",
-        label: `Gemini read your notes on ${topic}: ${a.outline.length} ${a.outline.length === 1 ? "section" : "sections"}${a.gaps.length ? `, ${a.gaps.length} thin ${a.gaps.length === 1 ? "spot" : "spots"} to look up` : ""}`,
+        label: `Read your notes on ${topic}: ${a.outline.length} ${a.outline.length === 1 ? "section" : "sections"}${a.gaps.length ? `, ${a.gaps.length} thin ${a.gaps.length === 1 ? "spot" : "spots"} to look up` : ""}`,
       });
       if (a.declined) {
         await advance(sql, id, "completed", { topic, reply: a.declined, completed_at: new Date() });
@@ -835,7 +835,7 @@ async function runNotes(sql: Sql, userId: string, id: string, reuseReading = fal
       if (links.found)
         await addStep(sql, id, {
           kind: "note",
-          label: `Found ${links.found} ${links.found === 1 ? "link" : "links"} in your notes${links.found > links.links.length ? `; TinyFish will open the first ${links.links.length}` : ""}`,
+          label: `Found ${links.found} ${links.found === 1 ? "link" : "links"} in your notes${links.found > links.links.length ? `; I'll open the first ${links.links.length}` : ""}`,
         });
       if (links.blocked)
         await addStep(sql, id, {
@@ -868,7 +868,7 @@ async function runNotes(sql: Sql, userId: string, id: string, reuseReading = fal
     if (!found) return;
     const lead = found.saved
       ? `I found ${found.saved} good ${found.saved === 1 ? "source" : "sources"} to go with your notes (from ${found.domains}).`
-      : "TinyFish didn't find reliable web sources on this, so I'll work from your notes alone.";
+      : "I didn't find reliable web sources on this, so I'll work from your notes alone.";
     const outcome = d.outcome ?? "both";
     if (outcome === "lesson") {
       await patchDetails(sql, id, { stage: "lesson", planItemId: null });

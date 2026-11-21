@@ -107,9 +107,8 @@ export function MakeCloudLesson({ onCreated }: { onCreated: (job: LessonJobView)
         Make a cloud lesson
       </p>
       <p className="text-[14.5px] leading-6 font-medium text-ink-soft">
-        Name a topic and the library&apos;s cloud worker does the rest: TinyFish researches it,
-        Gemini writes the lesson and quiz, ElevenLabs records the narration, and it&apos;s all saved
-        here. You don&apos;t need to keep this page open.
+        Name a topic and Ms. Fenwick does the rest: she researches it, writes the lesson and quiz,
+        records the narration, and saves it all here. You don&apos;t need to keep this page open.
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto_auto]">
@@ -194,8 +193,8 @@ export function MakeCloudLesson({ onCreated }: { onCreated: (job: LessonJobView)
       <p className="mt-4 flex gap-2 text-[12.5px] leading-5 font-medium text-ink-soft">
         <IconInfo size={16} strokeWidth={2.25} className="mt-px text-walnut" />
         <span>
-          AI-made lessons can contain mistakes: each one lists the sources it was built from. Only
-          you (and Study Circles you share it with) can open it.
+          Lessons can contain mistakes: each one lists the sources it was built from. Only you (and
+          Study Circles you share it with) can open it.
         </span>
       </p>
     </form>

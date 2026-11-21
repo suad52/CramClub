@@ -37,7 +37,10 @@ async function postJson<T>(url: string, body: unknown, signal?: AbortSignal): Pr
     });
   } catch (err) {
     if ((err as Error).name === "TimeoutError") {
-      throw new AskAiError("timeout", "The AI took too long to answer. Try again in a moment.");
+      throw new AskAiError(
+        "timeout",
+        "The librarian took too long to answer. Try again in a moment.",
+      );
     }
     if ((err as Error).name === "AbortError") throw err;
     throw new AskAiError(

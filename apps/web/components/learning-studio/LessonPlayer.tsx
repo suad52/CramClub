@@ -346,7 +346,7 @@ function Teacher({ lesson, scene, chunks }: { lesson: Lesson; scene: Scene; chun
     } catch {
       setMessages((m) => [
         ...m,
-        { role: "teacher", text: "I couldn't reach the AI just now. Try again in a moment." },
+        { role: "teacher", text: "I couldn't answer just now. Try again in a moment." },
       ]);
     } finally {
       setBusy(false);
@@ -418,8 +418,8 @@ function Teacher({ lesson, scene, chunks }: { lesson: Lesson; scene: Scene; chun
           value={input}
           onChange={(e) => setInput(e.target.value)}
           maxLength={500}
-          placeholder="Ask the AI teacher…"
-          aria-label="Ask the AI teacher"
+          placeholder="Ask Ms. Fenwick…"
+          aria-label="Ask Ms. Fenwick about this lesson"
           className={`${INPUT} min-w-0 flex-1`}
         />
         <button type="submit" className={BTN.secondary} disabled={busy}>
@@ -473,7 +473,7 @@ export function LessonPlayer({
 const SIDE_PANELS = {
   sources: { label: "Sources", heading: "Where this comes from", Icon: IconFile },
   transcript: { label: "Transcript", heading: "Transcript", Icon: IconList },
-  teacher: { label: "Ask AI teacher", heading: "Ask the AI teacher", Icon: IconGraduationCap },
+  teacher: { label: "Ask Ms. Fenwick", heading: "Ask Ms. Fenwick", Icon: IconGraduationCap },
 } as const;
 
 /**
@@ -815,11 +815,11 @@ export function LessonPlayerView({
               )}
               <p>
                 {n.mode === "elevenlabs"
-                  ? "Narrated by an AI voice."
+                  ? "Narrated by Ms. Fenwick."
                   : n.mode === "text"
                     ? "No voice is available, so the narration is shown as text."
                     : "Narrated by your browser's voice."}{" "}
-                AI-made lessons can contain mistakes: check the sources.
+                Lessons can contain mistakes: check the sources.
               </p>
             </div>
           </div>

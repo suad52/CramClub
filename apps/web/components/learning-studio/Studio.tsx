@@ -300,7 +300,7 @@ export default function Studio() {
           <DotRow className="title-pop mt-4" />
           <p className={`${BODY_L} mt-5 max-w-[62ch]`}>
             Upload a PDF of your notes. The studio builds a short narrated lesson with visuals and
-            knowledge checks, and an AI teacher answers your questions from the same notes.
+            knowledge checks, and Ms. Fenwick answers your questions from the same notes.
           </p>
         </div>
 
@@ -424,9 +424,9 @@ export default function Studio() {
             >
               <IconInfo size={18} strokeWidth={2.25} className="mt-px text-walnut" />
               <span>
-                Lessons are written by AI from your notes and can contain mistakes. Each scene links
-                back to the pages it came from, so you can check it. Your PDF is read on our server
-                and not stored; lessons are saved in this browser.
+                Lessons are written from your notes and can contain mistakes. Each scene links back
+                to the pages it came from, so you can check it. Your PDF is read on our server and
+                not stored; lessons are saved in this browser.
               </span>
             </p>
 

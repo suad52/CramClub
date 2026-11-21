@@ -8,7 +8,7 @@ const allow = createRateLimiter(30, 60_000);
 /** POST { text } → { audio: base64 mp3, alignment } from ElevenLabs; 503 when no key (client uses the browser voice). */
 export async function POST(request: Request) {
   if (!process.env.ELEVENLABS_API_KEY)
-    return errorResponse("not_configured", "AI narration isn't set up.", 503);
+    return errorResponse("not_configured", "Narration isn't set up.", 503);
   if (!allow(clientKey(request)))
     return errorResponse("rate_limited", "Too much narration at once.", 429);
   const body = await readJson(request);

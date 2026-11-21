@@ -168,7 +168,7 @@ export function notesPipeline(outcome: NotesOutcome | null) {
       : outcome === "lesson"
         ? "your lesson"
         : "your study plan and lesson";
-  return `Gemini reads your notes first. Then TinyFish opens the links in them and searches the web for what they cover thinly, and Gemini writes ${makes} from both. This usually takes a few minutes. You can close this and come back: it's under Recent requests.`;
+  return `Ms. Fenwick reads your notes first, opens the links in them and searches the web for what they cover thinly, then writes ${makes} from both. This usually takes a few minutes. You can close this and come back: it's under Recent requests.`;
 }
 
 /** Study time choices (minutes a day; the endpoint takes 10–600). */

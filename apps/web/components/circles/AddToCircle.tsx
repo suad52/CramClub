@@ -205,7 +205,7 @@ function FromLibrary({ circleId, onAdded }: { circleId: string; onAdded: () => v
             Nothing in your library yet
           </p>
           <p className="mx-auto mt-1 max-w-[44ch] text-[14px] leading-5 font-medium text-ink-soft">
-            Save sources from the AI Librarian, or have her make you a study plan or a lesson, and
+            Save sources from the Librarian, or have her make you a study plan or a lesson, and
             they&apos;ll show up here to share.
           </p>
         </div>

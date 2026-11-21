@@ -5,7 +5,7 @@ import { BTN_SM, FOCUS, PAGE } from "@/components/ui/styles";
 /** The site's main destinations. Only routes that exist. */
 const NAV = [
   { href: "/", label: "The library" },
-  { href: "/librarian", label: "AI Librarian" },
+  { href: "/librarian", label: "Librarian" },
   { href: "/learning-studio", label: "Learning Studio" },
   { href: "/progress", label: "My progress" },
   { href: "/my-library", label: "My library" },

@@ -18,7 +18,7 @@ const allow = createRateLimiter(10, 60_000);
  */
 const NO_BILLING_PAUSE_MS = 10 * 60_000;
 let noBillingUntil = 0;
-const NO_BILLING_MESSAGE = "AI handwriting needs a Gemini API key with billing turned on.";
+const NO_BILLING_MESSAGE = "Handwritten answers aren't turned on for this server.";
 const PLACEMENTS: readonly Placement[] = ["below", "right", "above", "left"];
 
 /**
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   if (!HANDWRITING_ENABLED) {
     return errorResponse(
       "handwriting_unavailable",
-      "AI handwriting is turned off on this server.",
+      "Handwritten answers are turned off on this server.",
       409,
     );
   }
@@ -95,8 +95,8 @@ export async function POST(request: Request) {
       noBilling
         ? NO_BILLING_MESSAGE
         : status === 504
-          ? "AI handwriting took too long this time."
-          : "AI handwriting didn't work this time.",
+          ? "The handwriting took too long this time."
+          : "The handwriting didn't work this time.",
       502,
     );
   }

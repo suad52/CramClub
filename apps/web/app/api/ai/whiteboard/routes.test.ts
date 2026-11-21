@@ -85,13 +85,13 @@ describe("POST /api/ai/whiteboard/handwrite", () => {
     expect(await res.json()).toEqual({ image: "data:image/png;base64,SU1H" });
   });
 
-  it("explains billing problems so the board can fall back to a font", async () => {
+  it("explains that handwriting is unavailable so the board can fall back to a font", async () => {
     vi.mocked(gemini.handwriteAnswer).mockRejectedValue(
       new gemini.HandwritingUnavailableError("no billing", 403),
     );
     const res = await handwrite.POST(post(valid, "20.0.0.3"));
     const body = await res.json();
     expect(body.error.code).toBe("handwriting_unavailable");
-    expect(body.error.message).toMatch(/billing/);
+    expect(body.error.message).toMatch(/aren.t turned on/);
   });
 });

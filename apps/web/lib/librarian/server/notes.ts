@@ -406,7 +406,7 @@ export function notesReply(
   const look = thin
     ? `look for sources on ${thin}, where they're thin`
     : `find sources that take ${a.topic} further`;
-  return `Your notes cover ${covers}. I'm having TinyFish ${open}${look}.`;
+  return `Your notes cover ${covers}. I'll ${open}${look}.`;
 }
 
 /** The activity line for an uploaded file (its text was extracted when it was uploaded). */

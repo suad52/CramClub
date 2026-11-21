@@ -131,17 +131,17 @@ export async function runLessonJob(
     if (reused.length) {
       research = { from: "librarian", sources: reused };
       await control.update({
-        progress: `Using the ${reused.length} sources TinyFish found for your Librarian request`,
+        progress: `Using the ${reused.length} sources found for your Librarian request`,
       });
     } else {
-      await step("researching", `TinyFish is searching the web for “${job.topic}”`);
+      await step("researching", `Searching the web for “${job.topic}”`);
       const found = await deps.research(job.topic, {
         step: async (s) => control.update({ progress: s.label }),
         cancelled: async () => control.stopped(),
       });
       if (!found) throw new JobStopped();
       if (!found.length)
-        throw new JobFailure("TinyFish couldn't find usable sources for that topic.", false);
+        throw new JobFailure("I couldn't find usable sources for that topic.", false);
       research = { from: "tinyfish", sources: trimSources(found) };
     }
     await control.update({
@@ -158,7 +158,7 @@ export async function runLessonJob(
   if (!lesson) {
     await step(
       "generating_lesson",
-      `Gemini is writing a ${job.length} lesson from ${research.sources.length} sources`,
+      `Writing a ${job.length} lesson from ${research.sources.length} sources`,
     );
     lesson = await deps.generateLesson({
       title: job.topic,
@@ -241,7 +241,7 @@ export async function runLessonJob(
   const clips = recorded.length;
   const progress = narration
     ? `Saved the lesson and ${clips} narration ${clips === 1 ? "clip" : "clips"} to ${where(storage.driver)}`
-    : `Saved the lesson to ${where(storage.driver)} (no narration: ElevenLabs isn't set up on the server)`;
+    : `Saved the lesson to ${where(storage.driver)} (no narration: the voice isn't set up on the server)`;
   return { audio: recorded, progress };
 }
 
@@ -250,23 +250,24 @@ export function describeFailure(err: unknown, status: LessonJobStatus): JobFailu
   if (err instanceof JobFailure) return err;
   if (err instanceof TinyFishError) return new JobFailure(err.message, err.retryable);
   if (err instanceof AiNotConfiguredError)
-    return new JobFailure("Gemini isn't set up on the library's server.", false);
+    return new JobFailure("Lesson writing isn't set up on the library's server.", false);
   if (err instanceof StorageConfigError || err instanceof StorageKeyError)
     return new JobFailure("The library's file storage isn't set up correctly.", false);
   const code = (err as { status?: number }).status;
   if (status === "generating_audio") {
-    if (code === 401) return new JobFailure("ElevenLabs rejected the library's API key.", false);
+    if (code === 401)
+      return new JobFailure("The narration voice isn't available right now.", false);
     if (code === 402)
-      return new JobFailure(
-        "ElevenLabs can't record more narration on this plan right now.",
-        false,
-      );
+      return new JobFailure("The library can't record more narration right now.", false);
     if (isTransient(err))
-      return new JobFailure("ElevenLabs is busy right now. The worker will try again.", true);
+      return new JobFailure(
+        "The narration voice is busy right now. The library will try again.",
+        true,
+      );
   }
   if (err instanceof StudioError) return new JobFailure(err.message, err.status >= 500);
   if (status === "generating_lesson" && isTransient(err))
-    return new JobFailure("Gemini is very busy right now. The worker will try again.", true);
+    return new JobFailure("The library is very busy right now. It will try again.", true);
   const s3 = err as { name?: string; $metadata?: { httpStatusCode?: number } };
   if (s3.$metadata) {
     const denied = s3.$metadata.httpStatusCode === 403 || s3.name === "AccessDenied";
@@ -279,7 +280,7 @@ export function describeFailure(err: unknown, status: LessonJobStatus): JobFailu
   }
   const what: Partial<Record<LessonJobStatus, string>> = {
     researching: "The research couldn't be finished.",
-    generating_lesson: "Gemini couldn't write the lesson this time.",
+    generating_lesson: "The lesson couldn't be written this time.",
     generating_audio: "The narration couldn't be recorded this time.",
     saving: "The lesson's files couldn't be saved.",
   };

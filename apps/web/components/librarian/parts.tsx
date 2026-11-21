@@ -216,9 +216,6 @@ export function StatusChip({ status, label }: { status: TaskStatus; label: strin
   );
 }
 
-const CODE =
-  "rounded-[6px] border-[1.5px] border-walnut/30 bg-surface px-1 py-px font-mono text-[0.8rem] text-walnut";
-
 /**
  * What's missing on this server, said plainly: live research needs TinyFish, plans and lessons
  * need Gemini, and nothing is ever faked in their place.
@@ -247,26 +244,19 @@ export function SetupNotice({
         {needsTinyFish && (
           <div>
             <p className="font-display text-[15px] font-semibold">
-              Live research needs a TinyFish API key
+              Live research isn&apos;t set up on this server yet
             </p>
             <p className="mt-0.5 text-ink-soft">
-              Ms. Fenwick browses the live web with TinyFish, and this server doesn&apos;t have a
-              key yet, so she can&apos;t look anything up (and won&apos;t make results up instead).
-              Add <code className={CODE}>TINYFISH_API_KEY</code> to{" "}
-              <code className={CODE}>apps/web/.env.local</code> (get one at{" "}
-              <SourceLink href="https://agent.tinyfish.ai/api-keys" className={TEXT_LINK}>
-                agent.tinyfish.ai/api-keys
-              </SourceLink>
-              ), then restart the server.
+              Ms. Fenwick can&apos;t look anything up until it is (and won&apos;t make results up
+              instead).
             </p>
           </div>
         )}
         {!gemini && (
           <p className="text-ink-soft">
             <span className="font-display font-semibold text-walnut">
-              Plans and lessons need Gemini.
-            </span>{" "}
-            Add <code className={CODE}>GEMINI_API_KEY</code> to the same file.
+              Plans and lessons aren&apos;t set up on this server yet.
+            </span>
           </p>
         )}
         {other && (

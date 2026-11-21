@@ -515,12 +515,12 @@ function Board({ id }: { id: string }) {
               alt: solution.answer,
             };
           } else {
-            note = `The AI's handwriting didn't come out clearly. ${fallback}`;
+            note = `The handwriting didn't come out clearly. ${fallback}`;
           }
         } catch (err) {
           if ((err as Error).name === "AbortError") throw err;
           const message =
-            err instanceof AskAiError ? err.message : "AI handwriting didn't work this time.";
+            err instanceof AskAiError ? err.message : "The handwriting didn't work this time.";
           if (
             err instanceof AskAiError &&
             (err.code === "handwriting_unavailable" || err.code === "not_configured") &&
@@ -617,7 +617,7 @@ function Board({ id }: { id: string }) {
       ? "Write or draw anything."
       : tool === "eraser"
         ? "Drag over anything to erase it."
-        : "Drag a box around your question, then press Ask AI. This sends that part of the board to Google Gemini.";
+        : "Drag a box around your question, then press Ask librarian. That part of the board goes to Ms. Fenwick.";
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden rounded-[24px] border-[3px] border-walnut bg-canvas shadow-[0_6px_0_#1f1a16]">
@@ -680,7 +680,7 @@ function Board({ id }: { id: string }) {
             [
               ["pen", "Pen"],
               ["eraser", "Eraser"],
-              ["ask", "Ask AI"],
+              ["ask", "Ask librarian"],
             ] as [Tool, string][]
           ).map(([t, label]) => (
             <ToolButton
@@ -796,7 +796,7 @@ function Board({ id }: { id: string }) {
               </button>
               <button type="button" onClick={() => void askAi()} className={BTN_SM.primary}>
                 <LineIcon d={TOOL_ICONS.ask} size={16} />
-                Ask AI
+                Ask librarian
               </button>
             </div>
           )}

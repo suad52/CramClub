@@ -32,14 +32,14 @@ export async function POST(request: Request) {
     if (status === 503 || status === 504) {
       return errorResponse(
         "ai_error",
-        "The AI is overloaded right now and took too long. Try again in a moment.",
+        "The librarian is swamped right now and took too long. Try again in a moment.",
         504,
       );
     }
     if (status === 429) {
       return errorResponse(
         "rate_limited",
-        "The AI is busy (rate limit reached). Try again shortly.",
+        "The librarian is busy right now. Try again shortly.",
         429,
       );
     }
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     console.error("[ai/whiteboard/solve]", err instanceof Error ? err.message : err);
     return errorResponse(
       "ai_error",
-      "The AI couldn't answer right now. Try again in a moment.",
+      "The librarian couldn't answer right now. Try again in a moment.",
       502,
     );
   }

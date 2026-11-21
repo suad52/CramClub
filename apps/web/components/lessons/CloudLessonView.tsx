@@ -351,8 +351,7 @@ function Overview({
               </div>
             )}
             <p className="mt-5 text-[12.5px] leading-5 font-medium text-ink-soft">
-              Made in the cloud: TinyFish research, Gemini lesson and quiz, ElevenLabs narration.
-              AI-made lessons can contain mistakes, so check the sources.
+              Made in the cloud by the library. Lessons can contain mistakes, so check the sources.
             </p>
           </div>
         </aside>

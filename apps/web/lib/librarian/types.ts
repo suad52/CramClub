@@ -64,14 +64,14 @@ export const BUSY_STATUSES: readonly TaskStatus[] = [
 
 /** Human labels for each status (truthful; no made-up percentages). */
 export const STATUS_LABELS: Record<TaskStatus, string> = {
-  reading_notes: "Gemini is reading your notes",
+  reading_notes: "Ms. Fenwick is reading your notes",
   awaiting_details: "Needs a detail from you",
   awaiting_confirmation: "Ready to start",
   research_queued: "Starting the research",
-  researching: "TinyFish is researching the web",
+  researching: "Ms. Fenwick is researching the web",
   organizing_results: "Checking and organising sources",
-  generating_plan: "Gemini is writing your study plan",
-  generating_lesson: "Gemini is building your lesson",
+  generating_plan: "Ms. Fenwick is writing your study plan",
+  generating_lesson: "Ms. Fenwick is building your lesson",
   completed: "Done",
   failed: "Something went wrong",
   cancelled: "Cancelled",
