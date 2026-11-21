@@ -7,12 +7,12 @@ type FeatureStatus = "open" | "soon";
 const FEATURES: { title: string; body: string; status: FeatureStatus }[] = [
   {
     title: "Walk the library",
-    body: "Five study zones in one warm, sunlit hall. Move with WASD and switch between first and third person whenever you like.",
+    body: "One grand, sunlit reading hall with an upper gallery. Move with WASD and switch between first and third person whenever you like.",
     status: "open",
   },
   {
     title: "Find your seat",
-    body: "Settle in at a collaborative table, a quiet carrel, a window seat or a sofa by the fire.",
+    body: "Settle in at one of the hall's long study tables, or take the lift up to a quiet desk in the gallery.",
     status: "open",
   },
   {
@@ -27,13 +27,13 @@ const FEATURES: { title: string; body: string; status: FeatureStatus }[] = [
   },
   {
     title: "Shared whiteboards",
-    body: "Every collaborative table gets its own board for drawing and writing together.",
+    body: "Every study table gets its own board for drawing and writing together.",
     status: "soon",
   },
   {
     title: "An AI teacher",
-    body: "Upload your lecture slides and get explanations, examples, quizzes and flashcards, read aloud if you want.",
-    status: "soon",
+    body: "Upload your notes as a PDF and get a short narrated lesson with visuals, questions and a teacher who answers from your notes.",
+    status: "open",
   },
   {
     title: "Expression tracking",
@@ -66,6 +66,11 @@ export default function HomePage() {
           Enter Library →
         </Link>
       </header>
+      <div className="mx-auto -mt-2 max-w-6xl px-6 text-right">
+        <Link href="/learning-studio" className="text-sm font-bold text-wood hover:underline">
+          🎓 AI Learning Studio
+        </Link>
+      </div>
 
       <main className="mx-auto max-w-6xl px-6 pb-24">
         <section className="grid items-center gap-12 py-10 lg:grid-cols-[1.05fr_1fr] lg:py-16">

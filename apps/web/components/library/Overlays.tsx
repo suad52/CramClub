@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useIsTouchOnly } from "@/components/ui/DesktopNotice";
 import { exitPointerLock, requestPointerLock } from "@/lib/game/pointer";
+import { formatClock, isFocusing, remainingMs, usePomodoro } from "@/lib/game/pomodoro";
+import { isLessonOverlayOpen, useBoardLessons } from "@/lib/learning-studio/boardLessons";
 import { useWhiteboardStore } from "@/lib/whiteboard/store";
 import { DEFAULT_SETTINGS, type Quality, useGameStore } from "@/lib/game/store";
 
@@ -13,7 +15,7 @@ function Card({ children, labelledBy }: { children: React.ReactNode; labelledBy:
       role="dialog"
       aria-modal="true"
       aria-labelledby={labelledBy}
-      className="w-full max-w-md rounded-3xl bg-cream p-7 text-ink shadow-[0_30px_80px_-20px_rgb(20_12_6/0.6)] ring-1 ring-ink/10"
+      className="max-h-[calc(100dvh-3rem)] w-full max-w-md overflow-y-auto rounded-3xl bg-cream p-7 text-ink shadow-[0_30px_80px_-20px_rgb(20_12_6/0.6)] ring-1 ring-ink/10"
     >
       {children}
     </div>
@@ -80,9 +82,12 @@ export function ClickToLook() {
   const cursorFree = useGameStore((s) => s.cursorFree);
   const menuOpen = useGameStore((s) => s.menuOpen);
   const guideOpen = useGameStore((s) => s.guideOpen);
+  const progressOpen = useGameStore((s) => s.progressOpen);
   const boardOpen = useWhiteboardStore((s) => s.openId !== null);
+  const lessonOpen = useBoardLessons((s) => s.fullscreen || s.pickerBoardId !== null);
   const phase = useGameStore((s) => s.phase);
-  if (!ready || phase !== "playing" || locked || menuOpen || guideOpen || boardOpen) return null;
+  const panelOpen = menuOpen || guideOpen || progressOpen || boardOpen || lessonOpen;
+  if (!ready || phase !== "playing" || locked || panelOpen) return null;
   if (cursorFree) {
     // Shift is held: get out of the way so every button can be clicked.
     return (
@@ -119,7 +124,11 @@ const CONTROLS: { keys: string[]; label: string }[] = [
   { keys: ["Shift"], label: "Hold to free your mouse (click buttons)" },
   { keys: ["R"], label: "Walk faster on / off" },
   { keys: ["B"], label: "Open your table's whiteboard" },
+  { keys: ["L"], label: "Play a lesson on a whiteboard" },
+  { keys: ["J", "N"], label: "Join a lesson / not now" },
+  { keys: ["F"], label: "Lesson full screen" },
   { keys: ["E"], label: "Sit down / stand up" },
+  { keys: ["P"], label: "Start a pomodoro (at a table)" },
   { keys: ["V"], label: "Switch first / third person" },
   { keys: ["Scroll"], label: "Zoom the third-person camera" },
   { keys: ["Esc"], label: "Pause and settings" },
@@ -146,7 +155,7 @@ export function ControlsGuide() {
         <p className="mt-1.5 text-sm text-ink-soft">
           Find a seat, settle in. Here&apos;s how to get around:
         </p>
-        <ul className="mt-5 space-y-2.5">
+        <ul className="mt-5 space-y-2">
           {CONTROLS.map((c) => (
             <li key={c.label} className="flex items-center justify-between gap-4">
               <span className="text-[0.95rem]">{c.label}</span>
@@ -177,6 +186,7 @@ const QUALITIES: { id: Quality; label: string }[] = [
 export function PauseMenu() {
   const open = useGameStore((s) => s.menuOpen);
   const guideOpen = useGameStore((s) => s.guideOpen);
+  const progressOpen = useGameStore((s) => s.progressOpen);
   const setOpen = useGameStore((s) => s.setMenuOpen);
   const setGuideOpen = useGameStore((s) => s.setGuideOpen);
   const settings = useGameStore((s) => s.settings);
@@ -184,28 +194,41 @@ export function PauseMenu() {
   const cameraMode = useGameStore((s) => s.cameraMode);
   const setCameraMode = useGameStore((s) => s.setCameraMode);
   const openCreator = useGameStore((s) => s.openCreator);
+  const focusing = usePomodoro(isFocusing);
+  // "Leave" asked "are you sure?" mid-pomodoro; holds the time that was left then.
+  const [leaving, setLeaving] = useState<string | null>(null);
+  if (leaving !== null && (!open || !focusing)) setLeaving(null);
 
   // Esc toggles the menu when the pointer isn't locked (while locked, the browser's own Esc
-  // releases the pointer and CameraRig opens the menu).
+  // releases the pointer and CameraRig opens the menu). The lesson picker and full-screen lesson
+  // use Esc themselves (and mark it handled), so it never also pauses. A pomodoro's full screen
+  // holds Esc (one press doesn't drop out of it), so the browser keeps the mouse: let it go here,
+  // which pauses as usual. Holding Esc (how you leave that full screen) repeats the key; only the
+  // first press counts, or the menu would flicker open and shut until the browser lets go.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" || e.repeat || e.defaultPrevented) return;
       const s = useGameStore.getState();
       if (
         !s.ready ||
         s.phase !== "playing" ||
         s.guideOpen ||
-        s.pointerLocked ||
-        useWhiteboardStore.getState().openId
+        s.progressOpen ||
+        useWhiteboardStore.getState().openId ||
+        isLessonOverlayOpen()
       )
         return;
+      if (s.pointerLocked) {
+        if (document.fullscreenElement) exitPointerLock();
+        return;
+      }
       s.setMenuOpen(!s.menuOpen);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  if (!open || guideOpen) return null;
+  if (!open || guideOpen || progressOpen) return null;
   return (
     <div className="absolute inset-0 z-20 grid place-items-center bg-ink/35 p-6 backdrop-blur-[2px]">
       <Card labelledBy="menu-title">
@@ -273,45 +296,86 @@ export function PauseMenu() {
             <p className="mt-1.5 text-xs text-ink-soft">Lower this if the library feels choppy.</p>
           </fieldset>
         </div>
-        <div className="mt-7 space-y-2">
-          <PrimaryButton
-            onClick={() => {
-              setOpen(false);
-              requestPointerLock();
-            }}
-          >
-            Resume
-          </PrimaryButton>
-          <button
-            type="button"
-            onClick={() => openCreator("playing")}
-            className="w-full rounded-full bg-parchment px-5 py-2.5 text-sm font-extrabold ring-1 ring-ink/10 transition hover:ring-ink/30"
-          >
-            Edit character
-          </button>
-          <div className="grid grid-cols-3 gap-2 text-sm font-bold">
-            <button
-              type="button"
-              onClick={() => setGuideOpen(true)}
-              className="rounded-full px-3 py-2.5 text-ink-soft hover:bg-ink/5 hover:text-ink"
-            >
-              Controls
-            </button>
-            <button
-              type="button"
-              onClick={() => update(DEFAULT_SETTINGS)}
-              className="rounded-full px-3 py-2.5 text-ink-soft hover:bg-ink/5 hover:text-ink"
-            >
-              Reset
-            </button>
-            <Link
-              href="/"
-              className="rounded-full px-3 py-2.5 text-center text-ink-soft hover:bg-ink/5 hover:text-ink"
-            >
-              Leave
-            </Link>
+        {leaving !== null ? (
+          <div role="alert" className="mt-7 rounded-2xl bg-parchment p-4 ring-1 ring-ink/10">
+            <p className="font-extrabold">Leave the library mid-pomodoro?</p>
+            <p className="mt-1 text-sm text-ink-soft">
+              {leaving} left. A pomodoro can&apos;t be split, so this one won&apos;t count.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2 text-sm font-bold">
+              <button
+                type="button"
+                autoFocus
+                onClick={() => {
+                  setOpen(false);
+                  requestPointerLock();
+                }}
+                className="rounded-full bg-ink px-3 py-2.5 text-cream transition hover:bg-wood-dark focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ember"
+              >
+                Keep focusing
+              </button>
+              <Link
+                href="/"
+                onClick={() => usePomodoro.getState().abandon("left-library")}
+                className="rounded-full px-3 py-2.5 text-center text-ink-soft ring-1 ring-ink/15 transition hover:bg-ink/5 hover:text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ember"
+              >
+                Leave anyway
+              </Link>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="mt-7 space-y-2">
+            <PrimaryButton
+              onClick={() => {
+                setOpen(false);
+                requestPointerLock();
+              }}
+            >
+              Resume
+            </PrimaryButton>
+            <button
+              type="button"
+              onClick={focusing ? undefined : () => openCreator("playing")}
+              aria-disabled={focusing || undefined}
+              title={focusing ? "Available after your pomodoro" : undefined}
+              className={`w-full rounded-full bg-parchment px-5 py-2.5 text-sm font-extrabold ring-1 ring-ink/10 transition ${focusing ? "cursor-not-allowed text-ink-soft" : "hover:ring-ink/30"}`}
+            >
+              Edit character
+              {focusing && (
+                <span className="block text-xs font-bold">Available after your pomodoro</span>
+              )}
+            </button>
+            <div className="grid grid-cols-3 gap-2 text-sm font-bold">
+              <button
+                type="button"
+                onClick={() => setGuideOpen(true)}
+                className="rounded-full px-3 py-2.5 text-ink-soft hover:bg-ink/5 hover:text-ink"
+              >
+                Controls
+              </button>
+              <button
+                type="button"
+                onClick={() => update(DEFAULT_SETTINGS)}
+                className="rounded-full px-3 py-2.5 text-ink-soft hover:bg-ink/5 hover:text-ink"
+              >
+                Reset
+              </button>
+              <Link
+                href="/"
+                onClick={(e) => {
+                  // Leaving the library mid-pomodoro ends it: ask first.
+                  const p = usePomodoro.getState();
+                  if (!isFocusing(p)) return;
+                  e.preventDefault();
+                  setLeaving(formatClock(remainingMs(p, Date.now())));
+                }}
+                className="rounded-full px-3 py-2.5 text-center text-ink-soft hover:bg-ink/5 hover:text-ink"
+              >
+                Leave
+              </Link>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

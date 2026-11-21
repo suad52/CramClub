@@ -38,3 +38,9 @@ apps/web/public/fonts/ems-tech.svg
 
 # Blender auto-backups
 *.blend1
+
+# Reference photos (third-party, for art direction only)
+art/library/reference/
+# Blender build outputs
+art/library/build/
+

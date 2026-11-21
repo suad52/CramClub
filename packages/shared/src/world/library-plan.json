@@ -1,0 +1,4110 @@
+{
+  "version": 1,
+  "generator": "art/library/scripts/plan.py",
+  "units": "metres; +X east, +Y up, +Z south (entrance)",
+  "bounds": {
+    "minX": -14.8,
+    "maxX": 14.8,
+    "minZ": -10.8,
+    "maxZ": 8.8
+  },
+  "galleryY": 4.6,
+  "stepUp": 0.55,
+  "rooms": [
+    {
+      "id": "hall",
+      "name": "Grand Reading Hall",
+      "zone": "hall",
+      "rect": {
+        "minX": -14,
+        "maxX": 14,
+        "minZ": -10,
+        "maxZ": 8
+      },
+      "floorY": 0,
+      "ceilingY": 12.6
+    }
+  ],
+  "zones": [
+    {
+      "id": "hall",
+      "name": "Grand Reading Hall",
+      "blurb": "Long tables, warm lamps",
+      "blender": "Zone_MainHall",
+      "rects": [
+        {
+          "minX": -14,
+          "maxX": 14,
+          "minZ": -10,
+          "maxZ": 8
+        }
+      ],
+      "yMin": -1,
+      "yMax": 3.0
+    },
+    {
+      "id": "gallery",
+      "name": "Upper Gallery",
+      "blurb": "Books with a view",
+      "blender": "Zone_UpperGallery",
+      "rects": [
+        {
+          "minX": -14,
+          "maxX": 14,
+          "minZ": -10,
+          "maxZ": 8
+        }
+      ],
+      "yMin": 3.0,
+      "yMax": 99
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "floor_hall",
+      "kind": "flat",
+      "rect": {
+        "minX": -14,
+        "maxX": 14,
+        "minZ": -10,
+        "maxZ": 8
+      },
+      "y": 0
+    },
+    {
+      "id": "gallery_north",
+      "kind": "flat",
+      "rect": {
+        "minX": -14,
+        "maxX": 14,
+        "minZ": -10,
+        "maxZ": -7.4
+      },
+      "y": 4.6
+    },
+    {
+      "id": "gallery_west",
+      "kind": "flat",
+      "rect": {
+        "minX": -14,
+        "maxX": -10.6,
+        "minZ": -7.4,
+        "maxZ": 5.4
+      },
+      "y": 4.6
+    },
+    {
+      "id": "gallery_south",
+      "kind": "flat",
+      "rect": {
+        "minX": -14,
+        "maxX": 14,
+        "minZ": 5.4,
+        "maxZ": 8
+      },
+      "y": 4.6
+    }
+  ],
+  "ceilings": [
+    {
+      "id": "hall",
+      "rect": {
+        "minX": -14,
+        "maxX": 14,
+        "minZ": -10,
+        "maxZ": 8
+      },
+      "floorY": 0,
+      "ceilingY": 12.6
+    }
+  ],
+  "colliders": [
+    {
+      "kind": "box",
+      "id": "hall_n#1",
+      "x": 0.0,
+      "z": -10.4,
+      "halfW": 14.8,
+      "halfD": 0.4,
+      "rotationY": 0.0,
+      "y0": 0,
+      "y1": 13.6
+    },
+    {
+      "kind": "box",
+      "id": "hall_s#1",
+      "x": 0.0,
+      "z": 8.4,
+      "halfW": 14.8,
+      "halfD": 0.4,
+      "rotationY": 0.0,
+      "y0": 0,
+      "y1": 13.6
+    },
+    {
+      "kind": "box",
+      "id": "hall_w#1",
+      "x": -14.4,
+      "z": -1.0,
+      "halfW": 0.4,
+      "halfD": 9.8,
+      "rotationY": 0.0,
+      "y0": 0,
+      "y1": 13.6
+    },
+    {
+      "kind": "box",
+      "id": "hall_e#1",
+      "x": 14.4,
+      "z": -1.0,
+      "halfW": 0.4,
+      "halfD": 9.8,
+      "rotationY": 0.0,
+      "y0": 0,
+      "y1": 13.6
+    },
+    {
+      "kind": "box",
+      "id": "lift_shaft",
+      "x": 15.6,
+      "z": -8.6,
+      "halfW": 0.8,
+      "halfD": 1.0,
+      "rotationY": 0.0,
+      "y0": 0,
+      "y1": 12.6
+    },
+    {
+      "kind": "box",
+      "id": "gallery_slab_north",
+      "x": 0.0,
+      "z": -8.7,
+      "halfW": 14.0,
+      "halfD": 1.3,
+      "rotationY": 0.0,
+      "y0": 4.2,
+      "y1": 4.6
+    },
+    {
+      "kind": "box",
+      "id": "gallery_slab_west",
+      "x": -12.3,
+      "z": -1.0,
+      "halfW": 1.7,
+      "halfD": 6.4,
+      "rotationY": 0.0,
+      "y0": 4.2,
+      "y1": 4.6
+    },
+    {
+      "kind": "box",
+      "id": "gallery_slab_south",
+      "x": 0.0,
+      "z": 6.7,
+      "halfW": 14.0,
+      "halfD": 1.3,
+      "rotationY": 0.0,
+      "y0": 4.2,
+      "y1": 4.6
+    },
+    {
+      "kind": "circle",
+      "id": "gallery_column_1",
+      "x": -10.6,
+      "z": -7.4,
+      "radius": 0.24,
+      "y0": 0,
+      "y1": 4.2
+    },
+    {
+      "kind": "circle",
+      "id": "gallery_column_2",
+      "x": -8.4,
+      "z": -7.4,
+      "radius": 0.24,
+      "y0": 0,
+      "y1": 4.2
+    },
+    {
+      "kind": "circle",
+      "id": "gallery_column_3",
+      "x": -2.8,
+      "z": -7.4,
+      "radius": 0.24,
+      "y0": 0,
+      "y1": 4.2
+    },
+    {
+      "kind": "circle",
+      "id": "gallery_column_4",
+      "x": 2.8,
+      "z": -7.4,
+      "radius": 0.24,
+      "y0": 0,
+      "y1": 4.2
+    },
+    {
+      "kind": "circle",
+      "id": "gallery_column_5",
+      "x": 8.4,
+      "z": -7.4,
+      "radius": 0.24,
+      "y0": 0,
+      "y1": 4.2
+    },
+    {
+      "kind": "circle",
+      "id": "gallery_column_6",
+      "x": -10.6,
+      "z": 5.4,
+      "radius": 0.24,
+      "y0": 0,
+      "y1": 4.2
+    },
+    {
+      "kind": "circle",
+      "id": "gallery_column_7",
+      "x": -8.4,
+      "z": 5.4,
+      "radius": 0.24,
+      "y0": 0,
+      "y1": 4.2
+    },
+    {
+      "kind": "circle",
+      "id": "gallery_column_8",
+      "x": -2.8,
+      "z": 5.4,
+      "radius": 0.24,
+      "y0": 0,
+      "y1": 4.2
+    },
+    {
+      "kind": "circle",
+      "id": "gallery_column_9",
+      "x": 2.8,
+      "z": 5.4,
+      "radius": 0.24,
+      "y0": 0,
+      "y1": 4.2
+    },
+    {
+      "kind": "circle",
+      "id": "gallery_column_10",
+      "x": 8.4,
+      "z": 5.4,
+      "radius": 0.24,
+      "y0": 0,
+      "y1": 4.2
+    },
+    {
+      "kind": "circle",
+      "id": "gallery_column_11",
+      "x": -10.6,
+      "z": -3.13,
+      "radius": 0.24,
+      "y0": 0,
+      "y1": 4.2
+    },
+    {
+      "kind": "circle",
+      "id": "gallery_column_12",
+      "x": -10.6,
+      "z": 1.13,
+      "radius": 0.24,
+      "y0": 0,
+      "y1": 4.2
+    },
+    {
+      "kind": "box",
+      "id": "railing_n",
+      "x": 1.7,
+      "z": -7.4,
+      "halfW": 12.37,
+      "halfD": 0.07,
+      "rotationY": 0.0,
+      "y0": 4.6,
+      "y1": 5.68
+    },
+    {
+      "kind": "box",
+      "id": "railing_w",
+      "x": -10.6,
+      "z": -1.0,
+      "halfW": 0.07,
+      "halfD": 6.47,
+      "rotationY": 0.0,
+      "y0": 4.6,
+      "y1": 5.68
+    },
+    {
+      "kind": "box",
+      "id": "railing_s",
+      "x": 1.7,
+      "z": 5.4,
+      "halfW": 12.37,
+      "halfD": 0.07,
+      "rotationY": 0.0,
+      "y0": 4.6,
+      "y1": 5.68
+    },
+    {
+      "kind": "box",
+      "id": "hall-t01",
+      "x": -9.1,
+      "z": -4.6,
+      "halfW": 0.5,
+      "halfD": 2.0,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 0.76
+    },
+    {
+      "kind": "box",
+      "id": "hall-t01-c1",
+      "x": -9.72,
+      "z": -5.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t01-c2",
+      "x": -9.72,
+      "z": -4.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t01-c3",
+      "x": -9.72,
+      "z": -3.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t01-c4",
+      "x": -8.48,
+      "z": -5.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t01-c5",
+      "x": -8.48,
+      "z": -4.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t01-c6",
+      "x": -8.48,
+      "z": -3.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t02",
+      "x": -5.7,
+      "z": -4.6,
+      "halfW": 0.5,
+      "halfD": 2.0,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 0.76
+    },
+    {
+      "kind": "box",
+      "id": "hall-t02-c1",
+      "x": -6.32,
+      "z": -5.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t02-c2",
+      "x": -6.32,
+      "z": -4.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t02-c3",
+      "x": -6.32,
+      "z": -3.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t02-c4",
+      "x": -5.08,
+      "z": -5.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t02-c5",
+      "x": -5.08,
+      "z": -4.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t02-c6",
+      "x": -5.08,
+      "z": -3.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t03",
+      "x": -2.3,
+      "z": -4.6,
+      "halfW": 0.5,
+      "halfD": 2.0,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 0.76
+    },
+    {
+      "kind": "box",
+      "id": "hall-t03-c1",
+      "x": -2.92,
+      "z": -5.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t03-c2",
+      "x": -2.92,
+      "z": -4.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t03-c3",
+      "x": -2.92,
+      "z": -3.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t03-c4",
+      "x": -1.68,
+      "z": -5.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t03-c5",
+      "x": -1.68,
+      "z": -4.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t03-c6",
+      "x": -1.68,
+      "z": -3.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t04",
+      "x": 2.3,
+      "z": -4.6,
+      "halfW": 0.5,
+      "halfD": 2.0,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 0.76
+    },
+    {
+      "kind": "box",
+      "id": "hall-t04-c1",
+      "x": 1.68,
+      "z": -5.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t04-c2",
+      "x": 1.68,
+      "z": -4.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t04-c3",
+      "x": 1.68,
+      "z": -3.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t04-c4",
+      "x": 2.92,
+      "z": -5.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t04-c5",
+      "x": 2.92,
+      "z": -4.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t04-c6",
+      "x": 2.92,
+      "z": -3.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t05",
+      "x": 5.7,
+      "z": -4.6,
+      "halfW": 0.5,
+      "halfD": 2.0,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 0.76
+    },
+    {
+      "kind": "box",
+      "id": "hall-t05-c1",
+      "x": 5.08,
+      "z": -5.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t05-c2",
+      "x": 5.08,
+      "z": -4.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t05-c3",
+      "x": 5.08,
+      "z": -3.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t05-c4",
+      "x": 6.32,
+      "z": -5.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t05-c5",
+      "x": 6.32,
+      "z": -4.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t05-c6",
+      "x": 6.32,
+      "z": -3.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t06",
+      "x": 9.1,
+      "z": -4.6,
+      "halfW": 0.5,
+      "halfD": 2.0,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 0.76
+    },
+    {
+      "kind": "box",
+      "id": "hall-t06-c1",
+      "x": 8.48,
+      "z": -5.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t06-c2",
+      "x": 8.48,
+      "z": -4.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t06-c3",
+      "x": 8.48,
+      "z": -3.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t06-c4",
+      "x": 9.72,
+      "z": -5.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t06-c5",
+      "x": 9.72,
+      "z": -4.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t06-c6",
+      "x": 9.72,
+      "z": -3.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t07",
+      "x": -9.1,
+      "z": 2.6,
+      "halfW": 0.5,
+      "halfD": 2.0,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 0.76
+    },
+    {
+      "kind": "box",
+      "id": "hall-t07-c1",
+      "x": -9.72,
+      "z": 1.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t07-c2",
+      "x": -9.72,
+      "z": 2.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t07-c3",
+      "x": -9.72,
+      "z": 3.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t07-c4",
+      "x": -8.48,
+      "z": 1.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t07-c5",
+      "x": -8.48,
+      "z": 2.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t07-c6",
+      "x": -8.48,
+      "z": 3.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t08",
+      "x": -5.7,
+      "z": 2.6,
+      "halfW": 0.5,
+      "halfD": 2.0,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 0.76
+    },
+    {
+      "kind": "box",
+      "id": "hall-t08-c1",
+      "x": -6.32,
+      "z": 1.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t08-c2",
+      "x": -6.32,
+      "z": 2.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t08-c3",
+      "x": -6.32,
+      "z": 3.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t08-c4",
+      "x": -5.08,
+      "z": 1.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t08-c5",
+      "x": -5.08,
+      "z": 2.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t08-c6",
+      "x": -5.08,
+      "z": 3.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t09",
+      "x": -2.3,
+      "z": 2.6,
+      "halfW": 0.5,
+      "halfD": 2.0,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 0.76
+    },
+    {
+      "kind": "box",
+      "id": "hall-t09-c1",
+      "x": -2.92,
+      "z": 1.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t09-c2",
+      "x": -2.92,
+      "z": 2.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t09-c3",
+      "x": -2.92,
+      "z": 3.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t09-c4",
+      "x": -1.68,
+      "z": 1.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t09-c5",
+      "x": -1.68,
+      "z": 2.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t09-c6",
+      "x": -1.68,
+      "z": 3.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t10",
+      "x": 2.3,
+      "z": 2.6,
+      "halfW": 0.5,
+      "halfD": 2.0,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 0.76
+    },
+    {
+      "kind": "box",
+      "id": "hall-t10-c1",
+      "x": 1.68,
+      "z": 1.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t10-c2",
+      "x": 1.68,
+      "z": 2.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t10-c3",
+      "x": 1.68,
+      "z": 3.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t10-c4",
+      "x": 2.92,
+      "z": 1.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t10-c5",
+      "x": 2.92,
+      "z": 2.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t10-c6",
+      "x": 2.92,
+      "z": 3.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t11",
+      "x": 5.7,
+      "z": 2.6,
+      "halfW": 0.5,
+      "halfD": 2.0,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 0.76
+    },
+    {
+      "kind": "box",
+      "id": "hall-t11-c1",
+      "x": 5.08,
+      "z": 1.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t11-c2",
+      "x": 5.08,
+      "z": 2.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t11-c3",
+      "x": 5.08,
+      "z": 3.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t11-c4",
+      "x": 6.32,
+      "z": 1.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t11-c5",
+      "x": 6.32,
+      "z": 2.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t11-c6",
+      "x": 6.32,
+      "z": 3.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t12",
+      "x": 9.1,
+      "z": 2.6,
+      "halfW": 0.5,
+      "halfD": 2.0,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 0.76
+    },
+    {
+      "kind": "box",
+      "id": "hall-t12-c1",
+      "x": 8.48,
+      "z": 1.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t12-c2",
+      "x": 8.48,
+      "z": 2.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t12-c3",
+      "x": 8.48,
+      "z": 3.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t12-c4",
+      "x": 9.72,
+      "z": 1.3,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t12-c5",
+      "x": 9.72,
+      "z": 2.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t12-c6",
+      "x": 9.72,
+      "z": 3.9,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 0.95
+    },
+    {
+      "kind": "circle",
+      "id": "hall-globe",
+      "x": 0.0,
+      "z": -6.2,
+      "radius": 0.4,
+      "y0": 0.0,
+      "y1": 1.25
+    },
+    {
+      "kind": "box",
+      "id": "hall-catalogue-n",
+      "x": -12.3,
+      "z": -4.8,
+      "halfW": 0.7,
+      "halfD": 0.3,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 1.15
+    },
+    {
+      "kind": "box",
+      "id": "hall-catalogue-s",
+      "x": -12.3,
+      "z": 2.8,
+      "halfW": 0.7,
+      "halfD": 0.3,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 1.15
+    },
+    {
+      "kind": "circle",
+      "id": "hall-plant-1",
+      "x": 12.9,
+      "z": -3.9,
+      "radius": 0.35,
+      "y0": 0.0,
+      "y1": 1.6
+    },
+    {
+      "kind": "circle",
+      "id": "hall-plant-2",
+      "x": 12.9,
+      "z": 1.9,
+      "radius": 0.35,
+      "y0": 0.0,
+      "y1": 1.6
+    },
+    {
+      "kind": "box",
+      "id": "gallery-desk-1",
+      "x": -11.02,
+      "z": -4.6,
+      "halfW": 0.6,
+      "halfD": 0.3,
+      "rotationY": -1.5708,
+      "y0": 4.6,
+      "y1": 5.359999999999999
+    },
+    {
+      "kind": "box",
+      "id": "gallery-desk-1-c1",
+      "x": -11.64,
+      "z": -4.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 4.6,
+      "y1": 5.55
+    },
+    {
+      "kind": "box",
+      "id": "gallery-desk-2",
+      "x": -11.02,
+      "z": -1.0,
+      "halfW": 0.6,
+      "halfD": 0.3,
+      "rotationY": -1.5708,
+      "y0": 4.6,
+      "y1": 5.359999999999999
+    },
+    {
+      "kind": "box",
+      "id": "gallery-desk-2-c1",
+      "x": -11.64,
+      "z": -1.0,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 4.6,
+      "y1": 5.55
+    },
+    {
+      "kind": "box",
+      "id": "gallery-desk-3",
+      "x": -11.02,
+      "z": 2.6,
+      "halfW": 0.6,
+      "halfD": 0.3,
+      "rotationY": -1.5708,
+      "y0": 4.6,
+      "y1": 5.359999999999999
+    },
+    {
+      "kind": "box",
+      "id": "gallery-desk-3-c1",
+      "x": -11.64,
+      "z": 2.6,
+      "halfW": 0.24,
+      "halfD": 0.25,
+      "rotationY": 1.5708,
+      "y0": 4.6,
+      "y1": 5.55
+    },
+    {
+      "kind": "box",
+      "id": "hall-t01-board",
+      "x": -9.1,
+      "z": -2.3,
+      "halfW": 0.8,
+      "halfD": 0.275,
+      "rotationY": 3.14159,
+      "y0": 0.0,
+      "y1": 1.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t02-board",
+      "x": -5.7,
+      "z": -2.3,
+      "halfW": 0.8,
+      "halfD": 0.275,
+      "rotationY": 3.14159,
+      "y0": 0.0,
+      "y1": 1.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t03-board",
+      "x": -2.3,
+      "z": -2.3,
+      "halfW": 0.8,
+      "halfD": 0.275,
+      "rotationY": 3.14159,
+      "y0": 0.0,
+      "y1": 1.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t04-board",
+      "x": 2.3,
+      "z": -2.3,
+      "halfW": 0.8,
+      "halfD": 0.275,
+      "rotationY": 3.14159,
+      "y0": 0.0,
+      "y1": 1.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t05-board",
+      "x": 5.7,
+      "z": -2.3,
+      "halfW": 0.8,
+      "halfD": 0.275,
+      "rotationY": 3.14159,
+      "y0": 0.0,
+      "y1": 1.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t06-board",
+      "x": 9.1,
+      "z": -2.3,
+      "halfW": 0.8,
+      "halfD": 0.275,
+      "rotationY": 3.14159,
+      "y0": 0.0,
+      "y1": 1.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t07-board",
+      "x": -9.1,
+      "z": 0.3,
+      "halfW": 0.8,
+      "halfD": 0.275,
+      "rotationY": 0.0,
+      "y0": 0.0,
+      "y1": 1.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t08-board",
+      "x": -5.7,
+      "z": 0.3,
+      "halfW": 0.8,
+      "halfD": 0.275,
+      "rotationY": 0.0,
+      "y0": 0.0,
+      "y1": 1.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t09-board",
+      "x": -2.3,
+      "z": 0.3,
+      "halfW": 0.8,
+      "halfD": 0.275,
+      "rotationY": 0.0,
+      "y0": 0.0,
+      "y1": 1.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t10-board",
+      "x": 2.3,
+      "z": 0.3,
+      "halfW": 0.8,
+      "halfD": 0.275,
+      "rotationY": 0.0,
+      "y0": 0.0,
+      "y1": 1.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t11-board",
+      "x": 5.7,
+      "z": 0.3,
+      "halfW": 0.8,
+      "halfD": 0.275,
+      "rotationY": 0.0,
+      "y0": 0.0,
+      "y1": 1.95
+    },
+    {
+      "kind": "box",
+      "id": "hall-t12-board",
+      "x": 9.1,
+      "z": 0.3,
+      "halfW": 0.8,
+      "halfD": 0.275,
+      "rotationY": 0.0,
+      "y0": 0.0,
+      "y1": 1.95
+    },
+    {
+      "kind": "box",
+      "id": "bc_hall_n1",
+      "x": -9.4,
+      "z": -9.775,
+      "halfW": 4.6,
+      "halfD": 0.225,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 4.0
+    },
+    {
+      "kind": "box",
+      "id": "bc_hall_n2",
+      "x": 0.0,
+      "z": -9.775,
+      "halfW": 4.6,
+      "halfD": 0.225,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 4.0
+    },
+    {
+      "kind": "box",
+      "id": "bc_hall_n3",
+      "x": 9.4,
+      "z": -9.775,
+      "halfW": 4.6,
+      "halfD": 0.225,
+      "rotationY": 0,
+      "y0": 0.0,
+      "y1": 4.0
+    },
+    {
+      "kind": "box",
+      "id": "bc_hall_s1",
+      "x": -10.55,
+      "z": 7.775,
+      "halfW": 3.45,
+      "halfD": 0.225,
+      "rotationY": 3.14159,
+      "y0": 0.0,
+      "y1": 4.0
+    },
+    {
+      "kind": "box",
+      "id": "bc_hall_s2",
+      "x": -3.5,
+      "z": 7.775,
+      "halfW": 3.4,
+      "halfD": 0.225,
+      "rotationY": 3.14159,
+      "y0": 0.0,
+      "y1": 4.0
+    },
+    {
+      "kind": "box",
+      "id": "bc_hall_s3",
+      "x": 3.5,
+      "z": 7.775,
+      "halfW": 3.4,
+      "halfD": 0.225,
+      "rotationY": 3.14159,
+      "y0": 0.0,
+      "y1": 4.0
+    },
+    {
+      "kind": "box",
+      "id": "bc_hall_s4",
+      "x": 10.55,
+      "z": 7.775,
+      "halfW": 3.45,
+      "halfD": 0.225,
+      "rotationY": 3.14159,
+      "y0": 0.0,
+      "y1": 4.0
+    },
+    {
+      "kind": "box",
+      "id": "bc_hall_w1",
+      "x": -13.775,
+      "z": -5.325,
+      "halfW": 4.225,
+      "halfD": 0.225,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 4.0
+    },
+    {
+      "kind": "box",
+      "id": "bc_hall_w2",
+      "x": -13.775,
+      "z": 3.325,
+      "halfW": 4.225,
+      "halfD": 0.225,
+      "rotationY": 1.5708,
+      "y0": 0.0,
+      "y1": 4.0
+    },
+    {
+      "kind": "box",
+      "id": "bc_hall_e1",
+      "x": 13.775,
+      "z": -4.4,
+      "halfW": 3.3,
+      "halfD": 0.225,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 4.0
+    },
+    {
+      "kind": "box",
+      "id": "bc_hall_e2",
+      "x": 13.775,
+      "z": 3.325,
+      "halfW": 4.225,
+      "halfD": 0.225,
+      "rotationY": -1.5708,
+      "y0": 0.0,
+      "y1": 4.0
+    },
+    {
+      "kind": "box",
+      "id": "bc_gallery_n",
+      "x": 0.0,
+      "z": -9.775,
+      "halfW": 14.0,
+      "halfD": 0.225,
+      "rotationY": 0,
+      "y0": 4.6,
+      "y1": 6.8
+    },
+    {
+      "kind": "box",
+      "id": "bc_gallery_w",
+      "x": -13.775,
+      "z": -1.0,
+      "halfW": 8.55,
+      "halfD": 0.225,
+      "rotationY": 1.5708,
+      "y0": 4.6,
+      "y1": 7.5
+    },
+    {
+      "kind": "box",
+      "id": "bc_gallery_s1",
+      "x": -7.05,
+      "z": 7.775,
+      "halfW": 6.95,
+      "halfD": 0.225,
+      "rotationY": 3.14159,
+      "y0": 4.6,
+      "y1": 7.5
+    },
+    {
+      "kind": "box",
+      "id": "bc_gallery_s2",
+      "x": 7.05,
+      "z": 7.775,
+      "halfW": 6.95,
+      "halfD": 0.225,
+      "rotationY": 3.14159,
+      "y0": 4.6,
+      "y1": 7.5
+    }
+  ],
+  "seats": [
+    {
+      "id": "hall-t01-c1",
+      "furnitureId": "hall-t01-c1",
+      "x": -9.72,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t01",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t01-c2",
+      "furnitureId": "hall-t01-c2",
+      "x": -9.72,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t01",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t01-c3",
+      "furnitureId": "hall-t01-c3",
+      "x": -9.72,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t01",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t01-c4",
+      "furnitureId": "hall-t01-c4",
+      "x": -8.48,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t01",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t01-c5",
+      "furnitureId": "hall-t01-c5",
+      "x": -8.48,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t01",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t01-c6",
+      "furnitureId": "hall-t01-c6",
+      "x": -8.48,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t01",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t02-c1",
+      "furnitureId": "hall-t02-c1",
+      "x": -6.32,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t02",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t02-c2",
+      "furnitureId": "hall-t02-c2",
+      "x": -6.32,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t02",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t02-c3",
+      "furnitureId": "hall-t02-c3",
+      "x": -6.32,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t02",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t02-c4",
+      "furnitureId": "hall-t02-c4",
+      "x": -5.08,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t02",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t02-c5",
+      "furnitureId": "hall-t02-c5",
+      "x": -5.08,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t02",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t02-c6",
+      "furnitureId": "hall-t02-c6",
+      "x": -5.08,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t02",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t03-c1",
+      "furnitureId": "hall-t03-c1",
+      "x": -2.92,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t03",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t03-c2",
+      "furnitureId": "hall-t03-c2",
+      "x": -2.92,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t03",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t03-c3",
+      "furnitureId": "hall-t03-c3",
+      "x": -2.92,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t03",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t03-c4",
+      "furnitureId": "hall-t03-c4",
+      "x": -1.68,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t03",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t03-c5",
+      "furnitureId": "hall-t03-c5",
+      "x": -1.68,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t03",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t03-c6",
+      "furnitureId": "hall-t03-c6",
+      "x": -1.68,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t03",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t04-c1",
+      "furnitureId": "hall-t04-c1",
+      "x": 1.68,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t04",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t04-c2",
+      "furnitureId": "hall-t04-c2",
+      "x": 1.68,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t04",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t04-c3",
+      "furnitureId": "hall-t04-c3",
+      "x": 1.68,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t04",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t04-c4",
+      "furnitureId": "hall-t04-c4",
+      "x": 2.92,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t04",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t04-c5",
+      "furnitureId": "hall-t04-c5",
+      "x": 2.92,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t04",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t04-c6",
+      "furnitureId": "hall-t04-c6",
+      "x": 2.92,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t04",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t05-c1",
+      "furnitureId": "hall-t05-c1",
+      "x": 5.08,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t05",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t05-c2",
+      "furnitureId": "hall-t05-c2",
+      "x": 5.08,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t05",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t05-c3",
+      "furnitureId": "hall-t05-c3",
+      "x": 5.08,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t05",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t05-c4",
+      "furnitureId": "hall-t05-c4",
+      "x": 6.32,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t05",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t05-c5",
+      "furnitureId": "hall-t05-c5",
+      "x": 6.32,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t05",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t05-c6",
+      "furnitureId": "hall-t05-c6",
+      "x": 6.32,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t05",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t06-c1",
+      "furnitureId": "hall-t06-c1",
+      "x": 8.48,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t06",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t06-c2",
+      "furnitureId": "hall-t06-c2",
+      "x": 8.48,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t06",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t06-c3",
+      "furnitureId": "hall-t06-c3",
+      "x": 8.48,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t06",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t06-c4",
+      "furnitureId": "hall-t06-c4",
+      "x": 9.72,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t06",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t06-c5",
+      "furnitureId": "hall-t06-c5",
+      "x": 9.72,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t06",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t06-c6",
+      "furnitureId": "hall-t06-c6",
+      "x": 9.72,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t06",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t07-c1",
+      "furnitureId": "hall-t07-c1",
+      "x": -9.72,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t07",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t07-c2",
+      "furnitureId": "hall-t07-c2",
+      "x": -9.72,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t07",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t07-c3",
+      "furnitureId": "hall-t07-c3",
+      "x": -9.72,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t07",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t07-c4",
+      "furnitureId": "hall-t07-c4",
+      "x": -8.48,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t07",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t07-c5",
+      "furnitureId": "hall-t07-c5",
+      "x": -8.48,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t07",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t07-c6",
+      "furnitureId": "hall-t07-c6",
+      "x": -8.48,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t07",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t08-c1",
+      "furnitureId": "hall-t08-c1",
+      "x": -6.32,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t08",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t08-c2",
+      "furnitureId": "hall-t08-c2",
+      "x": -6.32,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t08",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t08-c3",
+      "furnitureId": "hall-t08-c3",
+      "x": -6.32,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t08",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t08-c4",
+      "furnitureId": "hall-t08-c4",
+      "x": -5.08,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t08",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t08-c5",
+      "furnitureId": "hall-t08-c5",
+      "x": -5.08,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t08",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t08-c6",
+      "furnitureId": "hall-t08-c6",
+      "x": -5.08,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t08",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t09-c1",
+      "furnitureId": "hall-t09-c1",
+      "x": -2.92,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t09",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t09-c2",
+      "furnitureId": "hall-t09-c2",
+      "x": -2.92,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t09",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t09-c3",
+      "furnitureId": "hall-t09-c3",
+      "x": -2.92,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t09",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t09-c4",
+      "furnitureId": "hall-t09-c4",
+      "x": -1.68,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t09",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t09-c5",
+      "furnitureId": "hall-t09-c5",
+      "x": -1.68,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t09",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t09-c6",
+      "furnitureId": "hall-t09-c6",
+      "x": -1.68,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t09",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t10-c1",
+      "furnitureId": "hall-t10-c1",
+      "x": 1.68,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t10",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t10-c2",
+      "furnitureId": "hall-t10-c2",
+      "x": 1.68,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t10",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t10-c3",
+      "furnitureId": "hall-t10-c3",
+      "x": 1.68,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t10",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t10-c4",
+      "furnitureId": "hall-t10-c4",
+      "x": 2.92,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t10",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t10-c5",
+      "furnitureId": "hall-t10-c5",
+      "x": 2.92,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t10",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t10-c6",
+      "furnitureId": "hall-t10-c6",
+      "x": 2.92,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t10",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t11-c1",
+      "furnitureId": "hall-t11-c1",
+      "x": 5.08,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t11",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t11-c2",
+      "furnitureId": "hall-t11-c2",
+      "x": 5.08,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t11",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t11-c3",
+      "furnitureId": "hall-t11-c3",
+      "x": 5.08,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t11",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t11-c4",
+      "furnitureId": "hall-t11-c4",
+      "x": 6.32,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t11",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t11-c5",
+      "furnitureId": "hall-t11-c5",
+      "x": 6.32,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t11",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t11-c6",
+      "furnitureId": "hall-t11-c6",
+      "x": 6.32,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t11",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t12-c1",
+      "furnitureId": "hall-t12-c1",
+      "x": 8.48,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t12",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t12-c2",
+      "furnitureId": "hall-t12-c2",
+      "x": 8.48,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t12",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t12-c3",
+      "furnitureId": "hall-t12-c3",
+      "x": 8.48,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t12",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t12-c4",
+      "furnitureId": "hall-t12-c4",
+      "x": 9.72,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t12",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t12-c5",
+      "furnitureId": "hall-t12-c5",
+      "x": 9.72,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t12",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "hall-t12-c6",
+      "furnitureId": "hall-t12-c6",
+      "x": 9.72,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": -1.5708,
+      "seatHeight": 0.46,
+      "zone": "hall",
+      "tableId": "hall-t12",
+      "prompt": "Study at table"
+    },
+    {
+      "id": "gallery-desk-1-c1",
+      "furnitureId": "gallery-desk-1-c1",
+      "x": -11.64,
+      "y": 4.6,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "gallery",
+      "tableId": "gallery-desk-1",
+      "prompt": "Sit at the gallery desk"
+    },
+    {
+      "id": "gallery-desk-2-c1",
+      "furnitureId": "gallery-desk-2-c1",
+      "x": -11.64,
+      "y": 4.6,
+      "z": -1.0,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "gallery",
+      "tableId": "gallery-desk-2",
+      "prompt": "Sit at the gallery desk"
+    },
+    {
+      "id": "gallery-desk-3-c1",
+      "furnitureId": "gallery-desk-3-c1",
+      "x": -11.64,
+      "y": 4.6,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "seatHeight": 0.46,
+      "zone": "gallery",
+      "tableId": "gallery-desk-3",
+      "prompt": "Sit at the gallery desk"
+    }
+  ],
+  "spawnPoints": [
+    {
+      "x": 0,
+      "y": 0.0,
+      "z": 6.3,
+      "rot": 3.141592653589793
+    },
+    {
+      "x": -0.8,
+      "y": 0.0,
+      "z": 6.6,
+      "rot": 3.141592653589793
+    },
+    {
+      "x": 0.8,
+      "y": 0.0,
+      "z": 6.6,
+      "rot": 3.141592653589793
+    },
+    {
+      "x": -0.8,
+      "y": 0.0,
+      "z": 5.9,
+      "rot": 3.141592653589793
+    },
+    {
+      "x": 0.8,
+      "y": 0.0,
+      "z": 5.9,
+      "rot": 3.141592653589793
+    },
+    {
+      "x": 0,
+      "y": 0.0,
+      "z": 5.6,
+      "rot": 3.141592653589793
+    }
+  ],
+  "anchors": [
+    {
+      "id": "Interact_Lift_Ground",
+      "kind": "lift",
+      "x": 13.4,
+      "y": 0,
+      "z": -8.6,
+      "rot": 1.5707963267948966,
+      "label": "Lift to the gallery",
+      "level": 0
+    },
+    {
+      "id": "Interact_Lift_Gallery",
+      "kind": "lift",
+      "x": 13.4,
+      "y": 4.6,
+      "z": -8.6,
+      "rot": 1.5707963267948966,
+      "label": "Lift to the ground floor",
+      "level": 1
+    },
+    {
+      "id": "Anchor_Whiteboard_01",
+      "kind": "whiteboard",
+      "x": -9.1,
+      "y": 1.36,
+      "z": -2.3,
+      "rot": 3.141592653589793,
+      "table": "hall-t01",
+      "label": "Table 1 whiteboard",
+      "mount": "mobile"
+    },
+    {
+      "id": "Anchor_Whiteboard_02",
+      "kind": "whiteboard",
+      "x": -5.7,
+      "y": 1.36,
+      "z": -2.3,
+      "rot": 3.141592653589793,
+      "table": "hall-t02",
+      "label": "Table 2 whiteboard",
+      "mount": "mobile"
+    },
+    {
+      "id": "Anchor_Whiteboard_03",
+      "kind": "whiteboard",
+      "x": -2.3,
+      "y": 1.36,
+      "z": -2.3,
+      "rot": 3.141592653589793,
+      "table": "hall-t03",
+      "label": "Table 3 whiteboard",
+      "mount": "mobile"
+    },
+    {
+      "id": "Anchor_Whiteboard_04",
+      "kind": "whiteboard",
+      "x": 2.3,
+      "y": 1.36,
+      "z": -2.3,
+      "rot": 3.141592653589793,
+      "table": "hall-t04",
+      "label": "Table 4 whiteboard",
+      "mount": "mobile"
+    },
+    {
+      "id": "Anchor_Whiteboard_05",
+      "kind": "whiteboard",
+      "x": 5.7,
+      "y": 1.36,
+      "z": -2.3,
+      "rot": 3.141592653589793,
+      "table": "hall-t05",
+      "label": "Table 5 whiteboard",
+      "mount": "mobile"
+    },
+    {
+      "id": "Anchor_Whiteboard_06",
+      "kind": "whiteboard",
+      "x": 9.1,
+      "y": 1.36,
+      "z": -2.3,
+      "rot": 3.141592653589793,
+      "table": "hall-t06",
+      "label": "Table 6 whiteboard",
+      "mount": "mobile"
+    },
+    {
+      "id": "Anchor_Whiteboard_07",
+      "kind": "whiteboard",
+      "x": -9.1,
+      "y": 1.36,
+      "z": 0.3,
+      "rot": 0.0,
+      "table": "hall-t07",
+      "label": "Table 7 whiteboard",
+      "mount": "mobile"
+    },
+    {
+      "id": "Anchor_Whiteboard_08",
+      "kind": "whiteboard",
+      "x": -5.7,
+      "y": 1.36,
+      "z": 0.3,
+      "rot": 0.0,
+      "table": "hall-t08",
+      "label": "Table 8 whiteboard",
+      "mount": "mobile"
+    },
+    {
+      "id": "Anchor_Whiteboard_09",
+      "kind": "whiteboard",
+      "x": -2.3,
+      "y": 1.36,
+      "z": 0.3,
+      "rot": 0.0,
+      "table": "hall-t09",
+      "label": "Table 9 whiteboard",
+      "mount": "mobile"
+    },
+    {
+      "id": "Anchor_Whiteboard_10",
+      "kind": "whiteboard",
+      "x": 2.3,
+      "y": 1.36,
+      "z": 0.3,
+      "rot": 0.0,
+      "table": "hall-t10",
+      "label": "Table 10 whiteboard",
+      "mount": "mobile"
+    },
+    {
+      "id": "Anchor_Whiteboard_11",
+      "kind": "whiteboard",
+      "x": 5.7,
+      "y": 1.36,
+      "z": 0.3,
+      "rot": 0.0,
+      "table": "hall-t11",
+      "label": "Table 11 whiteboard",
+      "mount": "mobile"
+    },
+    {
+      "id": "Anchor_Whiteboard_12",
+      "kind": "whiteboard",
+      "x": 9.1,
+      "y": 1.36,
+      "z": 0.3,
+      "rot": 0.0,
+      "table": "hall-t12",
+      "label": "Table 12 whiteboard",
+      "mount": "mobile"
+    },
+    {
+      "id": "Interact_Bookshelf_bc_hall_n1",
+      "kind": "bookshelf",
+      "x": -9.4,
+      "y": 0.0,
+      "z": -10.0,
+      "rot": 0,
+      "label": "Philosophy"
+    },
+    {
+      "id": "Interact_Bookshelf_bc_hall_n2",
+      "kind": "bookshelf",
+      "x": 0.0,
+      "y": 0.0,
+      "z": -10.0,
+      "rot": 0,
+      "label": "History"
+    },
+    {
+      "id": "Interact_Bookshelf_bc_hall_n3",
+      "kind": "bookshelf",
+      "x": 9.4,
+      "y": 0.0,
+      "z": -10.0,
+      "rot": 0,
+      "label": "Literature"
+    },
+    {
+      "id": "Interact_Bookshelf_bc_hall_s1",
+      "kind": "bookshelf",
+      "x": -10.55,
+      "y": 0.0,
+      "z": 8.0,
+      "rot": 3.141592653589793,
+      "label": "Languages"
+    },
+    {
+      "id": "Interact_Bookshelf_bc_hall_s2",
+      "kind": "bookshelf",
+      "x": -3.5,
+      "y": 0.0,
+      "z": 8.0,
+      "rot": 3.141592653589793,
+      "label": "Sciences"
+    },
+    {
+      "id": "Interact_Bookshelf_bc_hall_s3",
+      "kind": "bookshelf",
+      "x": 3.5,
+      "y": 0.0,
+      "z": 8.0,
+      "rot": 3.141592653589793,
+      "label": "Mathematics"
+    },
+    {
+      "id": "Interact_Bookshelf_bc_hall_s4",
+      "kind": "bookshelf",
+      "x": 10.55,
+      "y": 0.0,
+      "z": 8.0,
+      "rot": 3.141592653589793,
+      "label": "Computing"
+    },
+    {
+      "id": "Interact_Bookshelf_bc_hall_w1",
+      "kind": "bookshelf",
+      "x": -14.0,
+      "y": 0.0,
+      "z": -5.325,
+      "rot": 1.5707963267948966,
+      "label": "Art & Music"
+    },
+    {
+      "id": "Interact_Bookshelf_bc_hall_w2",
+      "kind": "bookshelf",
+      "x": -14.0,
+      "y": 0.0,
+      "z": 3.3249999999999997,
+      "rot": 1.5707963267948966,
+      "label": "Geography"
+    },
+    {
+      "id": "Interact_Bookshelf_bc_hall_e1",
+      "kind": "bookshelf",
+      "x": 14.0,
+      "y": 0.0,
+      "z": -4.4,
+      "rot": -1.5707963267948966,
+      "label": "Law"
+    },
+    {
+      "id": "Interact_Bookshelf_bc_hall_e2",
+      "kind": "bookshelf",
+      "x": 14.0,
+      "y": 0.0,
+      "z": 3.3249999999999997,
+      "rot": -1.5707963267948966,
+      "label": "Economics"
+    }
+  ],
+  "lights": [
+    {
+      "id": "chandelier_w",
+      "kind": "chandelier",
+      "x": -5.7,
+      "y": 7.2,
+      "z": -1.0,
+      "color": "#ffc98a",
+      "intensity": 60,
+      "distance": 26
+    },
+    {
+      "id": "chandelier_e",
+      "kind": "chandelier",
+      "x": 5.7,
+      "y": 7.2,
+      "z": -1.0,
+      "color": "#ffc98a",
+      "intensity": 60,
+      "distance": 26
+    }
+  ],
+  "lamps": {
+    "hall": [
+      {
+        "x": -9.1,
+        "y": 0.76,
+        "z": -5.6
+      },
+      {
+        "x": -9.1,
+        "y": 0.76,
+        "z": -3.5999999999999996
+      },
+      {
+        "x": -5.7,
+        "y": 0.76,
+        "z": -5.6
+      },
+      {
+        "x": -5.7,
+        "y": 0.76,
+        "z": -3.5999999999999996
+      },
+      {
+        "x": -2.3,
+        "y": 0.76,
+        "z": -5.6
+      },
+      {
+        "x": -2.3,
+        "y": 0.76,
+        "z": -3.5999999999999996
+      },
+      {
+        "x": 2.3,
+        "y": 0.76,
+        "z": -5.6
+      },
+      {
+        "x": 2.3,
+        "y": 0.76,
+        "z": -3.5999999999999996
+      },
+      {
+        "x": 5.7,
+        "y": 0.76,
+        "z": -5.6
+      },
+      {
+        "x": 5.7,
+        "y": 0.76,
+        "z": -3.5999999999999996
+      },
+      {
+        "x": 9.1,
+        "y": 0.76,
+        "z": -5.6
+      },
+      {
+        "x": 9.1,
+        "y": 0.76,
+        "z": -3.5999999999999996
+      },
+      {
+        "x": -9.1,
+        "y": 0.76,
+        "z": 1.6
+      },
+      {
+        "x": -9.1,
+        "y": 0.76,
+        "z": 3.6
+      },
+      {
+        "x": -5.7,
+        "y": 0.76,
+        "z": 1.6
+      },
+      {
+        "x": -5.7,
+        "y": 0.76,
+        "z": 3.6
+      },
+      {
+        "x": -2.3,
+        "y": 0.76,
+        "z": 1.6
+      },
+      {
+        "x": -2.3,
+        "y": 0.76,
+        "z": 3.6
+      },
+      {
+        "x": 2.3,
+        "y": 0.76,
+        "z": 1.6
+      },
+      {
+        "x": 2.3,
+        "y": 0.76,
+        "z": 3.6
+      },
+      {
+        "x": 5.7,
+        "y": 0.76,
+        "z": 1.6
+      },
+      {
+        "x": 5.7,
+        "y": 0.76,
+        "z": 3.6
+      },
+      {
+        "x": 9.1,
+        "y": 0.76,
+        "z": 1.6
+      },
+      {
+        "x": 9.1,
+        "y": 0.76,
+        "z": 3.6
+      }
+    ],
+    "green": []
+  },
+  "items": [
+    {
+      "id": "hall-t01",
+      "kind": "table_communal",
+      "x": -9.1,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-t01-c1",
+      "kind": "chair_reading",
+      "x": -9.72,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t01"
+    },
+    {
+      "id": "hall-t01-c2",
+      "kind": "chair_reading",
+      "x": -9.72,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t01"
+    },
+    {
+      "id": "hall-t01-c3",
+      "kind": "chair_reading",
+      "x": -9.72,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t01"
+    },
+    {
+      "id": "hall-t01-c4",
+      "kind": "chair_reading",
+      "x": -8.48,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t01"
+    },
+    {
+      "id": "hall-t01-c5",
+      "kind": "chair_reading",
+      "x": -8.48,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t01"
+    },
+    {
+      "id": "hall-t01-c6",
+      "kind": "chair_reading",
+      "x": -8.48,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t01"
+    },
+    {
+      "id": "hall-t02",
+      "kind": "table_communal",
+      "x": -5.7,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-t02-c1",
+      "kind": "chair_reading",
+      "x": -6.32,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t02"
+    },
+    {
+      "id": "hall-t02-c2",
+      "kind": "chair_reading",
+      "x": -6.32,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t02"
+    },
+    {
+      "id": "hall-t02-c3",
+      "kind": "chair_reading",
+      "x": -6.32,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t02"
+    },
+    {
+      "id": "hall-t02-c4",
+      "kind": "chair_reading",
+      "x": -5.08,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t02"
+    },
+    {
+      "id": "hall-t02-c5",
+      "kind": "chair_reading",
+      "x": -5.08,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t02"
+    },
+    {
+      "id": "hall-t02-c6",
+      "kind": "chair_reading",
+      "x": -5.08,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t02"
+    },
+    {
+      "id": "hall-t03",
+      "kind": "table_communal",
+      "x": -2.3,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-t03-c1",
+      "kind": "chair_reading",
+      "x": -2.92,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t03"
+    },
+    {
+      "id": "hall-t03-c2",
+      "kind": "chair_reading",
+      "x": -2.92,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t03"
+    },
+    {
+      "id": "hall-t03-c3",
+      "kind": "chair_reading",
+      "x": -2.92,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t03"
+    },
+    {
+      "id": "hall-t03-c4",
+      "kind": "chair_reading",
+      "x": -1.68,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t03"
+    },
+    {
+      "id": "hall-t03-c5",
+      "kind": "chair_reading",
+      "x": -1.68,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t03"
+    },
+    {
+      "id": "hall-t03-c6",
+      "kind": "chair_reading",
+      "x": -1.68,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t03"
+    },
+    {
+      "id": "hall-t04",
+      "kind": "table_communal",
+      "x": 2.3,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-t04-c1",
+      "kind": "chair_reading",
+      "x": 1.68,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t04"
+    },
+    {
+      "id": "hall-t04-c2",
+      "kind": "chair_reading",
+      "x": 1.68,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t04"
+    },
+    {
+      "id": "hall-t04-c3",
+      "kind": "chair_reading",
+      "x": 1.68,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t04"
+    },
+    {
+      "id": "hall-t04-c4",
+      "kind": "chair_reading",
+      "x": 2.92,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t04"
+    },
+    {
+      "id": "hall-t04-c5",
+      "kind": "chair_reading",
+      "x": 2.92,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t04"
+    },
+    {
+      "id": "hall-t04-c6",
+      "kind": "chair_reading",
+      "x": 2.92,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t04"
+    },
+    {
+      "id": "hall-t05",
+      "kind": "table_communal",
+      "x": 5.7,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-t05-c1",
+      "kind": "chair_reading",
+      "x": 5.08,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t05"
+    },
+    {
+      "id": "hall-t05-c2",
+      "kind": "chair_reading",
+      "x": 5.08,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t05"
+    },
+    {
+      "id": "hall-t05-c3",
+      "kind": "chair_reading",
+      "x": 5.08,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t05"
+    },
+    {
+      "id": "hall-t05-c4",
+      "kind": "chair_reading",
+      "x": 6.32,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t05"
+    },
+    {
+      "id": "hall-t05-c5",
+      "kind": "chair_reading",
+      "x": 6.32,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t05"
+    },
+    {
+      "id": "hall-t05-c6",
+      "kind": "chair_reading",
+      "x": 6.32,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t05"
+    },
+    {
+      "id": "hall-t06",
+      "kind": "table_communal",
+      "x": 9.1,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-t06-c1",
+      "kind": "chair_reading",
+      "x": 8.48,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t06"
+    },
+    {
+      "id": "hall-t06-c2",
+      "kind": "chair_reading",
+      "x": 8.48,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t06"
+    },
+    {
+      "id": "hall-t06-c3",
+      "kind": "chair_reading",
+      "x": 8.48,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t06"
+    },
+    {
+      "id": "hall-t06-c4",
+      "kind": "chair_reading",
+      "x": 9.72,
+      "y": 0.0,
+      "z": -5.9,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t06"
+    },
+    {
+      "id": "hall-t06-c5",
+      "kind": "chair_reading",
+      "x": 9.72,
+      "y": 0.0,
+      "z": -4.6,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t06"
+    },
+    {
+      "id": "hall-t06-c6",
+      "kind": "chair_reading",
+      "x": 9.72,
+      "y": 0.0,
+      "z": -3.3,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t06"
+    },
+    {
+      "id": "hall-t07",
+      "kind": "table_communal",
+      "x": -9.1,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-t07-c1",
+      "kind": "chair_reading",
+      "x": -9.72,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t07"
+    },
+    {
+      "id": "hall-t07-c2",
+      "kind": "chair_reading",
+      "x": -9.72,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t07"
+    },
+    {
+      "id": "hall-t07-c3",
+      "kind": "chair_reading",
+      "x": -9.72,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t07"
+    },
+    {
+      "id": "hall-t07-c4",
+      "kind": "chair_reading",
+      "x": -8.48,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t07"
+    },
+    {
+      "id": "hall-t07-c5",
+      "kind": "chair_reading",
+      "x": -8.48,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t07"
+    },
+    {
+      "id": "hall-t07-c6",
+      "kind": "chair_reading",
+      "x": -8.48,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t07"
+    },
+    {
+      "id": "hall-t08",
+      "kind": "table_communal",
+      "x": -5.7,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-t08-c1",
+      "kind": "chair_reading",
+      "x": -6.32,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t08"
+    },
+    {
+      "id": "hall-t08-c2",
+      "kind": "chair_reading",
+      "x": -6.32,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t08"
+    },
+    {
+      "id": "hall-t08-c3",
+      "kind": "chair_reading",
+      "x": -6.32,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t08"
+    },
+    {
+      "id": "hall-t08-c4",
+      "kind": "chair_reading",
+      "x": -5.08,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t08"
+    },
+    {
+      "id": "hall-t08-c5",
+      "kind": "chair_reading",
+      "x": -5.08,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t08"
+    },
+    {
+      "id": "hall-t08-c6",
+      "kind": "chair_reading",
+      "x": -5.08,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t08"
+    },
+    {
+      "id": "hall-t09",
+      "kind": "table_communal",
+      "x": -2.3,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-t09-c1",
+      "kind": "chair_reading",
+      "x": -2.92,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t09"
+    },
+    {
+      "id": "hall-t09-c2",
+      "kind": "chair_reading",
+      "x": -2.92,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t09"
+    },
+    {
+      "id": "hall-t09-c3",
+      "kind": "chair_reading",
+      "x": -2.92,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t09"
+    },
+    {
+      "id": "hall-t09-c4",
+      "kind": "chair_reading",
+      "x": -1.68,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t09"
+    },
+    {
+      "id": "hall-t09-c5",
+      "kind": "chair_reading",
+      "x": -1.68,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t09"
+    },
+    {
+      "id": "hall-t09-c6",
+      "kind": "chair_reading",
+      "x": -1.68,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t09"
+    },
+    {
+      "id": "hall-t10",
+      "kind": "table_communal",
+      "x": 2.3,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-t10-c1",
+      "kind": "chair_reading",
+      "x": 1.68,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t10"
+    },
+    {
+      "id": "hall-t10-c2",
+      "kind": "chair_reading",
+      "x": 1.68,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t10"
+    },
+    {
+      "id": "hall-t10-c3",
+      "kind": "chair_reading",
+      "x": 1.68,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t10"
+    },
+    {
+      "id": "hall-t10-c4",
+      "kind": "chair_reading",
+      "x": 2.92,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t10"
+    },
+    {
+      "id": "hall-t10-c5",
+      "kind": "chair_reading",
+      "x": 2.92,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t10"
+    },
+    {
+      "id": "hall-t10-c6",
+      "kind": "chair_reading",
+      "x": 2.92,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t10"
+    },
+    {
+      "id": "hall-t11",
+      "kind": "table_communal",
+      "x": 5.7,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-t11-c1",
+      "kind": "chair_reading",
+      "x": 5.08,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t11"
+    },
+    {
+      "id": "hall-t11-c2",
+      "kind": "chair_reading",
+      "x": 5.08,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t11"
+    },
+    {
+      "id": "hall-t11-c3",
+      "kind": "chair_reading",
+      "x": 5.08,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t11"
+    },
+    {
+      "id": "hall-t11-c4",
+      "kind": "chair_reading",
+      "x": 6.32,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t11"
+    },
+    {
+      "id": "hall-t11-c5",
+      "kind": "chair_reading",
+      "x": 6.32,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t11"
+    },
+    {
+      "id": "hall-t11-c6",
+      "kind": "chair_reading",
+      "x": 6.32,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t11"
+    },
+    {
+      "id": "hall-t12",
+      "kind": "table_communal",
+      "x": 9.1,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-t12-c1",
+      "kind": "chair_reading",
+      "x": 8.48,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t12"
+    },
+    {
+      "id": "hall-t12-c2",
+      "kind": "chair_reading",
+      "x": 8.48,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t12"
+    },
+    {
+      "id": "hall-t12-c3",
+      "kind": "chair_reading",
+      "x": 8.48,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": 1.5708,
+      "zone": "hall",
+      "tableId": "hall-t12"
+    },
+    {
+      "id": "hall-t12-c4",
+      "kind": "chair_reading",
+      "x": 9.72,
+      "y": 0.0,
+      "z": 1.3,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t12"
+    },
+    {
+      "id": "hall-t12-c5",
+      "kind": "chair_reading",
+      "x": 9.72,
+      "y": 0.0,
+      "z": 2.6,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t12"
+    },
+    {
+      "id": "hall-t12-c6",
+      "kind": "chair_reading",
+      "x": 9.72,
+      "y": 0.0,
+      "z": 3.9,
+      "rotationY": -1.5708,
+      "zone": "hall",
+      "tableId": "hall-t12"
+    },
+    {
+      "id": "hall-globe",
+      "kind": "globe_floor",
+      "x": 0.0,
+      "y": 0.0,
+      "z": -6.2,
+      "rotationY": 0.5,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-catalogue-n",
+      "kind": "catalogue_cabinet",
+      "x": -12.3,
+      "y": 0.0,
+      "z": -4.8,
+      "rotationY": 1.5708,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-catalogue-s",
+      "kind": "catalogue_cabinet",
+      "x": -12.3,
+      "y": 0.0,
+      "z": 2.8,
+      "rotationY": 1.5708,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-runner-w",
+      "kind": "rug",
+      "x": -6.2,
+      "y": 0.0,
+      "z": -1.0,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-runner-e",
+      "kind": "rug",
+      "x": 6.2,
+      "y": 0.0,
+      "z": -1.0,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-plant-1",
+      "kind": "plant_large",
+      "x": 12.9,
+      "y": 0.0,
+      "z": -3.9,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "hall-plant-2",
+      "kind": "plant_large",
+      "x": 12.9,
+      "y": 0.0,
+      "z": 1.9,
+      "rotationY": 0,
+      "zone": "hall"
+    },
+    {
+      "id": "gallery-desk-1",
+      "kind": "gallery_desk",
+      "x": -11.02,
+      "y": 4.6,
+      "z": -4.6,
+      "rotationY": -1.5708,
+      "zone": "gallery"
+    },
+    {
+      "id": "gallery-desk-1-c1",
+      "kind": "chair_reading",
+      "x": -11.64,
+      "y": 4.6,
+      "z": -4.6,
+      "rotationY": 1.5708,
+      "zone": "gallery",
+      "tableId": "gallery-desk-1"
+    },
+    {
+      "id": "gallery-desk-2",
+      "kind": "gallery_desk",
+      "x": -11.02,
+      "y": 4.6,
+      "z": -1.0,
+      "rotationY": -1.5708,
+      "zone": "gallery"
+    },
+    {
+      "id": "gallery-desk-2-c1",
+      "kind": "chair_reading",
+      "x": -11.64,
+      "y": 4.6,
+      "z": -1.0,
+      "rotationY": 1.5708,
+      "zone": "gallery",
+      "tableId": "gallery-desk-2"
+    },
+    {
+      "id": "gallery-desk-3",
+      "kind": "gallery_desk",
+      "x": -11.02,
+      "y": 4.6,
+      "z": 2.6,
+      "rotationY": -1.5708,
+      "zone": "gallery"
+    },
+    {
+      "id": "gallery-desk-3-c1",
+      "kind": "chair_reading",
+      "x": -11.64,
+      "y": 4.6,
+      "z": 2.6,
+      "rotationY": 1.5708,
+      "zone": "gallery",
+      "tableId": "gallery-desk-3"
+    },
+    {
+      "id": "hall-t01-board",
+      "kind": "whiteboard_mobile",
+      "x": -9.1,
+      "y": 0.0,
+      "z": -2.3,
+      "rotationY": 3.14159,
+      "zone": "hall",
+      "tableId": "hall-t01"
+    },
+    {
+      "id": "hall-t02-board",
+      "kind": "whiteboard_mobile",
+      "x": -5.7,
+      "y": 0.0,
+      "z": -2.3,
+      "rotationY": 3.14159,
+      "zone": "hall",
+      "tableId": "hall-t02"
+    },
+    {
+      "id": "hall-t03-board",
+      "kind": "whiteboard_mobile",
+      "x": -2.3,
+      "y": 0.0,
+      "z": -2.3,
+      "rotationY": 3.14159,
+      "zone": "hall",
+      "tableId": "hall-t03"
+    },
+    {
+      "id": "hall-t04-board",
+      "kind": "whiteboard_mobile",
+      "x": 2.3,
+      "y": 0.0,
+      "z": -2.3,
+      "rotationY": 3.14159,
+      "zone": "hall",
+      "tableId": "hall-t04"
+    },
+    {
+      "id": "hall-t05-board",
+      "kind": "whiteboard_mobile",
+      "x": 5.7,
+      "y": 0.0,
+      "z": -2.3,
+      "rotationY": 3.14159,
+      "zone": "hall",
+      "tableId": "hall-t05"
+    },
+    {
+      "id": "hall-t06-board",
+      "kind": "whiteboard_mobile",
+      "x": 9.1,
+      "y": 0.0,
+      "z": -2.3,
+      "rotationY": 3.14159,
+      "zone": "hall",
+      "tableId": "hall-t06"
+    },
+    {
+      "id": "hall-t07-board",
+      "kind": "whiteboard_mobile",
+      "x": -9.1,
+      "y": 0.0,
+      "z": 0.3,
+      "rotationY": 0.0,
+      "zone": "hall",
+      "tableId": "hall-t07"
+    },
+    {
+      "id": "hall-t08-board",
+      "kind": "whiteboard_mobile",
+      "x": -5.7,
+      "y": 0.0,
+      "z": 0.3,
+      "rotationY": 0.0,
+      "zone": "hall",
+      "tableId": "hall-t08"
+    },
+    {
+      "id": "hall-t09-board",
+      "kind": "whiteboard_mobile",
+      "x": -2.3,
+      "y": 0.0,
+      "z": 0.3,
+      "rotationY": 0.0,
+      "zone": "hall",
+      "tableId": "hall-t09"
+    },
+    {
+      "id": "hall-t10-board",
+      "kind": "whiteboard_mobile",
+      "x": 2.3,
+      "y": 0.0,
+      "z": 0.3,
+      "rotationY": 0.0,
+      "zone": "hall",
+      "tableId": "hall-t10"
+    },
+    {
+      "id": "hall-t11-board",
+      "kind": "whiteboard_mobile",
+      "x": 5.7,
+      "y": 0.0,
+      "z": 0.3,
+      "rotationY": 0.0,
+      "zone": "hall",
+      "tableId": "hall-t11"
+    },
+    {
+      "id": "hall-t12-board",
+      "kind": "whiteboard_mobile",
+      "x": 9.1,
+      "y": 0.0,
+      "z": 0.3,
+      "rotationY": 0.0,
+      "zone": "hall",
+      "tableId": "hall-t12"
+    }
+  ],
+  "lift": {
+    "shaft": {
+      "minX": 14.8,
+      "maxX": 16.4,
+      "minZ": -9.6,
+      "maxZ": -7.6
+    },
+    "door_x": 14.0,
+    "door_z": -8.6,
+    "door_width": 1.0,
+    "levels": [0.0, 4.6]
+  }
+}

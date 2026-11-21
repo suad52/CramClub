@@ -7,6 +7,8 @@ import { CAMERA } from "@ovr/shared";
  */
 export const runtime = {
   x: 0,
+  /** Feet height: 0 on the ground floor, 4.6 in the gallery, in between on the stairs. */
+  y: 0,
   z: 0,
   /** Velocity on the floor plane (m/s). */
   vx: 0,
@@ -26,12 +28,15 @@ export const runtime = {
   sitBlend: 0,
   /** Camera yaw to ease toward (e.g. after sitting down); cleared by mouse movement. */
   autoYaw: null as number | null,
+  /** Camera pitch to ease toward (looking down at the desk after sitting); cleared by mouse movement. */
+  autoPitch: null as number | null,
   /** Seconds since the player last sat down (guards against instant stand-up). */
   sinceSeated: 0,
 };
 
 export function resetRuntime(spawn: SpawnPoint) {
   runtime.x = spawn.x;
+  runtime.y = spawn.y;
   runtime.z = spawn.z;
   runtime.vx = 0;
   runtime.vz = 0;
@@ -43,5 +48,6 @@ export function resetRuntime(spawn: SpawnPoint) {
   runtime.speed = 0;
   runtime.sitBlend = 0;
   runtime.autoYaw = null;
+  runtime.autoPitch = null;
   runtime.sinceSeated = 0;
 }

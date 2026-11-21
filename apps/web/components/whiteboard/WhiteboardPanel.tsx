@@ -464,7 +464,7 @@ function Board({ id }: { id: string }) {
 
   useEffect(() => () => abort.current?.abort(), []);
 
-  const tableNumber = id.split("-").pop();
+  const tableNumber = Number(/(\d+)$/.exec(id)?.[1] ?? 0);
   const hint =
     tool === "pen"
       ? "Write or draw anything."

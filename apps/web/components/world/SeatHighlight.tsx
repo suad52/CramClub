@@ -19,7 +19,7 @@ export function SeatHighlight() {
   });
   if (!seat) return null;
   return (
-    <group ref={group} position={[seat.x, 0.012, seat.z]}>
+    <group ref={group} position={[seat.x, seat.y + 0.012, seat.z]}>
       <mesh rotation-x={-Math.PI / 2}>
         <ringGeometry args={[0.42, 0.48, 48]} />
         <meshBasicMaterial

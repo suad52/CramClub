@@ -14,6 +14,15 @@ export interface KeyActions {
   onToggleCamera?: () => void;
   onToggleWalkFast?: () => void;
   onOpenBoard?: () => void;
+  /** L: choose a lesson to play on the whiteboard. */
+  onLessons?: () => void;
+  /** J / N: join, or say "not now" to, the lesson playing on a nearby whiteboard. */
+  onJoinLesson?: () => void;
+  onDeclineLesson?: () => void;
+  /** F: the joined lesson full screen, and back. */
+  onLessonFullscreen?: () => void;
+  /** P: start a pomodoro on the table timer. */
+  onStartPomodoro?: () => void;
   /** Shift pressed (true) or released (false): frees the mouse cursor while held. */
   onFreeCursor?: (held: boolean) => void;
 }
@@ -38,9 +47,9 @@ function isTyping(target: EventTarget | null) {
 }
 
 /**
- * Tracks WASD / arrow keys in a ref (no re-renders) and fires one-shot actions for E, V and R,
- * plus press/release for Shift. Uses physical key codes so WASD stays in the same place on
- * AZERTY and other layouts.
+ * Tracks WASD / arrow keys in a ref (no re-renders) and fires one-shot actions for E, V, R, B, the
+ * whiteboard lesson keys (L, J, N, F) and P (the table timer), plus press/release for Shift. Uses
+ * physical key codes so WASD stays in the same place on AZERTY and other layouts.
  */
 export function useKeyboardMovement(actions: KeyActions) {
   const keys = useRef<MovementKeys>({ forward: false, back: false, left: false, right: false });
@@ -63,10 +72,19 @@ export function useKeyboardMovement(actions: KeyActions) {
       if (isShift(e.code)) {
         if (!shiftHeld) actionsRef.current.onFreeCursor?.(true);
         shiftHeld = true;
-      } else if (e.code === "KeyE") actionsRef.current.onInteract?.();
+        return;
+      }
+      // Browser shortcuts (Cmd+F, Ctrl+L, …) aren't game keys.
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.code === "KeyE") actionsRef.current.onInteract?.();
       else if (e.code === "KeyV") actionsRef.current.onToggleCamera?.();
       else if (e.code === "KeyR") actionsRef.current.onToggleWalkFast?.();
       else if (e.code === "KeyB") actionsRef.current.onOpenBoard?.();
+      else if (e.code === "KeyL") actionsRef.current.onLessons?.();
+      else if (e.code === "KeyJ") actionsRef.current.onJoinLesson?.();
+      else if (e.code === "KeyN") actionsRef.current.onDeclineLesson?.();
+      else if (e.code === "KeyF") actionsRef.current.onLessonFullscreen?.();
+      else if (e.code === "KeyP") actionsRef.current.onStartPomodoro?.();
     };
     const up = (e: KeyboardEvent) => {
       const move = MOVE_CODES[e.code];

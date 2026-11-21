@@ -35,11 +35,15 @@ interface GameStore {
   menuOpen: boolean;
   /** Controls guide (shown on first entry). */
   guideOpen: boolean;
+  /** "My Progress" panel over the library (holds the game still, like the guide). */
+  progressOpen: boolean;
   zoneId: ZoneId | null;
   /** Seat the player could sit in right now, if any. */
   nearbySeatId: string | null;
   /** Collaborative table whose whiteboard the player is standing at, if any. */
   nearbyBoardId: string | null;
+  /** Lift call point the player is standing at, if any. */
+  nearbyLiftId: string | null;
   /** Seat the player is sitting in, if any. */
   seatId: string | null;
   settings: Settings;
@@ -57,9 +61,11 @@ interface GameStore {
   toggleWalkFast: () => void;
   setMenuOpen: (open: boolean) => void;
   setGuideOpen: (open: boolean) => void;
+  setProgressOpen: (open: boolean) => void;
   setZone: (zone: ZoneId | null) => void;
   setNearbySeat: (seatId: string | null) => void;
   setNearbyBoard: (boardId: string | null) => void;
+  setNearbyLift: (liftId: string | null) => void;
   setSeat: (seatId: string | null) => void;
   updateSettings: (patch: Partial<Settings>) => void;
 }
@@ -83,9 +89,11 @@ export const useGameStore = create<GameStore>()(
       walkFast: false,
       menuOpen: false,
       guideOpen: false,
+      progressOpen: false,
       zoneId: null,
       nearbySeatId: null,
       nearbyBoardId: null,
+      nearbyLiftId: null,
       seatId: null,
       settings: DEFAULT_SETTINGS,
       guideSeen: false,
@@ -105,9 +113,11 @@ export const useGameStore = create<GameStore>()(
       setMenuOpen: (menuOpen) => set({ menuOpen }),
       setGuideOpen: (guideOpen) =>
         set((s) => ({ guideOpen, guideSeen: s.guideSeen || !guideOpen })),
+      setProgressOpen: (progressOpen) => set({ progressOpen }),
       setZone: (zoneId) => set({ zoneId }),
       setNearbySeat: (nearbySeatId) => set({ nearbySeatId }),
       setNearbyBoard: (nearbyBoardId) => set({ nearbyBoardId }),
+      setNearbyLift: (nearbyLiftId) => set({ nearbyLiftId }),
       setSeat: (seatId) => set({ seatId }),
       updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
     }),

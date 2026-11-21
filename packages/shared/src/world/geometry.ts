@@ -1,4 +1,4 @@
-/** Floor-plane geometry helpers. The library is one flat floor, so collision lives on X/Z. */
+/** Floor-plane geometry helpers (X/Z). Heights live with the library plan (walk surfaces, colliders). */
 
 export interface Vec2 {
   x: number;
@@ -11,30 +11,6 @@ export interface Rect {
   minZ: number;
   maxZ: number;
 }
-
-/** An oriented box footprint: centre, half extents along its local X/Z, rotation about Y. */
-export interface BoxCollider {
-  kind: "box";
-  id: string;
-  x: number;
-  z: number;
-  halfW: number;
-  halfD: number;
-  rotationY: number;
-  /** Height of the obstacle in metres; used to decide whether it blocks the camera. */
-  height: number;
-}
-
-export interface CircleCollider {
-  kind: "circle";
-  id: string;
-  x: number;
-  z: number;
-  radius: number;
-  height: number;
-}
-
-export type Collider = BoxCollider | CircleCollider;
 
 /** World-space unit vector for a Y rotation. Rotation 0 faces +Z; π/2 faces +X. */
 export function facingVector(rotationY: number): Vec2 {
@@ -74,4 +50,14 @@ export function wrapAngle(angle: number): number {
   if (a <= -Math.PI) a += Math.PI * 2;
   if (a > Math.PI) a -= Math.PI * 2;
   return a;
+}
+
+/** Small deterministic string hash (FNV-1a), for decoration and avatar seeds. */
+export function hashString(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
 }

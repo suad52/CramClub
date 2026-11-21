@@ -18,10 +18,15 @@
     "format:check": "prettier --check .",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
     "avatar:build": "\"${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}\" -b --factory-startup --python-exit-code 1 --python art/avatars/scripts/build_kit.py && pnpm avatar:pack",
-    "avatar:pack": "gltf-transform meshopt art/avatars/build/avatar-kit.raw.glb apps/web/public/models/avatars/avatar-kit.glb --level medium"
+    "avatar:pack": "gltf-transform meshopt art/avatars/build/avatar-kit.raw.glb apps/web/public/models/avatars/avatar-kit.glb --level medium",
+    "library:plan": "python3 art/library/scripts/plan.py",
+    "library:export": "\"${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}\" -b --factory-startup --python-exit-code 1 --python art/library/scripts/export_library.py -- --blend \"${LIBRARY_BLEND:-art/library/build/library.blend}\" --out art/library/build/library.raw.glb",
+    "library:pack": "node art/library/scripts/pack_books.mjs art/library/build/library.raw.glb art/library/build/library.books.glb && gltf-transform optimize art/library/build/library.books.glb apps/web/public/models/library/library.glb --compress meshopt --texture-compress webp --texture-size 2048 --instance true --instance-min 2 --join true --simplify false --flatten false"
   },
   "devDependencies": {
     "@gltf-transform/cli": "4.5.1",
+    "@gltf-transform/core": "4.5.1",
+    "@gltf-transform/extensions": "4.5.1",
     "prettier": "^3.10.1",
     "typescript": "~6.0.3"
   }

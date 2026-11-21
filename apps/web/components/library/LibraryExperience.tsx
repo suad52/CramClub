@@ -10,6 +10,7 @@ import { TitleScreen } from "@/components/entry/TitleScreen";
 import { LibraryScene } from "@/components/world/LibraryScene";
 import { useProfileStore } from "@/lib/avatar/profile";
 import { exitPointerLock } from "@/lib/game/pointer";
+import { usePomodoro } from "@/lib/game/pomodoro";
 import { resetRuntime, runtime } from "@/lib/game/runtime";
 import {
   faceState,
@@ -18,8 +19,10 @@ import {
   useTrackingStore,
 } from "@/lib/facial-tracking/tracker";
 import { useGameStore } from "@/lib/game/store";
+import { publishLiveFrame, useBoardLessons } from "@/lib/learning-studio/boardLessons";
 import { WhiteboardPanel } from "@/components/whiteboard/WhiteboardPanel";
 import { useWhiteboardStore } from "@/lib/whiteboard/store";
+import { BoardLessonsLayer } from "./BoardLessons";
 import { FaceViewFrame, TrackingPanel } from "./ExpressionTracking";
 import { Hud } from "./Hud";
 import {
@@ -29,6 +32,8 @@ import {
   PauseMenu,
   TouchDeviceNotice,
 } from "./Overlays";
+import { PomodoroLayer } from "./Pomodoro";
+import { ProgressOverlay } from "./ProgressOverlay";
 
 // Stable reference: R3F re-applies renderer props whenever this object changes identity.
 // Neutral tone mapping keeps the stylized palette true; post-processing uses the same curve.
@@ -100,6 +105,7 @@ export default function LibraryExperience() {
   const [contextLost, setContextLost] = useState(false);
   const quality = useGameStore((s) => s.settings.quality);
   const phase = useGameStore((s) => s.phase);
+  const lessonFullscreen = useBoardLessons((s) => s.fullscreen);
 
   useEffect(() => {
     // Fresh session state every time someone walks in.
@@ -112,6 +118,7 @@ export default function LibraryExperience() {
     s.setNearbyBoard(null);
     s.setMenuOpen(false);
     s.setGuideOpen(false);
+    s.setProgressOpen(false);
     // Every visit starts on the title screen; the controls guide opens after entering.
     s.setPhase("title");
     if (process.env.NODE_ENV !== "production") {
@@ -121,13 +128,19 @@ export default function LibraryExperience() {
         store: useGameStore,
         tracking: { faceState, store: useTrackingStore, selfTestModel },
         whiteboard: useWhiteboardStore,
+        boardLessons: useBoardLessons,
+        pomodoro: usePomodoro,
       };
     }
     return () => {
       useGameStore.getState().setReady(false);
-      // Leaving the library always turns the camera off and closes any board.
+      // Leaving the library always turns the camera off, closes any board and takes every lesson
+      // off the boards. It also ends a running pomodoro: it doesn't count.
+      usePomodoro.getState().abandon("left-library");
       stopTracking();
       useWhiteboardStore.getState().close();
+      useBoardLessons.getState().reset();
+      publishLiveFrame(null);
     };
   }, []);
 
@@ -155,8 +168,8 @@ export default function LibraryExperience() {
         dpr={quality === "high" ? [1, 2] : quality === "balanced" ? [1, 1.5] : 1}
         gl={GL_PROPS}
         camera={{ fov: 60, near: 0.05, far: 500, position: [0, 1.6, 11] }}
-        // The studio has its own canvas; pause the library behind it.
-        frameloop={phase === "creator" ? "never" : "always"}
+        // The studio and a full-screen lesson cover the library completely; pause it behind them.
+        frameloop={phase === "creator" || lessonFullscreen ? "never" : "always"}
         onCreated={({ gl }) => {
           gl.domElement.addEventListener("webglcontextlost", (e) => {
             e.preventDefault();
@@ -169,10 +182,13 @@ export default function LibraryExperience() {
       </Canvas>
       <ClickToLook />
       <Hud />
+      <BoardLessonsLayer />
+      <PomodoroLayer />
       <FaceViewFrame />
       <TrackingPanel />
       <WhiteboardPanel />
       <PauseMenu />
+      <ProgressOverlay />
       <ControlsGuide />
       <TitleScreen />
       {phase === "creator" && <Studio />}

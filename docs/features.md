@@ -89,12 +89,57 @@ sitting at that table.
 | Free fallback              | Done   | Without billing: same place and colour, in a handwriting font                                 |
 | Answer card                | Done   | Shows what the AI read, the full answer, a copy button and "AI can make mistakes"             |
 | Shared with the table      | Later  | Phase 5: Yjs so everyone at the table sees the same board                                     |
+| Lessons on the board       | Done   | L at a rolling board: it flips over to play a Studio lesson, J joins (learning-studio.md)     |
 
 Verified against the real Gemini API (2026-11-19): reading and answering works with Gemini 4
 Hydrogen (about 2–3 s; read "7 − 2 =" correctly 4/4 times). The answer is written right under the
 question at the same size and in the question's ink colour. A **free-tier key can't use the image
 model** (Google returns "limit: 0 … Free Tier"), so it falls back to the handwriting font. Copying
 the student's actual handwriting needs billing turned on and hasn't been seen working yet.
+
+## Table timer: Pomodoro (built early from Phase 5, single-player)
+
+Sit at any table and a little LED desk clock appears in front of you. Press **P** to start a
+25-minute pomodoro. Full guide: [table-timer.md](table-timer.md).
+
+| Feature               | Status | Notes                                                                                                |
+| --------------------- | ------ | ---------------------------------------------------------------------------------------------------- |
+| Clock on the table    | Done   | Pops up when you sit, away from the lamp; mm:ss, phase, progress, set dots; red/green; alarm buzz    |
+| Timer card            | Done   | Top left: phase, time left, progress, the set's tomatoes, today's count, your task                   |
+| Pomodoro rules        | Done   | 25 / 5 / 15 min, long break every 4th; breaks start by themselves; no pause; interrupted = void      |
+| Adjustable            | Done   | Gear: focus 5–90 min, both breaks, long-break interval, strict, ticking, full screen                 |
+| Stay at the table     | Done   | Moving and E don't stand you up mid-pomodoro; Leave table asks, then gives the pomodoro up           |
+| Stay in the tab       | Done   | Full screen (Esc held in Chrome/Edge), close/reload asks, new-tab buttons wait, title calls you back |
+| Strict / gentle       | Done   | Strict: away over 10 s voids it, shorter is a warning. Gentle: the timer waits for you               |
+| Sounds                | Done   | Start beeps, optional tick, alarm-clock beeps (WebAudio, no files)                                   |
+| Saved                 | Done   | Settings, task and today's count in this browser; a running pomodoro never survives a reload         |
+| Shared with the table | Later  | Phase 5: others at the table see your clock and phase                                                |
+
+Verified so far: the rules have unit tests (whole sets, today's count across midnight, strict and
+gentle leaving, the 10 s grace, settings limits), as do the seat lock and the clock's spot at all
+75 seats (checked against the shipped model's props). A web page can't stop anyone switching tabs,
+so leaving is detected and costs the pomodoro instead. Checked by hand in a WebGL browser on
+2026-11-20: sitting, the desk view, P, the seat lock, a 3 s and a 12 s tab switch, the alarm into a
+break, Leave table (full screen and pointer lock can't be tested headless).
+
+## Learning analytics on Tiger Data (Hack Western 13)
+
+Your progress, a weekly leaderboard and community trends from real, server-validated learning
+activity stored in Tiger Data. Full guide: [learning-analytics.md](learning-analytics.md).
+
+| Feature          | Status | Notes                                                                                     |
+| ---------------- | ------ | ----------------------------------------------------------------------------------------- |
+| Event pipeline   | Done   | Pomodoros, lessons, knowledge checks; server-timed, server-graded, idempotent XP ledger   |
+| My Progress      | Done   | Totals, streaks, 30-day chart, week vs week, subjects (mastery estimate), private history |
+| Leaderboard      | Done   | Weekly/monthly XP, deterministic ties, opt-out, no titles or ids exposed                  |
+| Community        | Done   | Subjects this week, hour-of-day rhythm, 30-day trend; aggregated, groups < 3 hidden       |
+| Tiger Data       | Done   | Hypertable, continuous aggregate with real-time aggregation, columnstore after 30 days    |
+| Accounts         | Later  | Anonymous signed-cookie learners until OVR has accounts                                   |
+| Group challenges | Later  | Needs multiplayer                                                                         |
+
+Verified 2026-11-20 against the live Tiger Cloud service: `pnpm --filter web db:smoke` (11 checks:
+early/late sessions refused, no overlap, XP once, answer keys fixed, forged cookie, privacy), and a
+pomodoro started and finished in the real library showing up on the dashboard and leaderboard.
 
 ## Coming next
 
@@ -103,6 +148,6 @@ the student's actual handwriting needs billing turned on and hasn't been seen wo
 | 2     | Display name above avatars, settings panel, more zone interactions                        |
 | 3     | Colyseus multiplayer: public rooms (cap 15), remote avatars, interpolation, server checks |
 | 4     | Study status, LiveKit proximity voice, optional on-device expression tracking             |
-| 5     | Shared whiteboards (tldraw + Yjs; check the tldraw licence first), Pomodoro               |
+| 5     | Shared whiteboards (tldraw + Yjs; check the tldraw licence first), shared Pomodoro        |
 | 6     | AI teacher: PDF upload, grounded answers with page references, ElevenLabs read-aloud      |
 | 7     | Resource bookshelves, polish, deployment                                                  |

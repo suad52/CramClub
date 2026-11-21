@@ -11,7 +11,11 @@
     "start": "next start --port 3000",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "db:migrate": "node db/migrate.mjs",
+    "db:seed-demo": "node db/seed-demo.mjs",
+    "db:clear-demo": "node db/seed-demo.mjs --clear",
+    "db:smoke": "node db/smoke.mjs"
   },
   "dependencies": {
     "@google/genai": "3.4.0",
@@ -23,11 +27,14 @@
     "hersheytext": "2.0.0",
     "next": "16.4.6",
     "perfect-freehand": "1.2.3",
+    "postgres": "3.4.7",
     "postprocessing": "^6.39.6",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "server-only": "0.0.1",
     "three": "^0.187.0",
+    "unpdf": "^2.2.1",
+    "zod": "^4.6.7",
     "zustand": "^5.1.0"
   },
   "devDependencies": {

@@ -4,10 +4,11 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { MathUtils, type PerspectiveCamera, Vector3 } from "three";
 import { CAMERA, PLAYER, isCameraBlocked, wrapAngle } from "@ovr/shared";
-import { isBoardOpen } from "@/lib/game/actions";
+import { getSeat, isBoardOpen } from "@/lib/game/actions";
 import { registerCanvas } from "@/lib/game/pointer";
 import { runtime } from "@/lib/game/runtime";
 import { useGameStore } from "@/lib/game/store";
+import { isLessonOverlayOpen } from "@/lib/learning-studio/boardLessons";
 
 const forward = new Vector3();
 const right = new Vector3();
@@ -20,6 +21,7 @@ const avatarPos = new Vector3();
 
 const CAMERA_RADIUS = 0.22;
 const SHOULDER_OFFSET = 0.3;
+const SEATED_DISTANCE = 1.9;
 const INTRO_SECONDS = 2.2;
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
@@ -27,7 +29,7 @@ const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 
 function freeRadius(angle: number, max: number) {
   let r = 1.4;
   for (; r < max; r += 0.1) {
-    probe.set(runtime.x + Math.sin(angle) * r, 1.5, runtime.z + Math.cos(angle) * r);
+    probe.set(runtime.x + Math.sin(angle) * r, runtime.y + 1.5, runtime.z + Math.cos(angle) * r);
     if (isCameraBlocked(probe, CAMERA_RADIUS + 0.15)) return r - 0.2;
   }
   return max;
@@ -56,10 +58,10 @@ function titleShot(time: number, out: { pos: Vector3; target: Vector3 }) {
   }
   const angle = shotCache.angle + Math.sin(time * 0.09) * 0.16;
   const radius = Math.min(4.3, shotCache.radius);
-  avatarPos.set(runtime.x, 0, runtime.z);
+  avatarPos.set(runtime.x, runtime.y, runtime.z);
   out.pos.set(
     avatarPos.x + Math.sin(angle) * radius,
-    1.3 + Math.sin(time * 0.13) * 0.04,
+    runtime.y + 1.3 + Math.sin(time * 0.13) * 0.04,
     avatarPos.z + Math.cos(angle) * radius,
   );
   // Look a little to the avatar's side so they sit right of centre.
@@ -67,7 +69,11 @@ function titleShot(time: number, out: { pos: Vector3; target: Vector3 }) {
   const dz = avatarPos.z - out.pos.z;
   const len = Math.hypot(dx, dz) || 1;
   const side = 0.3 * radius;
-  out.target.set(avatarPos.x + (dz / len) * side, 1.18, avatarPos.z - (dx / len) * side);
+  out.target.set(
+    avatarPos.x + (dz / len) * side,
+    runtime.y + 1.18,
+    avatarPos.z - (dx / len) * side,
+  );
 }
 
 /**
@@ -94,8 +100,17 @@ export function CameraRig() {
     };
     const onMove = (e: MouseEvent) => {
       if (document.pointerLockElement !== el && !dragging) return;
-      const { settings, cameraMode, menuOpen, guideOpen, phase } = useGameStore.getState();
-      if (phase !== "playing" || menuOpen || guideOpen || isBoardOpen()) return;
+      const { settings, cameraMode, menuOpen, guideOpen, progressOpen, phase } =
+        useGameStore.getState();
+      if (
+        phase !== "playing" ||
+        menuOpen ||
+        guideOpen ||
+        progressOpen ||
+        isBoardOpen() ||
+        isLessonOverlayOpen()
+      )
+        return;
       const sens = settings.mouseSensitivity / 1000;
       runtime.yaw = wrapAngle(runtime.yaw - e.movementX * sens);
       runtime.pitch -= e.movementY * sens * (settings.invertY ? -1 : 1);
@@ -106,6 +121,7 @@ export function CameraRig() {
         fp ? CAMERA.firstPersonMaxPitch : CAMERA.maxPitch,
       );
       runtime.autoYaw = null;
+      runtime.autoPitch = null;
     };
     const onWheel = (e: WheelEvent) => {
       const s = useGameStore.getState();
@@ -114,7 +130,9 @@ export function CameraRig() {
         s.cameraMode !== "third-person" ||
         s.menuOpen ||
         s.guideOpen ||
-        isBoardOpen()
+        s.progressOpen ||
+        isBoardOpen() ||
+        isLessonOverlayOpen()
       )
         return;
       runtime.distance = MathUtils.clamp(
@@ -127,8 +145,16 @@ export function CameraRig() {
       const locked = document.pointerLockElement === el;
       const store = useGameStore.getState();
       store.setPointerLocked(locked);
-      // Esc releases the pointer: treat that as "pause" (but not when Shift freed the cursor).
-      if (!locked && !store.guideOpen && !store.cursorFree) store.setMenuOpen(true);
+      // Esc releases the pointer: treat that as "pause" (but not when Shift freed the cursor, or
+      // when the lesson picker, a full-screen lesson or My Progress took the mouse).
+      if (
+        !locked &&
+        !store.guideOpen &&
+        !store.progressOpen &&
+        !store.cursorFree &&
+        !isLessonOverlayOpen()
+      )
+        store.setMenuOpen(true);
       if (locked) store.setMenuOpen(false);
     };
     document.addEventListener("mousedown", onDown);
@@ -159,6 +185,10 @@ export function CameraRig() {
       runtime.yaw = wrapAngle(runtime.yaw + diff * (1 - Math.exp(-4 * dt)));
       if (Math.abs(diff) < 0.01) runtime.autoYaw = null;
     }
+    if (runtime.autoPitch !== null) {
+      runtime.pitch = MathUtils.damp(runtime.pitch, runtime.autoPitch, 4, dt);
+      if (Math.abs(runtime.autoPitch - runtime.pitch) < 0.005) runtime.autoPitch = null;
+    }
     // Leaving first person while looking steeply up: settle into the third-person range.
     if (!fp)
       runtime.pitch = MathUtils.damp(
@@ -181,18 +211,26 @@ export function CameraRig() {
       -Math.cos(runtime.yaw) * Math.cos(runtime.pitch),
     );
     right.set(Math.cos(runtime.yaw), 0, -Math.sin(runtime.yaw));
-    pivot.set(runtime.x, MathUtils.lerp(eyeY, orbitY, view), runtime.z);
+    pivot.set(runtime.x, runtime.y + MathUtils.lerp(eyeY, orbitY, view), runtime.z);
     // In first person, sit just in front of the face so the near plane never clips the head.
     pivot.addScaledVector(forward, 0.08 * (1 - view));
     // Over-the-shoulder offset, pulled in if a shelf is right beside us.
+    // Seated, your own chair's back mustn't push the camera into your head (it hid the desk).
+    const chair = getSeat(useGameStore.getState().seatId)?.furnitureId;
     probe.copy(pivot).addScaledVector(right, SHOULDER_OFFSET * view);
-    if (!isCameraBlocked(probe, CAMERA_RADIUS)) pivot.copy(probe);
+    if (!isCameraBlocked(probe, CAMERA_RADIUS, chair)) pivot.copy(probe);
 
-    const want = runtime.distance * view;
+    // Seated, the camera comes in over your shoulder so your desk (and its timer) fills the view.
+    const distance = MathUtils.lerp(
+      runtime.distance,
+      Math.min(runtime.distance, SEATED_DISTANCE),
+      runtime.sitBlend,
+    );
+    const want = distance * view;
     let allowed = want;
     for (let d = 0.1; d <= want; d += 0.08) {
       probe.copy(pivot).addScaledVector(forward, -d);
-      if (isCameraBlocked(probe, CAMERA_RADIUS)) {
+      if (isCameraBlocked(probe, CAMERA_RADIUS, chair)) {
         allowed = Math.max(0, d - 0.12);
         break;
       }

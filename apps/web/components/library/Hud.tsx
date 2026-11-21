@@ -1,33 +1,49 @@
 "use client";
 
 import { ZONES } from "@ovr/shared";
-import { WHITEBOARDS, getSeat, interact, openTableBoard } from "@/lib/game/actions";
+import {
+  WHITEBOARDS,
+  getLift,
+  getSeat,
+  hasLessonFace,
+  interact,
+  joinNearbyLesson,
+  openLessonPicker,
+  openTableBoard,
+} from "@/lib/game/actions";
 import { exitPointerLock } from "@/lib/game/pointer";
+import { isFocusing, usePomodoro } from "@/lib/game/pomodoro";
 import { useGameStore } from "@/lib/game/store";
+import { tableNumberOf, useBoardLessons } from "@/lib/learning-studio/boardLessons";
 import { TrackingButton } from "./ExpressionTracking";
+import { openProgress } from "./ProgressOverlay";
 
 const zoneById = new Map(ZONES.map((z) => [z.id, z]));
 
 function IconButton({
   label,
   shortcut,
+  unavailable,
   onClick,
   children,
 }: {
   label: string;
   shortcut?: string;
+  /** Why it can't be used right now; it stays focusable so the reason can be read. */
+  unavailable?: string;
   onClick: () => void;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
-      title={shortcut ? `${label} (${shortcut})` : label}
-      className="pointer-events-auto flex h-10 items-center gap-2 rounded-full bg-cream/90 px-3.5 text-sm font-bold text-ink shadow-md ring-1 ring-ink/10 backdrop-blur transition hover:bg-cream focus-visible:outline-3 focus-visible:outline-ember"
+      onClick={unavailable ? undefined : onClick}
+      aria-disabled={unavailable ? true : undefined}
+      title={unavailable ?? (shortcut ? `${label} (${shortcut})` : label)}
+      className={`pointer-events-auto flex h-10 items-center gap-2 rounded-full bg-cream/90 px-3.5 text-sm font-bold text-ink shadow-md ring-1 ring-ink/10 backdrop-blur transition focus-visible:outline-3 focus-visible:outline-ember ${unavailable ? "cursor-not-allowed opacity-60" : "hover:bg-cream"}`}
     >
       {children}
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{unavailable ? `${label}. ${unavailable}` : label}</span>
       {shortcut && <span className="kbd !h-6 !min-w-6 !text-[0.7rem]">{shortcut}</span>}
     </button>
   );
@@ -79,22 +95,63 @@ const PROMPT_BUTTON =
 
 function InteractionPrompt() {
   const seatId = useGameStore((s) => s.seatId);
+  // Mid-pomodoro you stay seated; the table timer's "Leave table" is the way out.
+  const seatLocked = usePomodoro((s) => !!seatId && isFocusing(s));
   const nearby = useGameStore((s) => s.nearbySeatId);
   const nearbyBoard = useGameStore((s) => s.nearbyBoardId);
+  const nearbyLift = useGameStore((s) => s.nearbyLiftId);
   const seat = getSeat(seatId);
-  const label = seatId ? "Stand up" : nearbyBoard ? "Use whiteboard" : getSeat(nearby)?.prompt;
-  const tableBoard = seat?.tableId && WHITEBOARDS.some((b) => b.boardId === seat.tableId);
-  if (!label) return null;
+  const label = seatId
+    ? "Stand up"
+    : nearbyBoard
+      ? "Use whiteboard"
+      : nearbyLift
+        ? getLift(nearbyLift)?.label
+        : getSeat(nearby)?.prompt;
+  const tableBoard =
+    seat?.tableId && WHITEBOARDS.some((b) => b.boardId === seat.tableId) ? seat.tableId : null;
+  // The board L puts a lesson on (see lessonBoardId), and a nearby lesson you could join.
+  const atBoard = nearbyBoard ?? tableBoard;
+  const lessonBoard = hasLessonFace(atBoard) ? atBoard : null;
+  const boardHasLesson = useBoardLessons((s) => !!lessonBoard && !!s.boards[lessonBoard]);
+  // Joining later, after "Not now" (until then the join card offers it).
+  const joinable = useBoardLessons((s) => {
+    const id = s.inRangeBoardId;
+    const run = id ? s.boards[id] : undefined;
+    return run && s.joinedBoardId !== id && s.declined[run.boardId] === run.startedAt ? id : null;
+  });
+  const lessonOverlay = useBoardLessons((s) => s.fullscreen || s.pickerBoardId !== null);
+  // Keeps clear of the lesson preview in the bottom-left corner (a long row wraps upwards).
+  const previewShown = useBoardLessons((s) => s.joinedBoardId !== null);
+  if (!label || lessonOverlay) return null;
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-10 flex justify-center gap-3">
-      <button type="button" onClick={() => interact()} className={PROMPT_BUTTON}>
-        <span className="kbd">E</span>
-        {label}
-      </button>
+    <div
+      className={`pointer-events-none absolute inset-x-0 bottom-10 flex flex-wrap-reverse justify-center gap-3 ${previewShown ? "px-[21.5rem]" : ""}`}
+    >
+      {!seatLocked && (
+        <button type="button" onClick={() => interact()} className={PROMPT_BUTTON}>
+          <span className="kbd">E</span>
+          {label}
+        </button>
+      )}
       {tableBoard && (
         <button type="button" onClick={() => openTableBoard()} className={PROMPT_BUTTON}>
           <span className="kbd">B</span>
           Table whiteboard
+        </button>
+      )}
+      {lessonBoard && (
+        <button type="button" onClick={() => openLessonPicker()} className={PROMPT_BUTTON}>
+          <span className="kbd">L</span>
+          {boardHasLesson ? "Lessons" : "Play a lesson"}
+        </button>
+      )}
+      {lessonBoard && joinable && (
+        <button type="button" onClick={() => joinNearbyLesson()} className={PROMPT_BUTTON}>
+          <span className="kbd">J</span>
+          {joinable === lessonBoard
+            ? "Join lesson"
+            : `Join Table ${tableNumberOf(joinable)}'s lesson`}
         </button>
       )}
     </div>
@@ -120,6 +177,7 @@ export function Hud() {
   const setGuideOpen = useGameStore((s) => s.setGuideOpen);
   const setMenuOpen = useGameStore((s) => s.setMenuOpen);
   const phase = useGameStore((s) => s.phase);
+  const focusing = usePomodoro(isFocusing);
   if (!ready || phase !== "playing") return null;
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
@@ -128,6 +186,24 @@ export function Hud() {
         <WalkFastChip />
       </div>
       <div className="absolute top-4 right-4 flex gap-2">
+        <IconButton
+          label="AI Learning Studio: turn your notes into a lesson (opens in a new tab)"
+          unavailable={focusing ? "Opens a new tab — available after your pomodoro" : undefined}
+          onClick={() => {
+            exitPointerLock();
+            window.open("/learning-studio", "_blank", "noopener");
+          }}
+        >
+          <span aria-hidden>🎓</span>
+          <span className="hidden lg:inline">Learning Studio</span>
+        </IconButton>
+        <IconButton
+          label="My Progress: your focus time, lessons, quizzes and leaderboards"
+          onClick={openProgress}
+        >
+          <span aria-hidden>📈</span>
+          <span className="hidden lg:inline">My Progress</span>
+        </IconButton>
         <TrackingButton />
         <IconButton
           label={
