@@ -7,10 +7,13 @@ import { useGameStore } from "@/lib/game/store";
 import { trapTab } from "./ProgressOverlay";
 
 /*
- * The AI Librarian as a panel over the library (the HUD's "Ask the Librarian", or E at her desk),
- * opened with openLibrarian() in lib/game/actions.ts. Like My Progress, `librarianOpen` in the game
- * store holds the game still while it's open: no walking, game keys or mouse-look, and the mouse
- * stays free. Opening sources in a new tab is switched off mid-pomodoro (see SourceLink).
+ * The AI Librarian over the library (the HUD's "Ask the Librarian", or E at her desk), opened with
+ * openLibrarian() in lib/game/actions.ts: a dialogue box along the bottom of the screen, with her
+ * in the 3D scene above it (the camera frames her while it's open, see CameraRig). Like My
+ * Progress, `librarianOpen` in the game store holds the game still while it's open: no walking,
+ * game keys or mouse-look, and the mouse stays free. Clicking the scene above doesn't close it
+ * (Close and Esc do). While a lesson plays inside, the box grows to (almost) the whole screen.
+ * Opening sources in a new tab is switched off mid-pomodoro (see SourceLink).
  */
 
 /** Closes the panel; from a click it also captures the mouse again for looking around. */
@@ -63,8 +66,12 @@ function LibrarianDialog() {
 
   return (
     <div
-      className="studio-fade-in absolute inset-0 z-[22] grid place-items-center bg-ink/40 p-3 backdrop-blur-[3px] sm:p-6"
-      onMouseDown={(e) => e.target === e.currentTarget && closeLibrarian(true)}
+      // No scrim over the scene: she's up there. A soft shade along the bottom settles the box
+      // (a full walnut scrim while a lesson plays). A click on the scene keeps focus in the box.
+      className="absolute inset-0 z-[22] flex items-end justify-center bg-[linear-gradient(to_top,rgb(31_26_22/0.45),rgb(31_26_22/0.12)_36%,transparent_60%)] px-4 pb-5 transition-[opacity,background-color] duration-200 ease-out starting:opacity-0 motion-reduce:transition-none has-[[data-lesson-player]]:bg-walnut/50 sm:pb-6"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) e.preventDefault();
+      }}
     >
       <div
         ref={box}
@@ -78,7 +85,10 @@ function LibrarianDialog() {
           if (!e.key.startsWith("Arrow")) return;
           if (!(e.target as HTMLElement).closest("[data-lesson-player]")) e.stopPropagation();
         }}
-        className="flex h-full max-h-[56rem] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-parchment text-ink shadow-[0_30px_80px_-20px_rgb(20_12_6/0.6)] ring-1 ring-ink/10 outline-none"
+        // The dialogue box (the panel draws it: a big cream sticker card, with her name tab as a
+        // ribbon on its top edge): the lower part of the screen, up to 1040px wide; nearly all of
+        // it while a lesson plays inside.
+        className="relative flex h-[42dvh] max-h-[460px] min-h-[300px] w-full max-w-[1040px] flex-col text-walnut transition-[opacity,translate,height,max-width] duration-200 ease-out outline-none starting:translate-y-5 starting:opacity-0 motion-reduce:transition-none has-[[data-lesson-player]]:h-[calc(100dvh-5rem)] has-[[data-lesson-player]]:max-h-none has-[[data-lesson-player]]:max-w-[1280px]"
       >
         <LibrarianPanel
           context="library"

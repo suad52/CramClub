@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { IconInfo } from "@/components/ui/icons";
 
 const QUERY = "(hover: none) and (pointer: coarse)";
 
@@ -26,10 +27,21 @@ export function DesktopNotice({ className = "" }: { className?: string }) {
   return (
     <p
       role="note"
-      className={`rounded-2xl border border-ember/30 bg-ember/10 px-4 py-3 text-sm text-ink ${className}`}
+      className={`flex gap-3 rounded-[18px] border-[3px] border-walnut bg-canvas px-4 py-3 text-sm leading-6 font-medium text-ink-soft shadow-[0_4px_0_#1f1a16] ${className}`}
     >
-      OVR is built for a computer with a keyboard and mouse. Phones and tablets aren&apos;t
-      supported yet, so the library may be hard to move around in on this device.
+      <span
+        aria-hidden
+        className="mt-0.5 grid h-7 w-7 shrink-0 -rotate-6 place-items-center rounded-full border-2 border-walnut bg-sun text-walnut shadow-[0_2px_0_#1f1a16]"
+      >
+        <IconInfo size={16} strokeWidth={2.5} />
+      </span>
+      <span>
+        <strong className="font-display font-semibold text-walnut">
+          OVR is built for a computer with a keyboard and mouse.
+        </strong>{" "}
+        Phones and tablets aren&apos;t supported yet, so the library may be hard to move around in
+        on this device.
+      </span>
     </p>
   );
 }

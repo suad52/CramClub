@@ -1,0 +1,110 @@
+# OVR on one Vultr Cloud Compute server (docs/vultr.md). Run from this directory:
+#   docker compose up -d --build        (deploy.sh does this for you)
+#
+# SITE_HOST is read from deploy/.env, which deploy.sh writes (a domain, or <ip-dashes>.sslip.io).
+# Secrets are in deploy/env/web.env and deploy/env/game.env (copied from the .example files; never
+# committed, never baked into an image). Only Caddy publishes ports (80/443); the app containers
+# are reachable only on Compose's private network.
+
+name: ovr
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+      args:
+        # Inlined into the browser bundle at build time.
+        NEXT_PUBLIC_GAME_SERVER_URL: wss://${SITE_HOST}/game
+        NEXT_PUBLIC_FACE_MODEL_URL: ${NEXT_PUBLIC_FACE_MODEL_URL:-}
+        NEXT_PUBLIC_HAND_MODEL_URL: ${NEXT_PUBLIC_HAND_MODEL_URL:-}
+    image: ovr-web:latest
+    env_file: ./env/web.env
+    environment:
+      # Derived from SITE_HOST so Auth0, the CSRF check and the game ticket all agree on one origin.
+      APP_BASE_URL: https://${SITE_HOST}
+    expose:
+      - "3100"
+    volumes:
+      - storage:/app/apps/web/.data
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3100/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.worker
+      # FROM web in Dockerfile.worker is this service's image (built first, then reused).
+      additional_contexts:
+        web: service:web
+    image: ovr-worker:latest
+    env_file: ./env/web.env
+    environment:
+      APP_BASE_URL: https://${SITE_HOST}
+    volumes:
+      - storage:/app/apps/web/.data
+    init: true
+    restart: unless-stopped
+    # On SIGTERM (a deploy, a restart) the worker stops claiming, lets running jobs reach their next
+    # checkpoint and hands them back (up to WORKER_SHUTDOWN_GRACE_MS, 100 s); Docker waits for that.
+    stop_grace_period: 120s
+
+  game:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.game
+    image: ovr-game:latest
+    env_file: ./env/game.env
+    environment:
+      GAME_SERVER_PORT: "2567"
+      # Only the site itself may open a room from a browser.
+      ALLOWED_ORIGINS: https://${SITE_HOST}
+    expose:
+      - "2567"
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:2567/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  caddy:
+    image: caddy:2.10-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_HOST: ${SITE_HOST:?SITE_HOST is not set - run deploy/deploy.sh, or put SITE_HOST=your.host in deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - game
+    restart: unless-stopped
+
+volumes:
+  # Let's Encrypt account + certificates (keep it: re-issuing on every deploy hits rate limits).
+  caddy_data:
+  caddy_config:
+  # The local storage driver's files, shared by web and worker. Unused once Vultr Object Storage
+  # is configured (VULTR_OBJECT_STORAGE_* in web.env), which is what production should use.
+  storage:

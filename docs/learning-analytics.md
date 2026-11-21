@@ -90,12 +90,13 @@ us-west-2 take about 70–140 ms, most of it network round trips.
   the server.
 - Community views are aggregated, opted-in only, with groups under 3 hidden.
 
-## Identity (until OVR has accounts)
+## Identity
 
 A learner is an anonymous id in a **signed, httpOnly cookie** (`ovr_learner`, HMAC with
-`LEARNER_SECRET`). The server derives the user from it on every request and never trusts an id in
-a request. A forged or edited cookie is ignored. When accounts arrive, map the account to its
-learner id in `lib/learning/server/identity.ts`.
+`LEARNER_SECRET`), or, once someone signs in with Auth0, the learner linked to their account (the
+first sign-in links the browser's anonymous learner, so progress carries over). The server derives
+the user on every request in `lib/learning/server/identity.ts` and never trusts an id in a request.
+A forged or edited cookie is ignored. See [auth0.md](auth0.md).
 
 ## Setup
 

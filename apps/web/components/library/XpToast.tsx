@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { HUD_CHIP, HUD_MUTED } from "@/components/ui/styles";
 import { XP_EVENT } from "@/lib/learning/client";
 
 const SHOW_MS = 3200;
@@ -36,9 +37,15 @@ export function XpToast() {
       {items.map((item) => (
         <p
           key={item.id}
-          className="flex items-center gap-2 rounded-full bg-ink/90 px-4 py-2 text-sm font-bold text-cream shadow-xl backdrop-blur transition duration-300 ease-out starting:-translate-y-2 starting:opacity-0"
+          className={`${HUD_CHIP} title-pop flex items-center gap-2.5 py-1.5 pr-4 pl-1.5 text-[14px] leading-5 font-semibold`}
         >
-          <span className="font-extrabold text-lamp">+{item.xp} XP</span>
+          {/* The amount on a tilted sun badge, like the title screen's stickers. */}
+          <span className="tabular inline-flex -rotate-3 items-center rounded-full border-2 border-black/80 bg-sun px-2.5 py-0.5 text-[14px] font-bold text-walnut shadow-[0_2px_0_rgb(0_0_0/0.55)]">
+            +{item.xp} XP
+          </span>
+          <span aria-hidden className={HUD_MUTED}>
+            ·
+          </span>
           <span>{item.label}</span>
         </p>
       ))}

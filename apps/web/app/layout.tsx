@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Caveat, Fraunces, Nunito } from "next/font/google";
+import { Caveat, Fraunces, Fredoka, Nunito } from "next/font/google";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -16,6 +16,16 @@ const caveat = Caveat({
   display: "swap",
 });
 
+// Interface and reading text: clear at small sizes, with tabular figures for timers and stats.
+/** Rounded and chunky, for the cartoony title screen. */
+const fredoka = Fredoka({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-cartoon",
+  display: "swap",
+});
+
+/** Reading and interface text: rounded to match the cartoon style, still clear at small sizes. */
 const nunito = Nunito({
   subsets: ["latin"],
   variable: "--font-nunito",
@@ -23,18 +33,21 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "OVR — a cozy library to study in, together",
+  title: "OVR — the virtual library",
   description:
-    "Walk into a warm, stylized 3D university library as your own avatar and study alongside other students. No camera required.",
+    "A calm 3D university library for studying alone or together. Take a desk with a focus timer, ask the AI Librarian to research a topic, and turn your notes into lessons on a whiteboard.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f5ede0",
+  themeColor: "#f5f2ea",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${nunito.variable} ${caveat.variable}`}>
+    <html
+      lang="en"
+      className={`${fraunces.variable} ${nunito.variable} ${caveat.variable} ${fredoka.variable}`}
+    >
       <body>{children}</body>
     </html>
   );

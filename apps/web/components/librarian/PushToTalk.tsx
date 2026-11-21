@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FOCUS } from "@/components/progress/ui";
+import { IconMic, IconStop } from "@/components/ui/icons";
 import { stopSpeaking } from "@/lib/librarian/voice";
+import { SQUARE_BTN } from "./parts";
 
 /** Longest recording (ms): a question, not a lecture. */
 const MAX_MS = 30_000;
@@ -103,24 +104,41 @@ export function PushToTalk({
         aria-pressed={recording}
         aria-label={recording ? "Stop and send what you said" : "Talk to Ms. Fenwick"}
         title={recording ? "Tap to stop" : "Tap to talk (tap again to stop)"}
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg ring-1 transition disabled:opacity-50 ${
+        className={`${SQUARE_BTN} ${
           recording
-            ? "animate-pulse bg-red-600 text-white ring-red-700"
-            : "bg-white/70 text-ink ring-ink/15 hover:bg-white"
-        } ${FOCUS}`}
+            ? "bg-danger text-surface hover:bg-[#b65a53]"
+            : "bg-surface text-walnut hover:bg-canvas disabled:hover:bg-surface"
+        }`}
       >
-        <span aria-hidden>{state === "transcribing" ? "…" : recording ? "■" : "🎤"}</span>
+        {recording ? (
+          <IconStop size={18} strokeWidth={2.25} />
+        ) : (
+          <IconMic size={19} strokeWidth={2.25} />
+        )}
       </button>
       {(recording || state === "transcribing" || error) && (
         <p
           role="status"
-          className="absolute bottom-12 left-0 w-64 rounded-xl bg-ink/90 px-3 py-2 text-xs font-bold text-cream shadow-lg"
+          // A dark sticker bubble above the mic, its tail pointing down at it.
+          className="absolute right-0 bottom-[3.75rem] z-10 flex w-64 items-start gap-2 rounded-[14px] border-[2.5px] border-black/80 bg-walnut px-3 py-2 font-display text-[13px] leading-5 font-medium text-walnut-text shadow-[0_4px_0_rgb(0_0_0/0.45)]"
         >
-          {recording
-            ? "Listening… tap ■ when you're done."
-            : state === "transcribing"
-              ? "Working out what you said…"
-              : error}
+          <span
+            aria-hidden
+            className="absolute right-3.5 -bottom-[7px] h-3 w-3 rotate-45 border-r-[2.5px] border-b-[2.5px] border-black/80 bg-walnut"
+          />
+          {recording && (
+            <span
+              className="mt-1 h-3 w-3 shrink-0 rounded-full border-2 border-black/60 bg-tangerine"
+              aria-hidden
+            />
+          )}
+          <span>
+            {recording
+              ? "Listening. Tap the stop button when you're done."
+              : state === "transcribing"
+                ? "Working out what you said…"
+                : error}
+          </span>
         </p>
       )}
     </div>

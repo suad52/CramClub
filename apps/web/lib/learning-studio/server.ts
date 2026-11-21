@@ -153,6 +153,7 @@ function lessonPrompt(o: {
   level: Level;
   length: LessonLength;
   pages: readonly string[];
+  guidance?: string;
 }) {
   const [lo, hi] = SCENE_COUNT[o.length];
   const templates = Object.entries(VISUAL_TEMPLATES)
@@ -177,7 +178,7 @@ Rules:
   explanation citing the page) on a scene where it fits. You may add one reflection question.
 - sourceReferences: the page numbers ([page N] tags) that support the scene, with a short excerpt
   copied from that page. Never invent page numbers. Use only pages that exist.
-- If the notes are ambiguous, contradictory or incomplete, say so briefly in "warnings".
+${o.guidance ? `- ${o.guidance}\n` : ""}- If the notes are ambiguous, contradictory or incomplete, say so briefly in "warnings".
 - Scene ids are short slugs like "intro" or "krebs-cycle".
 
 The notes:
@@ -230,6 +231,8 @@ export async function generateLesson(o: {
   level: Level;
   length: LessonLength;
   pages: readonly string[];
+  /** One extra rule for the generator (e.g. which pages are web sources and how to use them). */
+  guidance?: string;
   /** Try this model first (e.g. a faster one); the usual fallback still applies. */
   model?: string;
 }): Promise<Lesson> {
@@ -239,13 +242,13 @@ export async function generateLesson(o: {
     return parseLesson(first, o.pages.length);
   } catch (err) {
     if (!(err instanceof ZodError)) throw err;
-    console.info(
-      `[learning-studio] lesson failed validation (${err.issues.length} issues); repairing once`,
-    );
     const problems = err.issues
       .slice(0, 8)
       .map((i) => `${i.path.join(".")}: ${i.message}`)
       .join("\n");
+    console.info(
+      `[learning-studio] lesson failed validation (${err.issues.length} issues); repairing once\n${problems}`,
+    );
     const repaired = await generateJson(
       `${prompt}\n\nYour previous answer didn't match the required format. Fix these problems and answer again:\n${problems}\n\nPrevious answer:\n${JSON.stringify(first).slice(0, 20_000)}`,
       90_000,
@@ -253,7 +256,14 @@ export async function generateLesson(o: {
     );
     try {
       return parseLesson(repaired, o.pages.length);
-    } catch {
+    } catch (again) {
+      if (again instanceof ZodError)
+        console.info(
+          `[learning-studio] repair failed too: ${again.issues
+            .slice(0, 8)
+            .map((i) => `${i.path.join(".")}: ${i.message}`)
+            .join("; ")}`,
+        );
       throw new StudioError(
         "The AI couldn't build a valid lesson from these notes. Try again, or try a shorter lesson.",
         502,

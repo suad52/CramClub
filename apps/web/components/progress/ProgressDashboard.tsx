@@ -2,6 +2,19 @@
 
 import Link from "next/link";
 import { useId, useRef, useState } from "react";
+import {
+  IconArrowRight,
+  IconBook,
+  IconChart,
+  IconCheck,
+  IconChevronDown,
+  IconClock,
+  IconFlame,
+  IconGraduationCap,
+  IconTrophy,
+  IconUsers,
+} from "@/components/ui/icons";
+import { BTN, BTN_SM, PANEL, RIBBON } from "@/components/ui/styles";
 import { DAILY_CAPS, XP } from "@/lib/learning/rules";
 import type { Community, Dashboard, Leaderboard, SubjectProgress } from "@/lib/learning/types";
 import { useApi } from "./api";
@@ -25,10 +38,11 @@ import { LeaderboardPanel } from "./Leaderboard";
 import {
   CARD,
   type DashboardContext,
-  DARK_BUTTON,
+  DotRow,
   EntryRow,
   FOCUS,
   Gate,
+  ICON_DOT,
   SMALL_BUTTON,
   SectionTitle,
   Segmented,
@@ -36,17 +50,17 @@ import {
 } from "./ui";
 
 /*
- * "My Progress": the student's own record (focus time, lessons, quizzes, XP, streaks), their
+ * "My progress": the student's own record (focus time, lessons, quizzes, XP, streaks), their
  * subjects and history, the leaderboard and community-wide trends. Shown on its own page and as
  * a panel over the 3D library. Each tab loads when it's first opened and stays loaded.
  */
 
 const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "subjects", label: "Subjects" },
-  { id: "history", label: "History" },
-  { id: "leaderboard", label: "Leaderboard" },
-  { id: "community", label: "Community" },
+  { id: "overview", label: "Overview", icon: IconChart },
+  { id: "subjects", label: "Subjects", icon: IconBook },
+  { id: "history", label: "History", icon: IconClock },
+  { id: "leaderboard", label: "Leaderboard", icon: IconTrophy },
+  { id: "community", label: "Community", icon: IconUsers },
 ] as const;
 
 export type ProgressTab = (typeof TABS)[number]["id"];
@@ -153,17 +167,19 @@ export function ProgressDashboard({
       <div
         className={
           inLibrary
-            ? "shrink-0 border-b border-ink/10 bg-cream px-3 sm:px-6"
-            : "border-b border-ink/10"
+            ? "shrink-0 border-b-[3px] border-walnut bg-surface px-3.5 sm:px-6"
+            : "border-b-2 border-dashed border-walnut/25"
         }
       >
+        {/* Padded so the focus ring and the sticker shadow aren't clipped by the scroll box. */}
         <div
           role="tablist"
-          aria-label="My Progress sections"
-          className="-mx-1 flex gap-1 overflow-x-auto px-1 py-2"
+          aria-label="My progress sections"
+          className={`flex gap-2 overflow-x-auto px-1.5 ${inLibrary ? "py-3" : "-mx-1.5 pt-2 pb-4"}`}
         >
           {TABS.map((t, i) => {
             const selected = tab === t.id;
+            const Icon = t.icon;
             return (
               <button
                 key={t.id}
@@ -178,8 +194,9 @@ export function ProgressDashboard({
                 tabIndex={selected ? 0 : -1}
                 onClick={() => select(t.id)}
                 onKeyDown={(e) => onTabKey(e, i)}
-                className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold whitespace-nowrap transition ${FOCUS} ${selected ? "bg-ink text-cream shadow" : "text-ink-soft hover:bg-ink/5 hover:text-ink"}`}
+                className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-full border-2 px-4 font-display text-[15px] font-semibold whitespace-nowrap transition-[background-color,color,border-color,box-shadow,transform] duration-150 ease-out motion-reduce:transition-none ${FOCUS} ${selected ? "-translate-y-px border-walnut bg-sun text-walnut shadow-[0_3px_0_#1f1a16]" : "border-transparent text-ink-soft hover:border-walnut hover:bg-canvas hover:text-walnut active:translate-y-px"}`}
               >
+                <Icon size={17} strokeWidth={2.25} />
                 {t.label}
               </button>
             );
@@ -190,7 +207,9 @@ export function ProgressDashboard({
       <div
         ref={scroller}
         className={
-          inLibrary ? "min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-6 sm:py-6" : "py-6 sm:py-8"
+          inLibrary
+            ? "min-h-0 flex-1 overflow-y-auto overscroll-contain bg-canvas px-5 py-6 sm:px-8 sm:py-8"
+            : "py-8 sm:py-10"
         }
       >
         {TABS.map(
@@ -203,7 +222,7 @@ export function ProgressDashboard({
                 aria-labelledby={`${uid}-tab-${t.id}`}
                 hidden={tab !== t.id}
                 tabIndex={0}
-                className={`rounded-3xl ${FOCUS}`}
+                className={`rounded-[24px] ${FOCUS}`}
               >
                 <h2 className="sr-only">{t.label}</h2>
                 {panel(t.id)}
@@ -213,12 +232,11 @@ export function ProgressDashboard({
       </div>
 
       <p
-        className={`text-xs text-ink-soft ${inLibrary ? "shrink-0 border-t border-ink/10 bg-cream px-4 py-2 sm:px-6" : "mt-4 text-center"}`}
+        className={`flex items-center gap-2 font-display text-[13px] leading-5 font-semibold text-ink-soft ${inLibrary ? "shrink-0 border-t-[3px] border-walnut bg-surface px-5 py-2.5 sm:px-8" : "border-t-2 border-dashed border-walnut/25 pt-4"}`}
       >
+        <span aria-hidden className="h-2.5 w-2.5 rounded-full border-2 border-walnut bg-leaf" />
         Powered by Tiger Data
-        {queryMs !== undefined && (
-          <span className="tabular-nums"> — query {formatMs(queryMs)}</span>
-        )}
+        {queryMs !== undefined && <span className="tabular"> · query {formatMs(queryMs)}</span>}
       </p>
     </div>
   );
@@ -252,10 +270,11 @@ function Overview({
           action={
             context === "page" ? (
               <>
-                <Link href="/library" className={DARK_BUTTON}>
+                {/* One sun action per view: "Continue learning" has it when it's shown. */}
+                <Link href="/" className={d.continueWith ? BTN.secondary : BTN.primary}>
                   Enter the library
                 </Link>
-                <Link href="/learning-studio" className={SMALL_BUTTON}>
+                <Link href="/learning-studio" className={BTN.secondary}>
                   Make a lesson
                 </Link>
               </>
@@ -264,7 +283,7 @@ function Overview({
         >
           <p>Finish a pomodoro or a lesson to start your record.</p>
           {context === "library" && (
-            <p className="mt-1">
+            <p className="mt-2">
               Sit at a table and press <kbd className="kbd">P</kbd> for a pomodoro, or press{" "}
               <kbd className="kbd">L</kbd> at a whiteboard to play a lesson.
             </p>
@@ -291,28 +310,35 @@ function Overview({
         <SectionTitle
           title="Recent activity"
           aside={
-            <button type="button" onClick={() => go("history")} className={SMALL_BUTTON}>
+            <button
+              type="button"
+              onClick={() => go("history")}
+              className={`${BTN_SM.quiet} -my-1 -mr-2.5`}
+            >
               All history
+              <IconArrowRight size={16} strokeWidth={2.5} />
             </button>
           }
         />
         {d.recent.length ? (
-          <ul className="divide-y divide-ink/10">
+          <ul className="-my-3 divide-y-2 divide-walnut/10">
             {d.recent.slice(0, 5).map((e) => (
               <EntryRow
                 key={e.id}
                 entry={e}
                 when={
                   <>
-                    <span className="block">{dayHeading(new Date(e.at), now)}</span>
-                    <span className="block font-semibold">{formatTime(e.at)}</span>
+                    <span className="block font-semibold text-walnut">
+                      {dayHeading(new Date(e.at), now)}
+                    </span>
+                    <span className="block">{formatTime(e.at)}</span>
                   </>
                 }
               />
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-ink-soft">Nothing recent yet.</p>
+          <p className="text-[15px] font-medium text-ink-soft">Nothing recent yet.</p>
         )}
       </section>
       <HowXpWorks />
@@ -330,26 +356,39 @@ function ContinueCard({
   return (
     <section
       aria-label="Continue learning"
-      className="flex flex-wrap items-center gap-4 rounded-3xl bg-ink p-5 text-cream shadow"
+      className={`${PANEL} relative mt-3 flex flex-wrap items-center gap-x-6 gap-y-5 bg-[#fbf3e2] p-5 pt-7 sm:p-6 sm:pt-8`}
     >
-      <div className="min-w-0 flex-1">
-        <p className="text-[0.7rem] font-extrabold tracking-wide text-lamp uppercase">
-          Pick up where you left off
+      {/* The member card's dashed inner line, from the title screen. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-2.5 rounded-[16px] border-2 border-dashed border-walnut/25"
+      />
+      <p className={`${RIBBON} absolute -top-4 left-5`}>Pick up where you left off</p>
+      <span
+        aria-hidden
+        className="title-pop absolute -top-4 -right-3 grid h-12 w-12 rotate-12 place-items-center rounded-full border-[3px] border-walnut bg-sun text-walnut shadow-[0_4px_0_#1f1a16]"
+      >
+        <IconGraduationCap size={24} strokeWidth={2.25} />
+      </span>
+      <div className="relative min-w-0 flex-1">
+        <p className="font-display text-[24px] leading-tight font-bold text-balance text-walnut sm:text-[28px]">
+          Continue with {next.title}
         </p>
-        <p className="mt-0.5 font-display text-xl font-semibold">Continue with {next.title}</p>
-        <p className="mt-0.5 text-sm text-cream/75">
+        <p className="mt-1.5 text-[15px] leading-6 font-medium text-ink-soft">
           {next.subject} ·{" "}
-          {context === "library"
-            ? "Walk up to a whiteboard and press L to play it."
-            : "It's in your lessons in the Learning Studio."}
+          {context === "library" ? (
+            <>
+              Walk up to a whiteboard and press <kbd className="kbd">L</kbd> to play it.
+            </>
+          ) : (
+            "It's in your lessons in the Learning Studio."
+          )}
         </p>
       </div>
       {context === "page" && (
-        <Link
-          href="/learning-studio"
-          className={`rounded-full bg-cream px-4 py-2 text-sm font-bold text-ink transition hover:bg-white ${FOCUS}`}
-        >
+        <Link href="/learning-studio" className={`${BTN.primary} relative`}>
           Open the Learning Studio
+          <IconArrowRight size={18} strokeWidth={2.5} />
         </Link>
       )}
     </section>
@@ -363,44 +402,69 @@ function StatTiles({ d }: { d: Dashboard }) {
       label: "Focus this week",
       value: formatMinutes(d.thisWeek.focusMinutes),
       sub: `${formatMinutes(d.allTime.focusMinutes)} all-time`,
+      icon: IconClock,
+      dot: "bg-leaf",
     },
     {
       label: "XP this week",
       value: formatNumber(d.thisWeek.xp),
       sub: `${formatNumber(d.allTime.xp)} all-time`,
+      icon: IconTrophy,
+      dot: "bg-sun",
     },
     {
       label: "Lessons completed",
       value: formatNumber(d.allTime.lessons),
       sub: `${formatNumber(d.thisWeek.lessons)} this week`,
+      icon: IconGraduationCap,
+      dot: "bg-sun",
     },
     {
       label: "Quizzes completed",
       value: formatNumber(d.allTime.quizzes),
       sub: accuracy === null ? "None answered yet" : `${formatPercent(accuracy)} right first try`,
+      icon: IconCheck,
+      dot: "bg-tangerine",
     },
     {
       label: "Current streak",
       value: plural(d.streak.current, "day"),
       sub: `Longest ${plural(d.streak.longest, "day")}`,
+      icon: IconFlame,
+      dot: "bg-tangerine",
     },
     {
       label: "Explored",
       value: plural(d.explored.subjects, "subject"),
       sub: `${plural(d.explored.lessons, "lesson")} started`,
+      icon: IconBook,
+      dot: "bg-leaf",
     },
   ];
   return (
-    <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-      {tiles.map((t) => (
-        <div key={t.label} className="flex flex-col rounded-3xl bg-cream p-4 ring-1 ring-ink/10">
-          <dt className="text-xs font-extrabold text-ink-soft">{t.label}</dt>
-          <dd className="mt-1 font-display text-2xl leading-tight font-semibold tabular-nums sm:text-3xl">
-            {t.value}
-          </dd>
-          <dd className="mt-auto pt-1 text-xs text-ink-soft">{t.sub}</dd>
-        </div>
-      ))}
+    <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-6">
+      {tiles.map((t) => {
+        const Icon = t.icon;
+        return (
+          <div
+            key={t.label}
+            className="relative flex flex-col rounded-[20px] border-[3px] border-walnut bg-surface px-4 py-4 shadow-[0_4px_0_#1f1a16] sm:px-5"
+          >
+            <dt className="pr-9 font-display text-[13.5px] leading-5 font-semibold text-ink-soft">
+              <span className={`${ICON_DOT} absolute top-3 right-3 h-8 w-8 ${t.dot}`}>
+                <Icon size={16} strokeWidth={2.5} />
+              </span>
+              {t.label}
+            </dt>
+            <dd className="tabular mt-2.5 font-display text-[28px] leading-none font-bold text-walnut sm:text-[32px]">
+              {t.value}
+            </dd>
+            <dd className="mt-auto pt-2 text-[13px] leading-5 font-medium text-ink-soft">
+              {t.sub}
+            </dd>
+          </div>
+        );
+      })}
     </dl>
   );
 }
@@ -484,48 +548,51 @@ function WeekVsWeek({ d }: { d: Dashboard }) {
     <section className={CARD} aria-labelledby={id}>
       <SectionTitle
         id={id}
-        title="Personal best"
-        sub="This week so far vs last week · weeks start on Monday"
+        title="This week vs last week"
+        sub="This week so far, against all of last week. Weeks start on Monday."
       />
       <table className="w-full text-sm">
-        <thead className="text-xs text-ink-soft">
+        <thead className="font-display text-[13px] text-ink-soft">
           <tr>
-            <th scope="col" className="pb-1 text-left font-extrabold">
+            <th scope="col" className="pb-2 text-left font-semibold">
               <span className="sr-only">Measure</span>
             </th>
-            <th scope="col" className="pb-1 text-right font-extrabold">
+            <th scope="col" className="pb-2 text-right font-semibold">
               This week
             </th>
-            <th scope="col" className="pb-1 text-right font-extrabold">
+            <th scope="col" className="pb-2 text-right font-semibold">
               Last week
             </th>
-            <th scope="col" className="pb-1 text-right font-extrabold">
+            <th scope="col" className="pb-2 text-right font-semibold">
               Change
             </th>
           </tr>
         </thead>
-        <tbody className="tabular-nums">
+        <tbody className="tabular">
           {rows.map((r) => {
             const change = delta(r.now, r.before);
             const amount = r.show(Math.abs(change.diff));
             return (
-              <tr key={r.label} className="border-t border-ink/5">
-                <th scope="row" className="py-1.5 text-left font-bold">
+              <tr key={r.label} className="border-t-2 border-walnut/10">
+                <th scope="row" className="py-2 text-left font-display font-semibold text-walnut">
                   {r.label}
                 </th>
-                <td className="py-1.5 text-right font-extrabold">{r.show(r.now)}</td>
-                <td className="py-1.5 text-right text-ink-soft">{r.show(r.before)}</td>
-                <td className="py-1.5 text-right">
+                <td className="py-2 text-right font-display font-bold text-walnut">
+                  {r.show(r.now)}
+                </td>
+                <td className="py-2 text-right font-medium text-ink-soft">{r.show(r.before)}</td>
+                <td className="py-2 pl-2 text-right">
                   {change.direction === "same" ? (
-                    <span className="text-ink-soft">Same</span>
+                    <span className="font-display font-semibold text-ink-soft">Same</span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 font-bold">
-                      <span
-                        aria-hidden
-                        className={change.direction === "up" ? "text-sage-dark" : "text-ember"}
-                      >
-                        {change.direction === "up" ? "▲" : "▼"}
-                      </span>
+                    <span
+                      className={`inline-flex items-center gap-0.5 rounded-full border-2 py-px pr-2 pl-1 font-display text-[13px] font-semibold ${change.direction === "up" ? "border-walnut bg-leaf text-walnut shadow-[0_2px_0_#1f1a16]" : "border-walnut/30 bg-canvas text-ink-soft"}`}
+                    >
+                      <IconChevronDown
+                        size={14}
+                        strokeWidth={2.75}
+                        className={change.direction === "up" ? "rotate-180" : ""}
+                      />
                       <span className="sr-only">{change.direction === "up" ? "up" : "down"}</span>
                       {amount}
                     </span>
@@ -547,25 +614,31 @@ function WeeklyRank({ d, go }: { d: Dashboard; go: (tab: ProgressTab) => void })
     <section className={CARD} aria-labelledby={id}>
       <SectionTitle id={id} title="Weekly rank" />
       {rank ? (
-        <p className="text-sm text-ink-soft">
-          <span className="font-display text-4xl font-semibold text-ink tabular-nums">
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[15px] font-medium text-ink-soft">
+          {/* A tilted sun stamp, like the title screen's "OVR" badge. */}
+          <span className="tabular title-pop inline-grid h-16 min-w-16 -rotate-6 place-items-center rounded-full border-[3px] border-walnut bg-sun px-3 font-display text-[30px] leading-none font-bold text-walnut shadow-[0_4px_0_#1f1a16]">
             #{rank.rank}
           </span>{" "}
-          of {plural(rank.of, "learner")} this week
+          <span>of {plural(rank.of, "learner")} this week</span>
         </p>
       ) : d.learner.leaderboardOptIn ? (
-        <p className="text-sm text-ink-soft">
-          <span className="block font-bold text-ink">Not ranked yet</span>
+        <p className="text-[15px] leading-6 font-medium text-ink-soft">
+          <span className="block font-display text-[17px] font-semibold text-walnut">
+            Not ranked yet
+          </span>
           Earn some XP this week to join the board.
         </p>
       ) : (
-        <p className="text-sm text-ink-soft">
-          <span className="block font-bold text-ink">Hidden from leaderboards</span>
+        <p className="text-[15px] leading-6 font-medium text-ink-soft">
+          <span className="block font-display text-[17px] font-semibold text-walnut">
+            Hidden from leaderboards
+          </span>
           You&apos;ve chosen not to appear. You can change that on the Leaderboard tab.
         </p>
       )}
-      <button type="button" onClick={() => go("leaderboard")} className={`mt-4 ${SMALL_BUTTON}`}>
+      <button type="button" onClick={() => go("leaderboard")} className={`mt-5 ${SMALL_BUTTON}`}>
         See the leaderboard
+        <IconArrowRight size={16} strokeWidth={2.5} />
       </button>
     </section>
   );
@@ -597,25 +670,37 @@ function HowXpWorks() {
     },
   ];
   return (
-    <section className={CARD} aria-labelledby={id}>
-      <SectionTitle
-        id={id}
-        title="How XP works"
-        sub="The server checks each activity before it counts."
-      />
-      <ul className="divide-y divide-ink/10 text-sm">
+    <section
+      aria-labelledby={id}
+      className="grid gap-x-12 gap-y-4 rounded-[24px] border-[3px] border-dashed border-walnut/30 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.55fr)]"
+    >
+      <div>
+        <SectionTitle
+          id={id}
+          title="How XP works"
+          sub="The server checks each activity before it counts."
+        />
+        <p className="max-w-[46ch] text-[13px] leading-5 font-medium text-ink-soft">
+          Past a daily limit, an activity still goes on your record, for 0 XP. Focus time counts a
+          pomodoro&apos;s planned length, never time paused or spent away.
+        </p>
+        <DotRow className="mt-4" />
+      </div>
+      <ul className="divide-y-2 divide-walnut/10 text-sm">
         {rows.map((r) => (
-          <li key={r.what} className="flex flex-wrap items-baseline gap-x-3 py-2">
-            <span className="min-w-0 flex-1 font-bold">{r.what}</span>
-            {r.cap && <span className="text-xs text-ink-soft">{r.cap}</span>}
-            <span className="w-24 text-right font-extrabold tabular-nums">{r.xp} XP</span>
+          <li key={r.what} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
+            <span className="min-w-0 flex-1 font-display text-[15px] font-semibold text-walnut">
+              {r.what}
+            </span>
+            {r.cap && <span className="text-[13px] font-medium text-ink-soft">{r.cap}</span>}
+            <span className="flex w-28 justify-end">
+              <span className="tabular rounded-full border-2 border-walnut bg-sun px-2.5 py-0.5 font-display text-[13px] leading-4 font-semibold text-walnut shadow-[0_2px_0_#1f1a16]">
+                {r.xp} XP
+              </span>
+            </span>
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-xs text-ink-soft">
-        Past a daily limit, an activity still goes on your record, for 0 XP. Focus time counts a
-        pomodoro&apos;s planned length, never time paused or spent away.
-      </p>
     </section>
   );
 }
@@ -650,25 +735,28 @@ function SubjectCard({ s }: { s: SubjectProgress }) {
     <li className={`${CARD} flex flex-col`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 id={id} className="font-display text-lg leading-tight font-semibold break-words">
+          <h3
+            id={id}
+            className="font-display text-[19px] leading-6 font-semibold break-words text-walnut"
+          >
             {s.name}
           </h3>
-          <p className="mt-0.5 text-xs text-ink-soft">
+          <p className="mt-0.5 text-[13px] leading-5 font-medium text-ink-soft">
             Last studied {formatDate(s.lastActivityAt)}
           </p>
         </div>
-        <div className="flex flex-col items-end">
+        <div className="flex flex-col items-end gap-0.5">
           <Sparkline
             values={weeks}
             label={`Lessons completed per week, last ${weeks.length} weeks, oldest first: ${weeks.join(", ")}`}
           />
-          <span className="text-[0.65rem] font-bold text-ink-soft" aria-hidden>
-            lessons / week
+          <span className="font-display text-xs font-semibold text-ink-soft" aria-hidden>
+            Lessons a week
           </span>
         </div>
       </div>
-      <p className="mt-4 text-sm text-ink-soft">
-        <span className="font-display text-2xl font-semibold text-ink tabular-nums">
+      <p className="mt-5 text-[15px] font-medium text-ink-soft">
+        <span className="tabular font-display text-[32px] leading-none font-bold text-walnut">
           {formatNumber(s.lessonsCompleted)}
         </span>{" "}
         of {plural(s.lessonsStarted, "lesson")} completed
@@ -679,22 +767,34 @@ function SubjectCard({ s }: { s: SubjectProgress }) {
         aria-valuemin={0}
         aria-valuemax={s.lessonsStarted}
         aria-valuenow={s.lessonsCompleted}
-        className="mt-2 h-2 overflow-hidden rounded-full bg-ink/[0.07]"
+        className="mt-3 h-4 overflow-hidden rounded-full border-2 border-walnut bg-canvas"
       >
-        <div className="h-2 rounded-full bg-wood" style={{ width: `${share * 100}%` }} />
+        <div
+          className={`h-full rounded-full bg-leaf ${share > 0 && share < 1 ? "border-r-2 border-walnut" : ""}`}
+          style={{ width: `${share * 100}%` }}
+        />
       </div>
-      <p className="mt-1 text-xs text-ink-soft">of the lessons you&apos;ve started</p>
-      <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-ink/10 pt-3 text-sm">
+      <p className="mt-1.5 text-[13px] font-medium text-ink-soft">
+        of the lessons you&apos;ve started
+      </p>
+      <dl className="mt-5 grid grid-cols-2 gap-4 border-t-2 border-dashed border-walnut/20 pt-4 text-sm">
         <div>
-          <dt className="text-xs text-ink-soft">Quizzes answered</dt>
-          <dd className="font-extrabold tabular-nums">{formatNumber(s.quizzesAnswered)}</dd>
+          <dt className="font-display text-[13px] leading-5 font-semibold text-ink-soft">
+            Quizzes answered
+          </dt>
+          <dd className="tabular mt-0.5 font-display text-[19px] font-bold text-walnut">
+            {formatNumber(s.quizzesAnswered)}
+          </dd>
         </div>
         {s.masteryEstimate !== null && (
           <div>
-            <dt className="text-xs text-ink-soft">
-              Mastery <span className="block">estimate (first-try quiz accuracy)</span>
+            <dt className="font-display text-[13px] leading-5 font-semibold text-ink-soft">
+              Mastery estimate{" "}
+              <span className="block font-sans font-medium">First-try quiz accuracy</span>
             </dt>
-            <dd className="font-extrabold tabular-nums">{formatPercent(s.masteryEstimate)}</dd>
+            <dd className="tabular mt-0.5 font-display text-[19px] font-bold text-walnut">
+              {formatPercent(s.masteryEstimate)}
+            </dd>
           </div>
         )}
       </dl>

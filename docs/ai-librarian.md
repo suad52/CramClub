@@ -44,6 +44,58 @@ All of it is recorded in Tiger Data alongside the rest of your learning.
   data-grounded nudge from Tiger Data, such as your weakest first-try quiz accuracy or this week's
   focus time.
 
+## Studying from your notes
+
+Upload your own lecture notes and she builds the study material around them, with no
+confirmation step: uploading the files and choosing what to make is the go-ahead.
+
+- **What you upload:** 1–3 files, each a PDF with selectable text, a `.txt` or a `.md` file, up to
+  15 MB each. You can add a message (up to 1,000 characters, e.g. "the midterm is on cyclic
+  electron flow, I'm fine on pigments"), what to make (**plan**, **lesson** or **both**) and, for a
+  plan, an exam date and minutes a day.
+- **What happens, in the activity panel:**
+  1. **The server extracts the text.** PDFs go through the Learning Studio's extractor, one entry
+     per page. Text files are split into pages of about 3,000 characters. "Read lecture3.pdf ·
+     12 pages".
+  2. **Gemini reads the notes** (status "Gemini is reading your notes"): the topic, subject and
+     level, a short summary, an outline, the key concepts, and the **gaps**, meaning what the notes
+     mention without explaining or the background they assume. From those it writes up to 3 web
+     searches. If the upload isn't study material, or asks for work to hand in, she says so kindly
+     and stops there.
+  3. **TinyFish reads the web.** It opens the links found in the notes (up to 4, http(s) only, no
+     answer-sharing or social sites) and runs the searches. Then it reads the best pages, as in quick
+     research. **TinyFish never sees your file.** It's a web search and fetch agent: Gemini reads the
+     notes, and what Gemini finds there decides what TinyFish looks up.
+  4. **Gemini checks the sources** against the notes' summary and outline, and keeps the ones that
+     fill the gaps. If nothing reliable turns up, she carries on from your notes alone and says so.
+  5. **The plan and/or the lesson:**
+     - **Plan:** built around the notes' outline. It includes "Review your notes: <section>"
+       items, and its resource links are only the researched URLs.
+     - **Lesson:** your notes come first, in page order, then up to 4 web sources. In the lesson's
+       sources a notes page appears as "Your notes: lecture3.pdf, p. 4", with no link.
+     - **Both:** the plan first, then the lesson.
+- **Long notes:** at most 200,000 characters are kept per upload, shared fairly between the
+  files. A lesson uses about 30,000 characters of notes: every page, trimmed, or pages spread
+  through the notes when there are too many. A warning says so whenever that happens.
+- **Timing:** a one-page note took about 30 seconds end to end for both outcomes in testing (Nov
+  2026).
+- **Cancel and retry:**
+  - **Cancel** stops the work between steps.
+  - **Retry** picks up where it stopped: reading the notes, the research, the plan (then the lesson,
+    if both were asked for) or the lesson.
+  - Work that hasn't moved in 4 minutes is marked failed and can be retried.
+  - When Gemini is overloaded (both models), the error says so (`ai_busy`) and nothing is lost.
+
+**Where the notes go:**
+
+- Only the extracted text is kept, never the file. It's stored in Tiger Data in `librarian_notes`,
+  one row per file with its pages, alongside the request.
+- It's **deleted with the request, and with the learner** (`ON DELETE CASCADE` on both).
+- It's sent to Gemini (to read it and build the lesson), and to nobody else.
+- In every prompt the notes are wrapped as untrusted data, and the model is told never to follow
+  instructions inside them, like scraped pages. Notes are not `research_sources`: only web pages
+  are.
+
 ## Her voice (ElevenLabs)
 
 With `ELEVENLABS_API_KEY` set, she **speaks her replies** and says hello the first time you
@@ -75,6 +127,7 @@ Tested on 2026-11-20:
 | Step                                                         | Provider     | How                                                                                                                                                               |
 | ------------------------------------------------------------ | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Understanding the request, follow-up questions, confirmation | Gemini       | JSON schema, validated with zod                                                                                                                                   |
+| Reading uploaded notes (outline, gaps, searches)             | Gemini       | Over the extracted text, wrapped as untrusted data. TinyFish never gets the file, only the links in it and the searches Gemini wrote.                             |
 | Searching and reading the web                                | **TinyFish** | Search (`api.search.tinyfish.ai`), Fetch (`api.fetch.tinyfish.ai`), Research (`agent.tinyfish.ai/v1/automation/run-research-async` + `GET /v1/research-run/{id}`) |
 | Choosing and summarising sources                             | Gemini       | Over the fetched pages only, wrapped as untrusted data. Never follows instructions found in them, never invents sources.                                          |
 | Study plan                                                   | Gemini       | Validated: dates inside the plan, only researched URLs, workload warnings                                                                                         |
@@ -98,7 +151,8 @@ TinyFish's request and response shapes. Everything else uses the app-level types
 2. **Other settings:** `GEMINI_API_KEY`, `DATABASE_URL` and `LEARNER_SECRET` are already set up (see
    [learning-analytics.md](learning-analytics.md)).
 3. **Tables:** `pnpm --filter web db:migrate` applies `0002_librarian.sql`: `librarian_tasks`,
-   `research_sources`, `study_plans` and `study_plan_items`, plus the new event types.
+   `research_sources`, `study_plans` and `study_plan_items`, plus the new event types. It also
+   applies `0003_librarian_notes.sql`: the `study_from_notes` request type and `librarian_notes`.
 4. **Optional:** `GEMINI_LIBRARIAN_MODEL` picks the Librarian's model. It defaults to the fast
    fallback model, so she answers in seconds. When this was written, the default text model
    (`gemini-4-hydrogen`) was timing out after 30 s while `gemini-3.5-flash-lite` answered in half a
@@ -110,7 +164,8 @@ real.
 
 ## API
 
-Same-origin. The learner comes from the signed cookie, and every row is looked up with their id.
+Same-origin. The learner comes from the verified Auth0 session when signed in, else the signed
+cookie ([auth0.md](auth0.md)), and every row is looked up with their id.
 `app/api/librarian/[...path]/route.ts`:
 
 - `GET home`
@@ -120,8 +175,23 @@ Same-origin. The learner comes from the signed cookie, and every row is looked u
 - `POST tasks/:id/confirm|cancel|retry|plan|lesson`
 - `POST resources/:id`
 - `POST plan-items/:id`
+- `POST notes`, as multipart form data:
+  - **Fields:** `files` (repeated, 1–3), `message?` (≤ 1,000 characters),
+    `outcome` (`plan` | `lesson` | `both`), `examDate?` (`YYYY-MM-DD`) and `minutesPerDay?`
+    (10–600).
+  - **Success:** `200` with the task (`study_from_notes`, status `reading_notes`, `busy`). Poll it
+    like any other.
+  - **Errors:** plain, specific messages:
+    - `400` for a wrong type, an empty file, a fake PDF (no `%PDF-` header), text that isn't UTF-8,
+      too many files, a bad field, or no extractable text (`no_text`: scanned PDFs can't be read
+      yet);
+    - `413` for a file over 15 MB;
+    - `429` after 6 accepted uploads in 10 minutes;
+    - `503` without `TINYFISH_API_KEY` or `GEMINI_API_KEY`.
 
-Long work runs after the response with Next's `after()`.
+Long work runs after the response with Next's `after()`. A notes request runs its whole pipeline
+in one `after()`. That's fine in `next dev`. On a host that enforces `maxDuration` (300 s), a very
+slow lesson could be cut off; the 4-minute stale check then marks it failed, with a retry.
 
 **Errors and timeouts:**
 

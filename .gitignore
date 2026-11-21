@@ -30,6 +30,9 @@ pnpm-debug.log*
 
 # deploy tooling
 .vercel
+# Vultr server secrets (deploy/env/*.example are the committed templates)
+deploy/env/*
+!deploy/env/*.example
 
 # generated: MediaPipe wasm copied from node_modules (apps/web/scripts/copy-assets.mjs)
 apps/web/public/mediapipe/

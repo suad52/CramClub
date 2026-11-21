@@ -39,9 +39,12 @@ interface TrackingStore {
   mirror: boolean;
   /** Persisted preference: show the small "your avatar's face" view. */
   showFaceView: boolean;
+  /** Persisted preference: turning your real head turns your in-game view too. */
+  headLook: boolean;
   panelOpen: boolean;
   setMirror: (mirror: boolean) => void;
   setShowFaceView: (show: boolean) => void;
+  setHeadLook: (on: boolean) => void;
   setPanelOpen: (open: boolean) => void;
 }
 
@@ -53,9 +56,11 @@ export const useTrackingStore = create<TrackingStore>()(
       calibration: 0,
       mirror: false,
       showFaceView: true,
+      headLook: true,
       panelOpen: false,
       setMirror: (mirror) => set({ mirror }),
       setShowFaceView: (showFaceView) => set({ showFaceView }),
+      setHeadLook: (headLook) => set({ headLook }),
       setPanelOpen: (panelOpen) => set({ panelOpen }),
     }),
     {
@@ -63,7 +68,7 @@ export const useTrackingStore = create<TrackingStore>()(
       version: 1,
       storage: createJSONStorage(() => localStorage),
       // Tracking itself always starts off; only the preferences persist.
-      partialize: (s) => ({ mirror: s.mirror, showFaceView: s.showFaceView }),
+      partialize: (s) => ({ mirror: s.mirror, showFaceView: s.showFaceView, headLook: s.headLook }),
     },
   ),
 );

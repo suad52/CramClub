@@ -2,11 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { ProgressDashboard } from "@/components/progress/ProgressDashboard";
+import { DotRow } from "@/components/progress/ui";
+import { BTN, TITLE } from "@/components/ui/styles";
 import { exitPointerLock, requestPointerLock } from "@/lib/game/pointer";
 import { useGameStore } from "@/lib/game/store";
 
 /*
- * "My Progress" as a panel over the library rather than a new tab (a running pomodoro doesn't
+ * "My progress" as a panel over the library rather than a new tab (a running pomodoro doesn't
  * allow new tabs). While it's open, `progressOpen` in the game store holds the game still, the
  * same way the controls guide's `guideOpen` does: no walking, game keys or mouse-look, and the
  * mouse stays free.
@@ -84,7 +86,7 @@ function ProgressPanel() {
 
   return (
     <div
-      className="studio-fade-in absolute inset-0 z-[22] grid place-items-center bg-ink/40 p-3 backdrop-blur-[3px] sm:p-6"
+      className="absolute inset-0 z-[22] grid place-items-center bg-walnut/50 p-3 transition-opacity duration-200 ease-out starting:opacity-0 motion-reduce:transition-none sm:p-6"
       onMouseDown={(e) => e.target === e.currentTarget && closeProgress(true)}
     >
       <div
@@ -98,24 +100,32 @@ function ProgressPanel() {
         onKeyDown={(e) => {
           if (e.key.startsWith("Arrow")) e.stopPropagation();
         }}
-        className="flex h-full max-h-[56rem] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-parchment text-ink shadow-[0_30px_80px_-20px_rgb(20_12_6/0.6)] ring-1 ring-ink/10 outline-none"
+        className="flex h-full max-h-[56rem] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] border-[3px] border-walnut bg-canvas text-walnut shadow-[0_8px_0_#1f1a16] outline-none transition-transform duration-200 ease-out starting:translate-y-1.5 motion-reduce:transition-none"
       >
-        <header className="flex shrink-0 items-start gap-3 bg-cream px-4 pt-4 pb-1 sm:px-7 sm:pt-5">
+        <header className="flex shrink-0 items-start gap-4 bg-surface px-5 pt-5 pb-3 sm:px-8 sm:pt-6">
           <div className="min-w-0 flex-1">
-            <p className="text-[0.7rem] font-extrabold tracking-wide text-ember uppercase">
+            {/* A tilted sun badge, like the title screen's tagline. */}
+            <p className="title-pop inline-flex w-fit -rotate-2 items-center gap-2 rounded-full border-[2.5px] border-walnut bg-sun px-3 py-0.5 font-display text-[13px] font-semibold text-walnut shadow-[0_3px_0_#1f1a16]">
+              <span
+                aria-hidden
+                className="h-2 w-2 rounded-full border-2 border-walnut bg-tangerine"
+              />
               Your study record
             </p>
-            <h2 id="progress-title" className="font-display text-2xl font-semibold">
-              My Progress
-            </h2>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+              <h2 id="progress-title" className={TITLE}>
+                My progress
+              </h2>
+              <DotRow />
+            </div>
           </div>
           <button
             type="button"
             onClick={() => closeProgress(true)}
-            aria-label="Close My Progress"
+            aria-label="Back to the library (close my progress)"
             aria-keyshortcuts="Escape"
             title="Close (Esc)"
-            className="-mt-0.5 -mr-2 flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-bold text-ink-soft transition hover:bg-ink/5 hover:text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ember"
+            className={`${BTN.secondary} -mr-1 sm:pr-2.5`}
           >
             <span className="sm:hidden" aria-hidden>
               Close
@@ -123,8 +133,10 @@ function ProgressPanel() {
             <span className="hidden sm:inline" aria-hidden>
               Back to the library
             </span>
-            <span className="kbd hidden !h-6 !min-w-6 !text-[0.7rem] sm:inline-flex" aria-hidden>
-              Esc
+            {/* .kbd sets its own display (unlayered CSS beats the `hidden` utility), so the
+                wrapper is what hides the key cap on small screens. */}
+            <span className="hidden sm:inline-flex" aria-hidden>
+              <kbd className="kbd">Esc</kbd>
             </span>
           </button>
         </header>

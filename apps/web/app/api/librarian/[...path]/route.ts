@@ -1,9 +1,20 @@
 import { after } from "next/server";
 import { z } from "zod";
 import { clientKey, createRateLimiter, readJson } from "@/lib/ai/http";
+import { crossOriginRefused, crossOriginWrite } from "@/lib/auth/sameOrigin";
 import { db } from "@/lib/learning/server/db";
-import { synthesize } from "@/lib/learning-studio/server";
+import { extractPdf, synthesize } from "@/lib/learning-studio/server";
 import { learnerFor } from "@/lib/learning/server/identity";
+import {
+  MIN_NOTES_CHARS,
+  NotesError,
+  capNotes,
+  charCount,
+  checkCount,
+  checkFile,
+  cleanName,
+  readNotesFile,
+} from "@/lib/librarian/server/notes";
 import {
   type Defer,
   cancelTask,
@@ -16,12 +27,17 @@ import {
   requestPlan,
   retryTask,
   saveResource,
+  startFromNotes,
 } from "@/lib/librarian/server/tasks";
+import { tinyfishConfigured } from "@/lib/librarian/server/tinyfish";
+import { NOTES_LIMITS, NOTES_OUTCOMES } from "@/lib/librarian/types";
 
 /**
  * The AI Librarian API (contract in lib/librarian/types.ts). The learner always comes from the
- * signed cookie; every row is looked up with their id. Long work (research, plans, lessons) runs
- * after the response via `after()`; the client polls the task.
+ * Auth0 session or the signed cookie (lib/learning/server/identity.ts); every row is looked up
+ * with their id. Long work (research, plans, lessons) runs
+ * after the response via `after()`; the client polls the task. Every POST must come from this
+ * site (lib/auth/sameOrigin.ts): a signed-in student's cookie can't be spent by another page.
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -115,6 +131,105 @@ async function listen(request: Request, sql: NonNullable<ReturnType<typeof setup
   }
 }
 
+/** Uploads start the most work (Gemini, TinyFish, a plan and a lesson), so they're rarer. */
+const allowUpload = createRateLimiter(6, 10 * 60_000);
+
+const NotesFields = z.object({
+  message: z.string().trim().max(1000).optional(),
+  outcome: z.enum(NOTES_OUTCOMES),
+  examDate: z.iso.date().optional(),
+  minutesPerDay: z.coerce.number().int().min(10).max(600).optional(),
+});
+
+const NOTES_FIELD_ERRORS: Record<string, string> = {
+  message: "Keep the message under 1,000 characters.",
+  outcome: "Choose what to make from the notes: a plan, a lesson or both.",
+  examDate: "The exam date should be a real date (YYYY-MM-DD).",
+  minutesPerDay: "Minutes a day should be a whole number from 10 to 600.",
+};
+
+/**
+ * Study from notes: multipart { files (1–3 PDF/.txt/.md), message?, outcome, examDate?,
+ * minutesPerDay? }. The files are checked and turned into text here; the text is stored with the
+ * request (never the file) and the pipeline runs after the response.
+ */
+async function notes(request: Request, sql: NonNullable<ReturnType<typeof setup>>) {
+  let me: { id: string; setCookie?: string };
+  try {
+    me = (await learnerFor(sql, request, true))!;
+  } catch (error) {
+    return serverError("notes", error);
+  }
+  const respond = (status: number, payload: unknown) => {
+    const res = Response.json(payload, { status });
+    if (me.setCookie) res.headers.append("Set-Cookie", me.setCookie);
+    return res;
+  };
+  const no = (status: number, code: string, message: string) =>
+    respond(status, { error: { code, message } });
+  if (!allowWrite(me.id)) return no(429, "rate_limited", "Slow down a little.");
+  if (!tinyfishConfigured())
+    return no(503, "not_configured", "Studying from notes needs TINYFISH_API_KEY.");
+  if (!process.env.GEMINI_API_KEY)
+    return no(503, "not_configured", "Studying from notes needs GEMINI_API_KEY.");
+  const length = Number(request.headers.get("content-length") ?? 0);
+  if (length > NOTES_LIMITS.maxFiles * NOTES_LIMITS.maxBytes + 1024 * 1024)
+    return no(413, "too_large", "That upload is too big. Each file can be up to 15 MB.");
+  const form = await request.formData().catch(() => null);
+  if (!form) return no(400, "bad_request", "Send the notes as form data, in fields called files.");
+  try {
+    const entries = form.getAll("files");
+    if (entries.some((f) => !(f instanceof File)))
+      return no(400, "bad_request", "The files field should only hold files.");
+    const files = entries as File[];
+    checkCount(files.length);
+    const field = (k: string) => {
+      const v = form.get(k);
+      return typeof v === "string" ? v.trim() || undefined : (v ?? undefined);
+    };
+    const fields = NotesFields.safeParse({
+      message: field("message"),
+      outcome: field("outcome"),
+      examDate: field("examDate"),
+      minutesPerDay: field("minutesPerDay"),
+    });
+    if (!fields.success) {
+      const key = String(fields.error.issues[0]?.path[0] ?? "");
+      return no(400, "bad_request", NOTES_FIELD_ERRORS[key] ?? "That request isn't valid.");
+    }
+    const named = files.map((f) => ({ file: f, name: cleanName(f.name) }));
+    for (const f of named) checkFile({ name: f.name, size: f.file.size });
+    const read = [];
+    for (const f of named)
+      read.push(
+        await readNotesFile(
+          { name: f.name, bytes: new Uint8Array(await f.file.arrayBuffer()) },
+          extractPdf,
+        ),
+      );
+    if (read.reduce((n, f) => n + charCount(f.pages), 0) < MIN_NOTES_CHARS)
+      return no(
+        400,
+        "no_text",
+        "I couldn't find any text in those notes. Scanned PDFs can't be read yet: try a PDF with selectable text, or a .txt or .md file.",
+      );
+    // Only uploads that start work count here, so fixing a wrong file doesn't use one up.
+    if (!allowUpload(me.id))
+      return no(429, "rate_limited", "That's a lot of uploads. Try again in a few minutes.");
+    const capped = capNotes(read);
+    const out = await startFromNotes(
+      sql,
+      me.id,
+      { ...fields.data, files: capped.files, truncated: capped.truncated },
+      defer,
+    );
+    return respond(out.status, out.body);
+  } catch (error) {
+    if (error instanceof NotesError) return no(error.status, error.code, error.message);
+    return serverError("notes", error);
+  }
+}
+
 function fail(code: string, message: string, status: number) {
   return Response.json({ error: { code, message } }, { status });
 }
@@ -150,11 +265,19 @@ export async function GET(request: Request, { params }: Ctx) {
   if (!sql) return NOT_CONFIGURED();
   if (!allowRead(clientKey(request))) return fail("rate_limited", "Too many requests.", 429);
   try {
-    const me = (await learnerFor(sql, request, false))?.id ?? null;
-    if (path[0] === "home" && path.length === 1) return Response.json(await home(sql, me));
+    // Who's asking: the verified Auth0 session's learner, else the signed cookie's (never an id
+    // from the request). home() personalises only for a signed-in learner.
+    const learner = await learnerFor(sql, request, false);
+    const me = learner?.id ?? null;
+    if (path[0] === "home" && path.length === 1)
+      return Response.json(await home(sql, learner), {
+        headers: { "cache-control": "private, no-store" },
+      });
     if (path[0] === "tasks" && path.length === 2 && uuid.safeParse(path[1]).success) {
       const task = me ? await pollTask(sql, me, path[1]!, defer) : null;
-      return task ? Response.json(task) : fail("not_found", "No such request.", 404);
+      return task
+        ? Response.json(task, { headers: { "cache-control": "private, no-store" } })
+        : fail("not_found", "No such request.", 404);
     }
     return fail("not_found", "Unknown endpoint.", 404);
   } catch (error) {
@@ -164,9 +287,11 @@ export async function GET(request: Request, { params }: Ctx) {
 
 export async function POST(request: Request, { params }: Ctx) {
   const { path } = await params;
+  if (crossOriginWrite(request)) return crossOriginRefused();
   const sql = setup();
   if (!sql) return NOT_CONFIGURED();
   if (path[0] === "listen" && path.length === 1) return listen(request, sql);
+  if (path[0] === "notes" && path.length === 1) return notes(request, sql);
   const body = (await readJson(request)) ?? {};
   try {
     const me = (await learnerFor(sql, request, true))!;

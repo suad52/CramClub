@@ -13,7 +13,20 @@ import {
   randomAvatar,
   slotOf,
 } from "@ovr/shared";
+import {
+  IconArrowLeft,
+  IconArrowRight,
+  IconChevronLeft,
+  IconChevronRight,
+  IconRefresh,
+} from "@/components/ui/icons";
+import { BTN, BTN_SM, DIVIDER, FOCUS, PANEL, RIBBON } from "@/components/ui/styles";
+import { useFaceHeadSource } from "@/components/avatar/Avatar";
+import { type HeadSettings, sameHead, sanitizeHead } from "@/lib/avatar/facePhoto";
+import { useProfileStore } from "@/lib/avatar/profile";
 import { CATEGORIES, type Category, type FramingId, type Section, thumbUrl } from "./categories";
+import { HeadPanel } from "./HeadPanel";
+import { VoicePanel } from "./VoicePanel";
 import { LibraryCard } from "./LibraryCard";
 import {
   StudioCanvas,
@@ -22,7 +35,17 @@ import {
   type StudioPose,
   createStudioControls,
 } from "./StudioCanvas";
-import { Icon, Keycap, OptionTile, PresetCard, SectionTitle, Slider, Swatches } from "./ui";
+import {
+  Icon,
+  Keycap,
+  OptionTile,
+  PresetCard,
+  RANGE,
+  RANGE_TRACK_PLAYFUL,
+  SectionTitle,
+  Slider,
+  Swatches,
+} from "./ui";
 
 const HISTORY_LIMIT = 60;
 const RAIL_WIDTH = 232;
@@ -36,7 +59,7 @@ const EXPRESSIONS: { id: StudioExpression; label: string }[] = [
   { id: "neutral", label: "Neutral" },
   { id: "smile", label: "Smile" },
   { id: "wink", label: "Wink" },
-  { id: "surprised", label: "Wow" },
+  { id: "surprised", label: "Surprised" },
   { id: "sleepy", label: "Sleepy" },
 ];
 const VIEWS: { id: string; label: string; yaw: number; framing?: FramingId }[] = [
@@ -57,6 +80,55 @@ function usePanelWidth() {
   return width;
 }
 
+/** A line icon drawn like the shared set (24px grid, currentColor), a little chunkier. */
+function LineIcon({ size = 18, children }: { size?: number; children: React.ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.25}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      focusable="false"
+      aria-hidden
+      className="shrink-0"
+    >
+      {children}
+    </svg>
+  );
+}
+
+const IconUndo = () => (
+  <LineIcon>
+    <path d="M9 14.25 4.75 10 9 5.75M4.75 10h9.5a5 5 0 0 1 0 10h-3.5" />
+  </LineIcon>
+);
+const IconRedo = () => (
+  <LineIcon>
+    <path d="M15 14.25 19.25 10 15 5.75M19.25 10h-9.5a5 5 0 0 0 0 10h3.5" />
+  </LineIcon>
+);
+const IconDice = () => (
+  <LineIcon>
+    <rect x="4.75" y="4.75" width="14.5" height="14.5" rx="3" />
+    <path d="M9 9h.01M15 9h.01M12 12h.01M9 15h.01M15 15h.01" strokeWidth={3} />
+  </LineIcon>
+);
+
+/** Small buttons in the history toolbar (undo, redo, reset). */
+const TOOL_BTN = `inline-flex h-9 items-center gap-1.5 rounded-[11px] border-2 border-transparent px-3 font-display text-[13.5px] font-semibold text-walnut transition-[background-color,border-color,translate] duration-150 ease-out hover:enabled:border-walnut hover:enabled:bg-sun active:enabled:translate-y-px disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none ${FOCUS}`;
+
+/** A cream sticker floating over the preview: walnut outline and a hard shadow, no blur. */
+const TOOLBAR =
+  "pointer-events-auto rounded-[18px] border-[3px] border-walnut bg-surface p-1.5 shadow-[0_4px_0_#1f1a16]";
+
+/** A small pill badge, sun yellow, for the step and the "Surprise me" card. */
+const SUN_RIBBON =
+  "inline-flex items-center gap-1.5 rounded-full border-[2.5px] border-walnut bg-sun px-3 py-0.5 font-display text-[13px] font-semibold text-walnut shadow-[0_3px_0_#1f1a16]";
+
 function Segmented<T extends string>({
   items,
   value,
@@ -69,26 +141,39 @@ function Segmented<T extends string>({
   label: string;
 }) {
   return (
-    <div role="group" aria-label={label} className="flex rounded-full bg-ink/[0.06] p-1">
-      {items.map((it) => (
-        <button
-          key={it.id}
-          type="button"
-          aria-pressed={value === it.id}
-          onClick={() => onChange(it.id)}
-          className={`rounded-full px-3 py-1.5 text-xs font-extrabold transition ${value === it.id ? "bg-ink text-cream shadow" : "text-ink-soft hover:text-ink"}`}
-        >
-          {it.label}
-        </button>
-      ))}
+    <div className="flex items-center gap-2">
+      <span aria-hidden className="pl-1.5 font-display text-[12.5px] font-semibold text-ink-soft">
+        {label}
+      </span>
+      <div
+        role="group"
+        aria-label={label}
+        className="flex gap-1 rounded-[13px] border-2 border-walnut/15 bg-canvas p-1"
+      >
+        {items.map((it) => {
+          const on = value === it.id;
+          return (
+            <button
+              key={it.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onChange(it.id)}
+              className={`h-8 rounded-[10px] border-2 px-3 font-display text-[13.5px] font-semibold transition-[background-color,border-color,color,translate] duration-150 ease-out active:translate-y-px motion-reduce:transition-none ${FOCUS} ${on ? "border-walnut bg-sun text-walnut shadow-[0_2px_0_#1f1a16]" : "border-transparent text-walnut/70 hover:border-walnut/40 hover:bg-surface hover:text-walnut"}`}
+            >
+              {it.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 /**
- * The character studio: a game-style creator with a live 3D preview on a turntable,
- * category rail, Blender-rendered option tiles, swatches, presets and a style-aware
- * randomizer. Nothing is saved until the player signs their library card.
+ * The character studio: a live 3D preview on a turntable between a category rail (with the
+ * randomizer under it) and an options panel of Blender-rendered tiles, swatches and presets, in
+ * the cartoon kit (cream stickers, walnut outlines, sun-yellow choices). Nothing is saved until
+ * the player signs their library card.
  */
 export function CharacterStudio({
   initialConfig,
@@ -116,6 +201,11 @@ export function CharacterStudio({
   const [cardOpen, setCardOpen] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [toast, setToast] = useState<{ text: string; id: number } | null>(null);
+  // The head (chibi or real face) is saved beside the avatar config, not in it: the photo stays
+  // on this device and out of undo history.
+  const [initialHead] = useState<HeadSettings>(() => sanitizeHead(useProfileStore.getState()));
+  const [head, setHead] = useState(initialHead);
+  const faceHead = useFaceHeadSource(head);
   const controls = useRef<StudioControls>(createStudioControls());
   const sliderStart = useRef<AvatarConfig | null>(null);
   const drag = useRef<{ x: number } | null>(null);
@@ -124,7 +214,8 @@ export function CharacterStudio({
 
   const category = CATEGORIES[catIndex]!;
   const shown = useMemo(() => (hover ? { ...draft, ...hover } : draft), [draft, hover]);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(initialConfig);
+  const dirty =
+    JSON.stringify(draft) !== JSON.stringify(initialConfig) || !sameHead(head, initialHead);
 
   // Camera framing follows the category (and the Face view).
   useEffect(() => {
@@ -167,11 +258,7 @@ export function CharacterStudio({
     commit(randomAvatar(style));
     controls.current.targetYaw += Math.PI * 2;
     notify(
-      style < 0.34
-        ? "A fresh, minimal look"
-        : style > 0.66
-          ? "Something playful"
-          : "A brand-new look",
+      style < 0.34 ? "A new, minimal look" : style > 0.66 ? "A new, playful look" : "A new look",
     );
   }, [commit, style, notify]);
 
@@ -251,9 +338,20 @@ export function CharacterStudio({
 
   const renderSection = (s: Section, i: number) => {
     switch (s.kind) {
+      case "voice":
+        return <VoicePanel key={i} />;
+      case "head":
+        return (
+          <HeadPanel
+            key={i}
+            value={head}
+            onChange={setHead}
+            chibiThumb={thumbUrl("hair", draft.hair)}
+          />
+        );
       case "presets":
         return (
-          <div key={i} className="space-y-2.5">
+          <div key={i} className="space-y-2">
             {AVATAR_PRESETS.map((p) => (
               <PresetCard
                 key={p.id}
@@ -261,7 +359,7 @@ export function CharacterStudio({
                 active={JSON.stringify(p.config) === JSON.stringify(draft)}
                 onPick={() => {
                   commit(p.config);
-                  notify(`${p.label} applied — tweak anything you like`);
+                  notify(`${p.label} applied. Change anything you like.`);
                 }}
               />
             ))}
@@ -296,7 +394,7 @@ export function CharacterStudio({
         return (
           <section key={i}>
             <SectionTitle aside={`${values.length} chosen`}>{s.title}</SectionTitle>
-            {s.hint && <p className="-mt-1 mb-2.5 text-xs text-ink-soft">{s.hint}</p>}
+            {s.hint && <p className="-mt-1 mb-2.5 text-[13px] leading-5 text-ink-soft">{s.hint}</p>}
             <div className="grid grid-cols-3 gap-2.5">
               {s.options.map((o) => {
                 const slot = s.field === "accessories" ? slotOf(o.id as AccessoryId) : undefined;
@@ -365,8 +463,21 @@ export function CharacterStudio({
     }
   };
 
+  const centre = `calc(${RAIL_WIDTH + 24}px + (100% - ${RAIL_WIDTH + 24}px - ${panelWidth + 24}px) / 2)`;
+  const prevCategory = CATEGORIES[(catIndex - 1 + CATEGORIES.length) % CATEGORIES.length]!;
+  const nextCategory = CATEGORIES[(catIndex + 1) % CATEGORIES.length]!;
+
   return (
-    <div className="studio-bg fixed inset-0 z-50 overflow-hidden text-ink select-none studio-fade-in">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-canvas bg-[radial-gradient(rgb(31_26_22/0.07)_1.5px,transparent_1.6px)] bg-[length:22px_22px] text-walnut select-none studio-fade-in">
+      {/* A flat sun disc behind the character (decorative; the canvas is transparent) */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute top-[46%] aspect-square h-[min(72vh,640px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-sun/40"
+        style={{ left: centre }}
+      >
+        <span className="absolute inset-5 rounded-full border-[3px] border-dashed border-walnut/10" />
+      </div>
+
       {/* 3D preview + turntable drag surface */}
       <div
         className="absolute inset-0 cursor-grab active:cursor-grabbing"
@@ -395,85 +506,93 @@ export function CharacterStudio({
           expression={expression}
           controls={controls}
           insets={{ left: RAIL_WIDTH + 24, right: panelWidth + 24 }}
+          faceHead={faceHead}
         />
       </div>
 
       {/* Top bar */}
-      <header className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-5">
-        <div className="pointer-events-auto flex items-center gap-3">
+      <header className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between gap-4 px-5 pt-5">
+        <div className="pointer-events-auto flex items-center gap-4">
           <button
             type="button"
             onClick={leave}
             onMouseLeave={() => setConfirmLeave(false)}
-            className={`flex h-11 items-center gap-2 rounded-full px-4 text-sm font-extrabold shadow-sm ring-1 backdrop-blur transition ${confirmLeave ? "bg-ember text-cream ring-ember" : "bg-cream/80 ring-ink/10 hover:bg-cream"}`}
+            className={confirmLeave ? BTN.danger : BTN.secondary}
           >
-            <span aria-hidden>←</span>
-            {confirmLeave ? "Discard changes?" : firstTime ? "Title" : "Back"}
+            <IconArrowLeft size={18} />
+            {confirmLeave ? "Discard changes?" : firstTime ? "Back to title" : "Back"}
           </button>
-          <div className="rounded-2xl bg-cream/70 px-4 py-1.5 ring-1 ring-ink/10 backdrop-blur">
-            <p className="text-[0.62rem] font-extrabold tracking-[0.22em] text-wood uppercase">
-              {firstTime ? "Step 1 of 2 · Design" : "Wardrobe"}
+          <div>
+            <p className={`${SUN_RIBBON} -rotate-2`}>
+              <span
+                aria-hidden
+                className="h-2 w-2 rounded-full border-2 border-walnut bg-tangerine"
+              />
+              {firstTime ? "Step 1 of 2 · Your look" : "Your character"}
             </p>
-            <h1 className="font-display text-xl leading-tight font-semibold">Character Studio</h1>
+            <h1 className="mt-1 font-display text-[28px] leading-tight font-bold tracking-[-0.01em] text-walnut">
+              Character Studio
+            </h1>
           </div>
         </div>
         <div className="pointer-events-auto flex items-center gap-2">
-          <div className="flex rounded-full bg-cream/80 p-1 shadow-sm ring-1 ring-ink/10 backdrop-blur">
+          <div className="flex items-center gap-1 rounded-[16px] border-[3px] border-walnut bg-surface p-1 shadow-[0_4px_0_#1f1a16]">
             <button
               type="button"
               onClick={undo}
               disabled={!past.length}
               title="Undo (Ctrl+Z)"
-              className="rounded-full px-3 py-1.5 text-sm font-extrabold disabled:opacity-35 hover:enabled:bg-ink/5"
+              className={TOOL_BTN}
             >
-              ↶ Undo
+              <IconUndo />
+              Undo
             </button>
             <button
               type="button"
               onClick={redo}
               disabled={!future.length}
               title="Redo (Ctrl+Shift+Z)"
-              className="rounded-full px-3 py-1.5 text-sm font-extrabold disabled:opacity-35 hover:enabled:bg-ink/5"
+              className={TOOL_BTN}
             >
-              Redo ↷
+              <IconRedo />
+              Redo
             </button>
             <button
               type="button"
               onClick={() => {
                 commit(initialConfig);
+                setHead(initialHead);
                 notify(firstTime ? "Back to the starting look" : "Back to your saved look");
               }}
               disabled={!dirty}
-              className="rounded-full px-3 py-1.5 text-sm font-extrabold disabled:opacity-35 hover:enabled:bg-ink/5"
+              className={TOOL_BTN}
             >
+              <IconRefresh size={16} />
               Reset
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setCardOpen(true)}
-            className="h-11 rounded-full bg-sage-dark px-6 text-sm font-extrabold text-cream shadow-[0_10px_24px_-10px_rgb(86_115_79/0.9)] transition hover:bg-[#46623f] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ember"
-          >
-            {firstTime ? "Done — next" : "Save look"} <span aria-hidden>→</span>
+          <button type="button" onClick={() => setCardOpen(true)} className={BTN.primary}>
+            {firstTime ? "Continue" : "Save look"}
+            <IconArrowRight size={18} />
           </button>
         </div>
       </header>
 
-      {/* Category rail */}
-      <nav
-        aria-label="Categories"
-        className="absolute top-28 bottom-40 left-5 flex flex-col"
+      {/* Left column: categories, then the randomizer */}
+      <div
+        className="pointer-events-none absolute top-24 bottom-5 left-5 flex flex-col gap-3"
         style={{ width: RAIL_WIDTH }}
       >
-        <div className="flex min-h-0 flex-1 flex-col rounded-3xl bg-cream/85 p-2 shadow-[0_20px_50px_-30px_rgb(20_12_6/0.6)] ring-1 ring-ink/10 backdrop-blur">
-          <div className="flex items-center justify-between px-2.5 pt-1 pb-2 text-[0.65rem] font-extrabold tracking-[0.16em] text-ink-soft uppercase">
-            <span>Categories</span>
-            <span className="flex items-center gap-1 normal-case">
-              <Keycap>Q</Keycap>
-              <Keycap>E</Keycap>
-            </span>
-          </div>
-          <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-0.5 [scrollbar-width:thin]">
+        <nav
+          aria-label="Categories"
+          className={`${PANEL} pointer-events-auto relative mt-2 flex min-h-0 flex-1 flex-col p-2 pt-4`}
+        >
+          <span className={`${RIBBON} absolute -top-3.5 left-4`}>Categories</span>
+          <span className="absolute -top-3 right-4 flex items-center gap-1">
+            <Keycap>Q</Keycap>
+            <Keycap>E</Keycap>
+          </span>
+          <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1.5 [scrollbar-width:thin]">
             {CATEGORIES.map((c: Category, i) => {
               const active = i === catIndex;
               return (
@@ -482,14 +601,14 @@ export function CharacterStudio({
                     type="button"
                     aria-current={active ? "page" : undefined}
                     onClick={() => goCategory(i)}
-                    className={`group relative flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-sm font-extrabold transition ${active ? "bg-ink text-cream shadow-md" : "text-ink-soft hover:bg-ink/5 hover:text-ink"}`}
+                    className={`relative flex h-11 w-full items-center gap-3 rounded-[14px] border-[2.5px] px-3 text-left font-display text-[15px] font-semibold transition-[background-color,border-color,color,translate] duration-150 ease-out active:translate-y-px motion-reduce:transition-none ${FOCUS} ${active ? "border-walnut bg-sun text-walnut shadow-[0_3px_0_#1f1a16]" : "border-transparent text-walnut/75 hover:border-walnut/30 hover:bg-canvas hover:text-walnut"}`}
                   >
-                    <Icon id={c.icon} className={`h-5 w-5 shrink-0 ${active ? "text-lamp" : ""}`} />
-                    {c.label}
+                    <Icon id={c.icon} className="h-5 w-5" />
+                    <span className="min-w-0 flex-1 truncate">{c.label}</span>
                     {active && (
                       <span
-                        className="absolute top-1/2 -right-2 h-6 w-1.5 -translate-y-1/2 rounded-full bg-ember"
                         aria-hidden
+                        className="h-2.5 w-2.5 shrink-0 rounded-full border-2 border-walnut bg-tangerine"
                       />
                     )}
                   </button>
@@ -497,116 +616,99 @@ export function CharacterStudio({
               );
             })}
           </ul>
+        </nav>
+
+        {/* Randomizer */}
+        <div className={`${PANEL} pointer-events-auto relative mt-3 shrink-0 p-4 pt-5`}>
+          <span className={`${SUN_RIBBON} absolute -top-3.5 left-4 rotate-[-2deg]`}>
+            Surprise me
+          </span>
+          <span className="absolute -top-3 right-4">
+            <Keycap>R</Keycap>
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={style}
+            onChange={(e) => setStyle(Number(e.target.value))}
+            aria-label="Randomizer style, minimal to playful"
+            className={`${RANGE} ${RANGE_TRACK_PLAYFUL} mt-1`}
+          />
+          <div className="flex justify-between font-display text-xs font-medium text-ink-soft">
+            <span>Minimal</span>
+            <span>Playful</span>
+          </div>
+          <button type="button" onClick={randomize} className={`${BTN.secondary} mt-3 w-full`}>
+            <IconDice />
+            Randomize
+          </button>
         </div>
-      </nav>
+      </div>
 
       {/* Options panel */}
       <aside
         aria-label={`${category.label} options`}
-        className="absolute top-24 right-5 bottom-5 flex flex-col overflow-hidden rounded-[1.75rem] bg-cream/92 shadow-[0_30px_70px_-35px_rgb(20_12_6/0.7)] ring-1 ring-ink/10 backdrop-blur-md"
+        className={`${PANEL} absolute top-24 right-5 bottom-5 flex flex-col overflow-hidden`}
         style={{ width: panelWidth }}
       >
         <div
           key={category.id}
-          className="studio-slide-in flex items-center gap-3 border-b border-ink/10 px-5 pt-5 pb-4"
+          className={`studio-slide-in flex items-center gap-3.5 border-b-2 border-dashed ${DIVIDER} px-5 pt-5 pb-4`}
         >
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-ink text-lamp">
+          <span
+            aria-hidden
+            className="grid h-12 w-12 shrink-0 -rotate-6 place-items-center rounded-[14px] border-[2.5px] border-walnut bg-sun text-walnut shadow-[0_3px_0_#1f1a16]"
+          >
             <Icon id={category.icon} className="h-6 w-6" />
           </span>
           <div className="min-w-0">
-            <h2 className="font-display text-2xl leading-tight font-semibold">{category.label}</h2>
-            <p className="text-xs leading-snug text-ink-soft">{category.blurb}</p>
+            <h2 className="font-display text-[24px] leading-tight font-bold text-walnut">
+              {category.label}
+            </h2>
+            <p className="text-[13px] leading-5 font-medium text-ink-soft">{category.blurb}</p>
           </div>
         </div>
         <div
           key={`${category.id}-body`}
-          className="studio-slide-in min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5 [scrollbar-width:thin]"
+          className="studio-slide-in min-h-0 flex-1 space-y-7 overflow-y-auto px-5 py-5 [scrollbar-width:thin]"
         >
           {category.sections.map(renderSection)}
         </div>
-        <div className="flex items-center justify-between border-t border-ink/10 px-5 py-3 text-xs font-bold text-ink-soft">
+        <div
+          className={`flex items-center justify-between gap-2 border-t-2 border-dashed ${DIVIDER} px-3 py-2.5`}
+        >
           <button
             type="button"
             onClick={() => goCategory(catIndex - 1)}
-            className="rounded-full px-2 py-1 hover:bg-ink/5 hover:text-ink"
+            className={`${BTN_SM.quiet} max-w-[40%]`}
           >
-            ← {CATEGORIES[(catIndex - 1 + CATEGORIES.length) % CATEGORIES.length]!.label}
+            <IconChevronLeft size={16} />
+            <span className="sr-only">Previous category: </span>
+            <span className="truncate">{prevCategory.label}</span>
           </button>
-          <span>
-            {catIndex + 1} / {CATEGORIES.length}
+          <span className="tabular shrink-0 rounded-full border-2 border-walnut bg-canvas px-2.5 py-0.5 font-display text-xs font-semibold text-walnut">
+            {catIndex + 1} of {CATEGORIES.length}
           </span>
           <button
             type="button"
             onClick={() => goCategory(catIndex + 1)}
-            className="rounded-full px-2 py-1 hover:bg-ink/5 hover:text-ink"
+            className={`${BTN_SM.quiet} max-w-[40%]`}
           >
-            {CATEGORIES[(catIndex + 1) % CATEGORIES.length]!.label} →
+            <span className="sr-only">Next category: </span>
+            <span className="truncate">{nextCategory.label}</span>
+            <IconChevronRight size={16} />
           </button>
         </div>
       </aside>
 
-      {/* Randomizer */}
-      <div
-        className="absolute bottom-5 left-5 rounded-3xl bg-cream/85 p-4 shadow-[0_20px_50px_-30px_rgb(20_12_6/0.6)] ring-1 ring-ink/10 backdrop-blur"
-        style={{ width: RAIL_WIDTH }}
-      >
-        <div className="flex items-center justify-between">
-          <span className="text-[0.65rem] font-extrabold tracking-[0.16em] text-ink-soft uppercase">
-            Surprise me
-          </span>
-          <Keycap>R</Keycap>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={style}
-          onChange={(e) => setStyle(Number(e.target.value))}
-          aria-label="Randomizer style, minimal to playful"
-          className="studio-range mt-2 w-full"
-        />
-        <div className="flex justify-between text-[0.7rem] font-extrabold text-ink-soft">
-          <span>Minimal</span>
-          <span>Playful</span>
-        </div>
-        <button
-          type="button"
-          onClick={randomize}
-          className="group mt-2.5 flex w-full items-center justify-center gap-2 rounded-full bg-ink py-2.5 text-sm font-extrabold text-cream transition hover:bg-wood-dark"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            className="h-4.5 w-4.5 transition duration-300 group-hover:rotate-90"
-            aria-hidden
-          >
-            <rect
-              x="4"
-              y="4"
-              width="16"
-              height="16"
-              rx="4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            />
-            <circle cx="9" cy="9" r="1.4" fill="currentColor" />
-            <circle cx="15" cy="15" r="1.4" fill="currentColor" />
-            <circle cx="15" cy="9" r="1.4" fill="currentColor" />
-            <circle cx="9" cy="15" r="1.4" fill="currentColor" />
-          </svg>
-          Randomize
-        </button>
-      </div>
-
       {/* Preview toolbar */}
       <div
         className="pointer-events-none absolute bottom-5 flex -translate-x-1/2 flex-col items-center gap-2"
-        style={{
-          left: `calc(${RAIL_WIDTH + 24}px + (100% - ${RAIL_WIDTH + 24}px - ${panelWidth + 24}px) / 2)`,
-        }}
+        style={{ left: centre }}
       >
-        <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2 rounded-[1.4rem] bg-cream/85 p-1.5 shadow-[0_20px_50px_-30px_rgb(20_12_6/0.6)] ring-1 ring-ink/10 backdrop-blur">
+        <div className={`${TOOLBAR} flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5`}>
           <Segmented
             label="View"
             items={VIEWS}
@@ -620,7 +722,7 @@ export function CharacterStudio({
           />
           <Segmented label="Pose" items={POSES} value={pose} onChange={setPose} />
         </div>
-        <div className="pointer-events-auto rounded-full bg-cream/85 p-1 shadow-[0_20px_50px_-30px_rgb(20_12_6/0.6)] ring-1 ring-ink/10 backdrop-blur">
+        <div className={TOOLBAR}>
           <Segmented
             label="Expression"
             items={EXPRESSIONS}
@@ -628,32 +730,48 @@ export function CharacterStudio({
             onChange={setExpression}
           />
         </div>
-        <p className="text-[0.7rem] font-bold text-ink-soft/80">
-          Drag to turn · scroll to zoom · ← → to rotate
+        <p className="rounded-full border-2 border-walnut/20 bg-surface px-3 py-0.5 font-display text-xs font-medium text-ink-soft">
+          Drag to turn, scroll to zoom, or use the arrow keys
         </p>
       </div>
 
       {loading && (
         <div
-          className="pointer-events-none absolute top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center gap-2 text-center"
-          style={{
-            left: `calc(${RAIL_WIDTH + 24}px + (100% - ${RAIL_WIDTH + 24}px - ${panelWidth + 24}px) / 2)`,
-          }}
+          className="pointer-events-none absolute top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center gap-3 text-center"
+          style={{ left: centre }}
         >
-          <span className="h-10 w-10 animate-spin rounded-full border-4 border-wood/20 border-t-wood" />
-          <span className="text-sm font-bold text-ink-soft">
-            Unpacking the wardrobe… {Math.round(progress)}%
+          <span
+            aria-hidden
+            className="h-10 w-10 rounded-full border-4 border-walnut/15 border-t-tangerine motion-safe:animate-spin"
+          />
+          <span className="rounded-full border-[3px] border-walnut bg-surface px-4 py-1.5 font-display text-sm font-semibold text-walnut shadow-[0_4px_0_#1f1a16]">
+            Loading the wardrobe… <span className="tabular">{Math.round(progress)}%</span>
+          </span>
+          <span
+            aria-hidden
+            className="block h-3.5 w-48 overflow-hidden rounded-full border-[2.5px] border-walnut bg-surface"
+          >
+            <span
+              className="block h-full rounded-full bg-leaf transition-[width] duration-300 ease-out motion-reduce:transition-none"
+              style={{ width: `${Math.round(progress)}%` }}
+            />
           </span>
         </div>
       )}
 
       {toast && (
         <div
-          key={toast.id}
-          role="status"
-          className="studio-toast pointer-events-none absolute top-24 left-1/2 -translate-x-1/2 rounded-full bg-ink px-5 py-2.5 text-sm font-bold text-cream shadow-xl"
+          className="pointer-events-none absolute top-24 -translate-x-1/2"
+          style={{ left: centre }}
         >
-          {toast.text}
+          <div
+            key={toast.id}
+            role="status"
+            className="title-pop flex items-center gap-2 rounded-full border-[3px] border-walnut bg-sun px-4 py-2 font-display text-[14px] font-semibold whitespace-nowrap text-walnut shadow-[0_4px_0_#1f1a16]"
+          >
+            <span aria-hidden className="h-2.5 w-2.5 rounded-full border-2 border-walnut bg-leaf" />
+            {toast.text}
+          </div>
         </div>
       )}
 
@@ -661,9 +779,12 @@ export function CharacterStudio({
         <LibraryCard
           config={draft}
           initialName={initialName}
-          confirmLabel={firstTime ? "Enter the library →" : "Save changes"}
+          confirmLabel={firstTime ? "Enter the library" : "Save changes"}
           onBack={() => setCardOpen(false)}
-          onConfirm={(name) => onSave(name, draft)}
+          onConfirm={(name) => {
+            useProfileStore.getState().setHead(head);
+            onSave(name, draft);
+          }}
         />
       )}
     </div>

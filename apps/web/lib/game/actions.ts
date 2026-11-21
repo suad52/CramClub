@@ -4,6 +4,17 @@ import {
   shouldOfferJoin,
   useBoardLessons,
 } from "@/lib/learning-studio/boardLessons";
+import { cancelSeat, isOnline, requestSeat, setSeatLostHandler } from "@/lib/net/connection";
+import { isSeatTakenByOther, takenSeats } from "@/lib/net/players";
+import {
+  askToLeave,
+  askToSit,
+  heldTableId,
+  isReservable,
+  offerClaim,
+  showReserved,
+  showToast,
+} from "@/lib/tables/client";
 import { useWhiteboardStore } from "@/lib/whiteboard/store";
 import { exitPointerLock, isPointerLocked, requestPointerLock } from "./pointer";
 import { isFocusing, usePomodoro } from "./pomodoro";
@@ -159,6 +170,81 @@ export function sitDown(seatId: string) {
   useGameStore.getState().setNearbySeat(null);
 }
 
+/** The seat we're asking about (one question at a time). */
+let askingFor: string | null = null;
+
+export const SEAT_TAKEN_TEXT = "Someone's sitting there.";
+
+/** Whether anyone else is sitting at this table (then you're not the first here). */
+function othersAtTable(tableId: string) {
+  for (const seatId of takenSeats().keys())
+    if (seatsById.get(seatId)?.tableId === tableId) return true;
+  return false;
+}
+
+/**
+ * Sitting down. Seats go through the library room (lib/net), so two people never share one: a
+ * seat someone's in says so at once, and otherwise the room is asked and has the last word. At a
+ * table someone may hold, the tables server is asked first (lib/tables/client.ts): a private
+ * table can say no (then the "reserved" card says whose it is and until when); at a free table
+ * nobody else is at, you're the first here, so you sit and are offered to hold it. Alone (no
+ * game server), seats away from tables just sit.
+ */
+export function requestSit(seatId: string) {
+  const seat = seatsById.get(seatId);
+  if (!seat) return;
+  if (isSeatTakenByOther(seatId)) return showToast(SEAT_TAKEN_TEXT);
+  const reservable = isReservable(seat.tableId);
+  if (!reservable && !isOnline()) return sitDown(seatId);
+  if (askingFor) return;
+  askingFor = seatId;
+  runtime.vx = 0;
+  runtime.vz = 0;
+  const tableId = seat.tableId;
+  // Sat somewhere, walked off or left while we asked: the question's moot.
+  const moot = () => {
+    const game = useGameStore.getState();
+    const away =
+      Math.hypot(runtime.x - seat.x, runtime.z - seat.z) > 2 || Math.abs(runtime.y - seat.y) > 0.5;
+    return !!game.seatId || game.phase !== "playing" || away;
+  };
+  const table = reservable ? askToSit(seat.tableId!) : Promise.resolve(null);
+  void table
+    .then(async (answer) => {
+      if (answer && !answer.ok) {
+        if (!moot()) showReserved(answer);
+        return;
+      }
+      if (moot()) return;
+      const room = await requestSeat(seatId);
+      if (moot()) return cancelSeat(seatId);
+      if (!room.ok) {
+        showToast(room.reason === "taken" ? SEAT_TAKEN_TEXT : "That seat isn't free just now.");
+        return;
+      }
+      sitDown(seatId);
+      if (answer?.firstHere && tableId && !othersAtTable(tableId)) offerClaim(tableId);
+    })
+    .finally(() => {
+      askingFor = null;
+    });
+}
+
+/**
+ * Gets you up even mid-pomodoro (which then doesn't count): for when the seat isn't yours to
+ * keep (the table went private, or someone else turned out to have it).
+ */
+export function leaveSeatNow() {
+  if (isSeatLocked()) usePomodoro.getState().abandon("left-table");
+  standUp({ force: true });
+}
+
+// Back online and the seat you sat in meanwhile is someone else's: get up.
+setSeatLostHandler(() => {
+  showToast(`${SEAT_TAKEN_TEXT} Find another seat nearby.`);
+  leaveSeatNow();
+});
+
 /** Third person was swapped for the desk view when a pomodoro started; standing up swaps it back. */
 let restoreThirdPerson = false;
 
@@ -201,24 +287,36 @@ export function nudgeSeatLocked() {
   for (const listener of seatLockListeners) listener();
 }
 
-/** The table timer's settings or "Leave the table?" dialog, which need a free mouse. */
+/**
+ * The table timer's settings or "Leave the table?" dialog, which need a free mouse (and the
+ * table hold's "who can join" choices, which work the same way).
+ */
 const timerPanels = new Set<string>();
 
-export function setTimerPanelOpen(panel: "settings" | "leave", open: boolean) {
+export function setTimerPanelOpen(panel: "settings" | "leave" | "table", open: boolean) {
   if (open) timerPanels.add(panel);
   else timerPanels.delete(panel);
 }
 
 export const isTimerPanelOpen = () => timerPanels.size > 0;
 
-export function standUp() {
+/**
+ * Gets you up from your seat. Leaving the table you're holding gives it up, so unless `force` is
+ * set this asks first and returns false (`then` runs after they've confirmed and left).
+ */
+export function standUp(opts: { force?: boolean; then?: () => void } = {}): boolean {
   if (isSeatLocked()) {
     nudgeSeatLocked();
-    return;
+    return false;
   }
   const { seatId, setSeat } = useGameStore.getState();
   const seat = seatsById.get(seatId ?? "");
-  if (!seat) return;
+  if (!seat) return false;
+  const held = heldTableId();
+  if (!opts.force && held && seat.tableId === held) {
+    askToLeave(held, opts.then ?? null);
+    return false;
+  }
   const stand = findStandPoint(seat, PLAYER.radius);
   if (stand) {
     runtime.x = stand.x;
@@ -230,6 +328,7 @@ export function standUp() {
     restoreThirdPerson = false;
     useGameStore.getState().setCameraMode("third-person");
   }
+  return true;
 }
 
 /**
@@ -255,7 +354,7 @@ export function interact() {
   else if (nearbyBoardId) openBoard(nearbyBoardId);
   else if (nearbyLiftId) rideLift(nearbyLiftId);
   else if (nearbyLibrarian) openLibrarian();
-  else if (nearbySeatId) sitDown(nearbySeatId);
+  else if (nearbySeatId) requestSit(nearbySeatId);
 }
 
 /** Whether the mouse was captured when Shift went down (so we re-capture on release). */

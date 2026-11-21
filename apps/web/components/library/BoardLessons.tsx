@@ -2,6 +2,31 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LessonPlayerView, Question } from "@/components/learning-studio/LessonPlayer";
+import {
+  IconArrowUpRight,
+  IconBoard,
+  IconChevronDown,
+  IconChevronRight,
+  IconClose,
+  IconPause,
+  IconPlay,
+  IconPlus,
+  type IconProps,
+} from "@/components/ui/icons";
+import {
+  BODY,
+  BTN,
+  DIVIDER,
+  EYEBROW,
+  FOCUS,
+  HUD_CHIP,
+  ICON_BTN,
+  PANEL,
+  PANEL_MUTED,
+  RIBBON,
+  TAG,
+  TITLE,
+} from "@/components/ui/styles";
 import { closeLessonFullscreen, openLessonFullscreen } from "@/lib/game/actions";
 import { exitPointerLock, requestPointerLock } from "@/lib/game/pointer";
 import { isFocusing, usePomodoro } from "@/lib/game/pomodoro";
@@ -34,46 +59,70 @@ const SAMPLE_ID = "sample";
 const PREVIEW_W = 300;
 const PREVIEW_H = Math.round((PREVIEW_W * BOARD_SCREEN.height) / BOARD_SCREEN.width);
 
-const KBD_SM = "kbd !h-5 !min-w-5 !px-1 !text-[0.65rem]";
-const FOCUS = "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ember";
-const ICON_BTN = `grid h-8 w-8 shrink-0 place-items-center rounded-full text-ink ring-1 ring-ink/15 transition hover:bg-ink/5 ${FOCUS}`;
-const HEADER_BTN = `rounded-full px-3 py-2 text-sm font-bold ring-1 transition ${FOCUS}`;
-/** Book-spine colours for the lesson list (the loading screen's palette). */
-const SPINES = ["#8c3f3a", "#3f5f4a", "#c99a45", "#34466a", "#a5643f"];
+/** Small keycaps: on the light surfaces, and on the dark walnut HUD over the library. */
+const KBD_SM = "kbd !h-5 !min-w-5 !px-1 !text-[0.68rem]";
+const KBD_DARK_SM = "kbd kbd-dark !h-5 !min-w-5 !px-1 !text-[0.68rem]";
+/** A walnut sticker floating over the 3D library (the corner player, the join offer). */
+const HUD_PANEL =
+  "rounded-[22px] border-[3px] border-black/80 bg-walnut/95 text-walnut-text shadow-[0_6px_0_rgb(0_0_0/0.55)]";
+/** Buttons on the walnut HUD: chunky keys with a black outline that press down when clicked. */
+const HUD_KEY = `inline-flex shrink-0 items-center justify-center gap-2 border-black/80 font-display font-semibold whitespace-nowrap shadow-[0_3px_0_rgb(0_0_0/0.55)] transition-[background-color,transform,box-shadow] duration-150 ease-out hover:-translate-y-px active:translate-y-[2px] active:shadow-[0_1px_0_rgb(0_0_0/0.55)] motion-reduce:transition-none ${FOCUS}`;
+/** A 40px icon-only control on the walnut HUD (always pass an aria-label). */
+const HUD_ICON_BTN = `${HUD_KEY} h-10 w-10 rounded-[12px] border-2 bg-walnut-key text-walnut-text hover:bg-[#4a423b]`;
+/** The main action on the walnut HUD: a sun key, so it reads first. */
+const HUD_PRIMARY = `${HUD_KEY} h-10 rounded-[14px] border-[3px] bg-sun px-4 text-[14px] text-walnut hover:bg-[#f6d98f]`;
+const HUD_SECONDARY = `${HUD_KEY} h-10 rounded-[14px] border-[3px] bg-walnut-key px-4 text-[14px] text-walnut-text hover:bg-[#4a423b]`;
+/** Book-spine colours for the lesson list: the cartoon palette's flat brights. */
+const SPINES = ["#e07a3f", "#7fb27a", "#f2cf7e", "#8fb3d9", "#d98a7a"];
 
-const GLYPHS = {
-  play: { d: "M8 5.5v13l10.5-6.5z", fill: true },
-  pause: { d: "M7 5h3.6v14H7zM13.4 5H17v14h-3.4z", fill: true },
-  next: { d: "M6 5.5v13l9.5-6.5zM15.8 5.5h2.6v13h-2.6z", fill: true },
-  expand: { d: "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5", fill: false },
-  close: { d: "M6.5 6.5l11 11M17.5 6.5l-11 11", fill: false },
-  plus: { d: "M12 5v14M5 12h14", fill: false },
-};
-
-function Glyph({ name, className = "h-4 w-4" }: { name: keyof typeof GLYPHS; className?: string }) {
-  const g = GLYPHS[name];
+/** Drawn like the shared icon set (24px grid, currentColor, hidden from readers), a bit bolder. */
+function LineIcon({
+  d,
+  size = 20,
+  className = "",
+}: { d: string } & Pick<IconProps, "size" | "className">) {
   return (
     <svg
+      xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
-      aria-hidden
-      className={className}
-      fill={g.fill ? "currentColor" : "none"}
-      stroke={g.fill ? "none" : "currentColor"}
-      strokeWidth={2.4}
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.25}
       strokeLinecap="round"
       strokeLinejoin="round"
+      aria-hidden
+      focusable="false"
+      className={`shrink-0 ${className}`}
     >
-      <path d={g.d} />
+      <path d={d} />
     </svg>
   );
 }
 
+/** Make bigger: full screen. */
+const IconExpand = (p: Pick<IconProps, "size" | "className">) => (
+  <LineIcon
+    {...p}
+    d="M4.75 9.25v-4.5h4.5M14.75 4.75h4.5v4.5M19.25 14.75v4.5h-4.5M9.25 19.25h-4.5v-4.5"
+  />
+);
+/** Make smaller: leave full screen. */
+const IconCollapse = (p: Pick<IconProps, "size" | "className">) => (
+  <LineIcon
+    {...p}
+    d="M9.25 4.75v4.5h-4.5M19.25 9.25h-4.5v-4.5M14.75 19.25v-4.5h4.5M4.75 14.75h4.5v4.5"
+  />
+);
+
+/** "Live": a steady tangerine marker (no pulsing). */
 function LiveDot() {
   return (
-    <span className="relative flex h-2 w-2" aria-hidden>
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-60" />
-      <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-    </span>
+    <span
+      className="h-2.5 w-2.5 shrink-0 rounded-full border-2 border-walnut bg-tangerine"
+      aria-hidden
+    />
   );
 }
 
@@ -257,7 +306,7 @@ function JoinedLesson({ run }: { run: BoardLesson }) {
     <>
       {opened && <FullscreenLesson run={run} playback={playback} open={fullscreen && !away} />}
       {!fullscreen && !away && (
-        <div className="pointer-events-none absolute bottom-4 left-4 z-[12] flex flex-col items-start gap-3">
+        <div className="pointer-events-none absolute right-4 bottom-4 z-[12] flex flex-col items-end gap-3">
           {showQuestion && !covered && <QuestionCard playback={playback} />}
           <MiniPreview run={run} playback={playback} upNext={between} />
         </div>
@@ -336,15 +385,17 @@ function MiniPreview({
   return (
     <section
       aria-label={`Lesson on ${boardName(run.boardId)}`}
-      className="pointer-events-auto rounded-2xl bg-cream/90 p-2 text-ink shadow-[0_18px_40px_-18px_rgb(20_12_6/0.65)] ring-1 ring-ink/10 backdrop-blur transition duration-300 ease-out starting:translate-y-3 starting:opacity-0"
-      style={{ width: PREVIEW_W + 16 }}
+      className={`${HUD_PANEL} pointer-events-auto p-2 transition duration-300 ease-out starting:translate-y-3 starting:opacity-0 motion-reduce:transition-none`}
+      // The screen at its own size, plus the card's padding and its 3px outline.
+      style={{ width: PREVIEW_W + 22 }}
     >
       <button
         type="button"
         onClick={openLessonFullscreen}
         aria-label="Open the lesson full screen"
         aria-keyshortcuts="F"
-        className={`group relative block w-full overflow-hidden rounded-xl bg-[#f4efe4] ring-1 ring-ink/10 ${FOCUS}`}
+        // walnut-text is the board face's paper colour, so the title card matches the board.
+        className={`group relative block w-full overflow-hidden rounded-[14px] bg-walnut-text ring-2 ring-black/80 ${FOCUS}`}
         style={{ height: PREVIEW_H }}
       >
         <canvas
@@ -357,22 +408,22 @@ function MiniPreview({
           // Until the board's screen exists (it's still flipping into view, say), a title card.
           <span className="absolute inset-0 grid place-items-center p-5 text-center">
             <span>
-              <span className="block text-[0.65rem] font-extrabold tracking-wide text-ember uppercase">
+              <span className="block font-display text-xs font-semibold text-ink-soft">
                 {boardName(run.boardId)}
               </span>
-              <span className="mt-1 line-clamp-2 block font-display text-lg leading-tight font-semibold">
+              <span className="mt-1 line-clamp-2 block font-display text-lg leading-tight font-bold text-walnut">
                 {lesson.title}
               </span>
             </span>
           </span>
         )}
-        <span className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-ink/80 px-2 py-0.5 text-[0.62rem] font-extrabold tracking-wide text-cream uppercase">
+        <span className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full border-2 border-black/80 bg-walnut px-2.5 py-0.5 font-display text-xs font-semibold text-walnut-text shadow-[0_2px_0_rgb(0_0_0/0.55)]">
           {status.live && <LiveDot />}
           {status.text}
         </span>
-        <span className="absolute inset-0 grid place-items-center bg-ink/0 opacity-0 transition group-hover:bg-ink/30 group-hover:opacity-100 group-focus-visible:bg-ink/30 group-focus-visible:opacity-100">
-          <span className="flex items-center gap-2 rounded-full bg-cream px-3 py-1.5 text-sm font-bold text-ink shadow-lg">
-            <Glyph name="expand" />
+        <span className="absolute inset-0 grid place-items-center bg-walnut/0 opacity-0 transition duration-150 group-hover:bg-walnut/35 group-hover:opacity-100 group-focus-visible:bg-walnut/35 group-focus-visible:opacity-100 motion-reduce:transition-none">
+          <span className="flex items-center gap-2 rounded-[12px] border-2 border-walnut bg-surface px-3 py-1.5 font-display text-[13.5px] font-semibold text-walnut shadow-[0_3px_0_#1f1a16]">
+            <IconExpand size={16} />
             Full screen
             <span className={KBD_SM}>F</span>
           </span>
@@ -380,7 +431,7 @@ function MiniPreview({
       </button>
 
       <div
-        className="mt-2 h-1 overflow-hidden rounded-full bg-ink/10"
+        className="mx-1 mt-2.5 h-3.5 overflow-hidden rounded-full border-2 border-black/80 bg-walnut-key shadow-[inset_0_2px_0_rgb(0_0_0/0.35)]"
         role="progressbar"
         aria-label="Lesson progress"
         aria-valuemin={0}
@@ -388,27 +439,26 @@ function MiniPreview({
         aria-valuenow={Math.round(overall * 100)}
       >
         <span
-          className="block h-full rounded-full bg-wood transition-[width] duration-300"
+          className={`block h-full rounded-full transition-[width] duration-300 motion-reduce:transition-none ${complete ? "bg-leaf" : "bg-sun"}`}
           style={{ width: `${overall * 100}%` }}
         />
       </div>
 
-      <div className="flex items-center gap-2 px-1 pt-2">
+      <div className="flex items-center gap-1.5 pt-2 pb-0.5 pl-1">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm leading-tight font-extrabold" title={lesson.title}>
+          <p
+            className="truncate font-display text-[15px] leading-5 font-semibold"
+            title={lesson.title}
+          >
             {lesson.title}
           </p>
-          <p className="truncate text-xs leading-tight text-ink-soft">
+          <p className="tabular truncate font-display text-xs leading-4 font-medium text-walnut-muted">
             {complete ? "Lesson complete" : `Scene ${index + 1} of ${total}`} · Table{" "}
             {tableNumberOf(run.boardId)}
           </p>
         </div>
         {complete ? (
-          <button
-            type="button"
-            onClick={leave}
-            className={`rounded-full bg-ink px-3.5 py-1.5 text-xs font-bold text-cream transition hover:bg-wood-dark ${FOCUS}`}
-          >
+          <button type="button" onClick={leave} className={HUD_PRIMARY}>
             Done
           </button>
         ) : readOn(playback) ? (
@@ -417,18 +467,18 @@ function MiniPreview({
             onClick={() => go(index + 1)}
             aria-label="Next scene"
             title="Next scene"
-            className={ICON_BTN}
+            className={HUD_ICON_BTN}
           >
-            <Glyph name="next" />
+            <IconChevronRight />
           </button>
         ) : (
           <button
             type="button"
             onClick={toggle}
             aria-label={playing ? "Pause the lesson" : "Play the lesson"}
-            className={ICON_BTN}
+            className={HUD_ICON_BTN}
           >
-            <Glyph name={playing ? "pause" : "play"} />
+            {playing ? <IconPause /> : <IconPlay />}
           </button>
         )}
         <button
@@ -437,9 +487,9 @@ function MiniPreview({
           aria-label="Full screen"
           aria-keyshortcuts="F"
           title="Full screen (F)"
-          className={ICON_BTN}
+          className={HUD_ICON_BTN}
         >
-          <Glyph name="expand" />
+          <IconExpand />
         </button>
         {!complete && (
           <button
@@ -447,16 +497,16 @@ function MiniPreview({
             onClick={leave}
             aria-label="Leave the lesson"
             title="Leave the lesson (it waits on the board)"
-            className={ICON_BTN}
+            className={HUD_ICON_BTN}
           >
-            <Glyph name="close" />
+            <IconClose />
           </button>
         )}
       </div>
       {locked && (
-        <p className="flex items-center gap-1 px-1 pt-2 text-[0.7rem] font-bold text-ink-soft">
-          Hold <span className={KBD_SM}>Shift</span> to click · <span className={KBD_SM}>F</span>{" "}
-          full screen
+        <p className="flex flex-wrap items-center gap-1 px-1 pt-2 pb-1 font-display text-xs font-medium text-walnut-muted">
+          Hold <kbd className={KBD_DARK_SM}>Shift</kbd> to click ·{" "}
+          <kbd className={KBD_DARK_SM}>F</kbd> full screen
         </p>
       )}
     </section>
@@ -471,14 +521,20 @@ function QuestionCard({ playback }: { playback: LessonPlayback }) {
   return (
     <section
       aria-label="Knowledge check"
-      className="pointer-events-auto max-h-[calc(100dvh-24.5rem)] w-[22rem] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl transition duration-300 ease-out starting:translate-y-3 starting:opacity-0"
+      className="pointer-events-auto max-h-[calc(100dvh-24.5rem)] w-[22rem] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-[20px] pb-1.5 transition duration-300 ease-out starting:translate-y-3 starting:opacity-0 motion-reduce:transition-none"
     >
-      <p className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-ink/85 px-2.5 py-1 text-[0.68rem] font-bold text-cream shadow backdrop-blur">
-        <span className="font-extrabold tracking-wide text-lamp uppercase">Quick check</span>
-        {q.type === "multiple-choice"
-          ? `· press 1–${q.options?.length ?? 4}, then Enter`
-          : "· Enter to go on"}
-        {locked && " · hold Shift to click"}
+      <p
+        className={`${HUD_CHIP} mb-2 inline-flex flex-wrap items-center gap-x-1.5 py-1 pr-2.5 pl-1 text-xs`}
+      >
+        <span className="rounded-full border-2 border-black/80 bg-sun px-2 py-px font-semibold text-walnut">
+          Quick check
+        </span>
+        <span className="text-walnut-muted">
+          {q.type === "multiple-choice"
+            ? `· press 1–${q.options?.length ?? 4}, then Enter`
+            : "· Enter to go on"}
+          {locked && " · hold Shift to click"}
+        </span>
       </p>
       <Question
         key={playback.scene.id}
@@ -563,7 +619,7 @@ function FullscreenLesson({
       aria-label={`${run.lesson.title}, full screen`}
       tabIndex={-1}
       hidden={!open}
-      className="absolute inset-0 z-[18] origin-bottom-left bg-parchment outline-none transition duration-[220ms] ease-out starting:scale-30 starting:opacity-0 motion-reduce:transition-none"
+      className="absolute inset-0 z-[18] origin-bottom-right bg-canvas outline-none transition duration-200 ease-out starting:scale-[0.97] starting:opacity-0 motion-reduce:transition-none"
     >
       <LessonPlayerView
         playback={playback}
@@ -571,7 +627,7 @@ function FullscreenLesson({
         fill
         keyboardShortcuts={open}
         onExit={closeLessonFullscreen}
-        exitLabel="↙ Back to the library"
+        exitLabel="Back to the library"
         headerActions={
           <>
             {canFill && (
@@ -580,9 +636,9 @@ function FullscreenLesson({
                 onClick={toggleFill}
                 aria-pressed={filling}
                 title={filling ? "Exit full screen" : "Fill the whole screen"}
-                className={`${HEADER_BTN} grid place-items-center text-ink ring-ink/15 hover:bg-ink/5`}
+                className={ICON_BTN}
               >
-                <Glyph name="expand" />
+                {filling ? <IconCollapse /> : <IconExpand />}
                 <span className="sr-only">
                   {filling ? "Exit full screen" : "Fill the whole screen"}
                 </span>
@@ -595,7 +651,7 @@ function FullscreenLesson({
                 leave();
               }}
               title="The lesson waits on the board; join again any time with J"
-              className={`${HEADER_BTN} text-ink ring-ink/15 hover:bg-ink/5`}
+              className={BTN.secondary}
             >
               Leave lesson
             </button>
@@ -606,7 +662,7 @@ function FullscreenLesson({
                 end(run.boardId);
               }}
               title="Take the lesson off the board (it flips back)"
-              className={`${HEADER_BTN} text-ember ring-ember/40 hover:bg-ember/10`}
+              className={BTN.danger}
             >
               End lesson
             </button>
@@ -651,34 +707,34 @@ function JoinCard() {
       {offer && visible && (
         <div
           key={`${offer.boardId}:${offer.startedAt}`}
-          className="pointer-events-auto w-full max-w-[26rem] rounded-3xl bg-cream/95 p-4 text-ink shadow-[0_24px_60px_-22px_rgb(20_12_6/0.7)] ring-1 ring-ink/10 backdrop-blur transition duration-300 ease-out starting:translate-y-4 starting:opacity-0"
+          className={`${HUD_PANEL} pointer-events-auto w-full max-w-[26rem] p-4 transition duration-300 ease-out starting:translate-y-4 starting:opacity-0 motion-reduce:transition-none`}
         >
           <div className="flex items-start gap-3">
             <span
               aria-hidden
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-ink text-cream shadow-inner"
+              className="grid h-12 w-12 shrink-0 -rotate-6 place-items-center rounded-[14px] border-2 border-black/80 bg-sun text-walnut shadow-[0_3px_0_rgb(0_0_0/0.55)]"
             >
-              <Glyph name="play" className="ml-0.5 h-5 w-5" />
+              <IconBoard size={24} strokeWidth={2.25} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[0.7rem] font-extrabold tracking-wide text-ember uppercase">
+              <p className="font-display text-[13.5px] leading-5 font-medium text-walnut-muted">
                 {boardName(offer.boardId)} is playing a lesson
               </p>
-              <p className="truncate font-display text-lg leading-snug font-semibold">
+              <p className="truncate font-display text-[19px] leading-snug font-bold">
                 {offer.lesson.title}
               </p>
-              <p className="truncate text-xs text-ink-soft">
+              <p className="tabular truncate text-xs leading-5 font-medium text-walnut-muted">
                 {offer.lesson.subject} · {sceneCount(offer.lesson)}
                 {offer.sceneIndex > 0 && ` · waiting at scene ${offer.sceneIndex + 1}`}
               </p>
             </div>
           </div>
-          <div className="mt-3.5 grid grid-cols-2 gap-2">
+          <div className="mt-4 grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => join(offer.boardId)}
               aria-keyshortcuts="J"
-              className={`flex items-center justify-center gap-2 rounded-full bg-ink px-4 py-2.5 text-sm font-bold text-cream shadow transition hover:bg-wood-dark ${FOCUS}`}
+              className={HUD_PRIMARY}
             >
               <span className={KBD_SM}>J</span>
               Join
@@ -687,9 +743,9 @@ function JoinCard() {
               type="button"
               onClick={() => decline(offer.boardId)}
               aria-keyshortcuts="N"
-              className={`flex items-center justify-center gap-2 rounded-full bg-parchment px-4 py-2.5 text-sm font-bold text-ink ring-1 ring-ink/10 transition hover:ring-ink/30 ${FOCUS}`}
+              className={HUD_SECONDARY}
             >
-              <span className={KBD_SM}>N</span>
+              <span className={KBD_DARK_SM}>N</span>
               Not now
             </button>
           </div>
@@ -717,6 +773,9 @@ function spineColor(id: string) {
   return SPINES[h % SPINES.length]!;
 }
 
+/** One row of the picker's list (full width, divided by dashed walnut lines). */
+const ROW = `-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-[14px] px-2 py-2.5 text-left transition-colors duration-150 ${FOCUS}`;
+
 function LessonRow({
   title,
   meta,
@@ -735,19 +794,27 @@ function LessonRow({
       type="button"
       data-picker-item
       onClick={onChoose}
-      className={`group flex w-full items-center gap-3 rounded-2xl bg-white/55 p-3 text-left ring-1 ring-ink/10 transition hover:bg-white hover:ring-ink/25 focus-visible:bg-white ${FOCUS}`}
+      className={`${ROW} group hover:bg-canvas active:bg-canvas`}
     >
-      <span
-        aria-hidden
-        className="h-11 w-3 shrink-0 rounded-[0.3rem] shadow-[inset_-2px_0_0_rgb(0_0_0/0.18)]"
-        style={{ background: spine }}
-      />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-bold">{title}</span>
-        <span className="block truncate text-xs text-ink-soft">{meta}</span>
+      {/* A chunky book spine, outlined like a sticker, with a band near the top. */}
+      <span aria-hidden className="flex h-12 w-7 shrink-0 justify-center">
+        <span
+          className="flex h-12 w-4 flex-col rounded-[5px] border-2 border-walnut pt-2 shadow-[0_2px_0_#1f1a16]"
+          style={{ background: spine }}
+        >
+          <span className="h-1.5 border-y-2 border-walnut" />
+        </span>
       </span>
-      <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-xs font-bold text-cream opacity-80 transition group-hover:opacity-100 group-focus-visible:opacity-100">
-        <Glyph name="play" className="h-3 w-3" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-display text-[15px] leading-5 font-semibold text-walnut">
+          {title}
+        </span>
+        <span className="mt-0.5 block truncate text-[13px] leading-5 font-medium text-ink-soft">
+          {meta}
+        </span>
+      </span>
+      <span className="flex shrink-0 items-center gap-1.5 rounded-[12px] border-2 border-walnut bg-surface px-2.5 py-1 font-display text-[13.5px] font-semibold text-walnut shadow-[0_2px_0_#1f1a16] transition-colors duration-150 group-hover:bg-sun group-focus-visible:bg-sun group-active:translate-y-[2px] group-active:shadow-none">
+        <IconPlay size={14} strokeWidth={2.5} />
         {action}
       </span>
     </button>
@@ -826,7 +893,7 @@ function PickerDialog({ boardId }: { boardId: string }) {
 
   return (
     <div
-      className="studio-fade-in absolute inset-0 z-[25] grid place-items-center bg-ink/40 p-4 backdrop-blur-[3px] sm:p-6"
+      className="absolute inset-0 z-[25] grid place-items-center bg-walnut/50 p-4 transition-opacity duration-200 ease-out starting:opacity-0 motion-reduce:transition-none sm:p-6"
       onMouseDown={(e) => e.target === e.currentTarget && close(true)}
     >
       <div
@@ -835,17 +902,18 @@ function PickerDialog({ boardId }: { boardId: string }) {
         aria-modal="true"
         aria-labelledby="lesson-picker-title"
         aria-describedby="lesson-picker-desc"
-        className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-cream text-ink shadow-[0_30px_80px_-20px_rgb(20_12_6/0.6)] ring-1 ring-ink/10 transition duration-300 ease-out starting:translate-y-4 starting:opacity-0"
+        className={`${PANEL} title-pop relative flex max-h-full w-full max-w-lg flex-col text-walnut`}
       >
-        <header className="flex items-start gap-3 border-b border-ink/10 px-6 pt-5 pb-4">
+        {/* The board's name as a ribbon on the card's top edge. */}
+        <p className={`${RIBBON} absolute -top-3.5 left-6 z-[1]`}>{boardName(boardId)}</p>
+        <header
+          className={`flex items-start gap-3 border-b-2 border-dashed ${DIVIDER} px-6 pt-7 pb-5`}
+        >
           <div className="min-w-0 flex-1">
-            <p className="text-[0.7rem] font-extrabold tracking-wide text-ember uppercase">
-              {boardName(boardId)}
-            </p>
-            <h2 id="lesson-picker-title" className="font-display text-2xl font-semibold">
+            <h2 id="lesson-picker-title" className={TITLE}>
               {run ? "Lesson on this board" : "Play a lesson on the board"}
             </h2>
-            <p id="lesson-picker-desc" className="mt-1 text-sm text-ink-soft">
+            <p id="lesson-picker-desc" className={`mt-2 ${BODY}`}>
               The board flips over and plays it like a video. Anyone nearby can join in.
             </p>
           </div>
@@ -854,27 +922,24 @@ function PickerDialog({ boardId }: { boardId: string }) {
             onClick={() => close(true)}
             aria-label="Close"
             aria-keyshortcuts="Escape"
-            className={`-mt-1 -mr-2 grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-ink/5 hover:text-ink ${FOCUS}`}
+            className={`${ICON_BTN} -mt-1.5 -mr-2`}
           >
-            <Glyph name="close" />
+            <IconClose />
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
           {run && (
-            <section
-              aria-label="Now on the board"
-              className="rounded-2xl bg-ink p-4 text-cream shadow-inner"
-            >
-              <p className="flex items-center gap-2 text-[0.68rem] font-extrabold tracking-wide text-lamp uppercase">
+            <section aria-label="Now on the board" className={`${PANEL_MUTED} p-4`}>
+              <p className={`${TAG.brass} gap-1.5`}>
                 {joined && <LiveDot />}
                 Now on the board
               </p>
-              <p className="mt-0.5 truncate font-display text-lg font-semibold">
+              <p className="mt-2 truncate font-display text-[19px] leading-snug font-bold text-walnut">
                 {run.lesson.title}
               </p>
-              <p className="text-xs text-cream/75">{progress}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <p className="tabular text-[13px] leading-5 font-medium text-ink-soft">{progress}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
                 {joined ? (
                   <button
                     type="button"
@@ -883,9 +948,9 @@ function PickerDialog({ boardId }: { boardId: string }) {
                       close(false);
                       openLessonFullscreen();
                     }}
-                    className={`flex items-center gap-2 rounded-full bg-cream px-4 py-2 text-sm font-bold text-ink transition hover:bg-white ${FOCUS}`}
+                    className={BTN.primary}
                   >
-                    <Glyph name="expand" />
+                    <IconExpand size={18} />
                     Watch full screen
                   </button>
                 ) : (
@@ -896,9 +961,9 @@ function PickerDialog({ boardId }: { boardId: string }) {
                       store.join(boardId);
                       requestPointerLock({ quiet: true });
                     }}
-                    className={`flex items-center gap-2 rounded-full bg-cream px-4 py-2 text-sm font-bold text-ink transition hover:bg-white ${FOCUS}`}
+                    className={BTN.primary}
                   >
-                    <Glyph name="play" className="h-3.5 w-3.5" />
+                    <IconPlay size={18} />
                     Join
                   </button>
                 )}
@@ -907,7 +972,7 @@ function PickerDialog({ boardId }: { boardId: string }) {
                   data-picker-item
                   onClick={() => store.end(boardId)}
                   title="Take the lesson off the board (it flips back)"
-                  className={`rounded-full px-4 py-2 text-sm font-bold text-cream ring-1 ring-cream/30 transition hover:bg-cream/10 ${FOCUS}`}
+                  className={BTN.danger}
                 >
                   End lesson
                 </button>
@@ -916,21 +981,23 @@ function PickerDialog({ boardId }: { boardId: string }) {
           )}
 
           <section aria-labelledby="lesson-picker-list">
-            <h3 id="lesson-picker-list" className="text-sm font-extrabold">
+            <h3 id="lesson-picker-list" className={EYEBROW}>
               {run ? "Replace with…" : "Your lessons"}
             </h3>
             {lessons.length === 0 && (
-              <div className="mt-2 rounded-2xl bg-parchment p-4 text-sm text-ink-soft ring-1 ring-ink/10">
-                <p className="font-bold text-ink">No lessons of your own yet</p>
+              <div className={`mt-2 ${PANEL_MUTED} p-4 text-[13px] leading-5 text-ink-soft`}>
+                <p className="font-display text-[15px] font-semibold text-walnut">
+                  No lessons of your own yet
+                </p>
                 <p className="mt-1">
                   The AI Learning Studio turns a PDF of your notes into a narrated lesson. Make one
                   and it shows up here. Until then, try the sample.
                 </p>
               </div>
             )}
-            <ul className="mt-2 space-y-2">
+            <ul className={`mt-2 border-t-2 border-dashed ${DIVIDER}`}>
               {lessons.map((l) => (
-                <li key={l.id}>
+                <li key={l.id} className={`border-b-2 border-dashed ${DIVIDER} py-1`}>
                   <LessonRow
                     title={l.lesson.title}
                     meta={`${l.lesson.subject} · ${sceneCount(l.lesson)} · ${new Date(
@@ -942,16 +1009,16 @@ function PickerDialog({ boardId }: { boardId: string }) {
                   />
                 </li>
               ))}
-              <li>
+              <li className={`border-b-2 border-dashed ${DIVIDER} py-1`}>
                 <LessonRow
                   title={`Sample: ${SAMPLE_LESSON.title}`}
                   meta={`${SAMPLE_LESSON.subject} · ${sceneCount(SAMPLE_LESSON)} · see how a lesson works`}
-                  spine="#6f8f6a"
+                  spine="#7fb27a"
                   action={action}
                   onChoose={() => choose(SAMPLE_ID, SAMPLE_LESSON, SAMPLE_NOTES)}
                 />
               </li>
-              <li>
+              <li className="py-1">
                 <button
                   type="button"
                   data-picker-item
@@ -962,38 +1029,51 @@ function PickerDialog({ boardId }: { boardId: string }) {
                   }
                   aria-disabled={focusing || undefined}
                   title={focusing ? "Opens a new tab — available after your pomodoro" : undefined}
-                  className={`flex w-full items-center gap-3 rounded-2xl border-2 border-dashed border-ink/15 p-3 text-left transition ${focusing ? "cursor-not-allowed opacity-60" : "hover:border-ink/30 hover:bg-white/40"} ${FOCUS}`}
+                  className={`${ROW} ${focusing ? "cursor-not-allowed" : "hover:bg-canvas active:bg-canvas"}`}
                 >
-                  <span
-                    aria-hidden
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-parchment text-ink-soft"
-                  >
-                    <Glyph name="plus" />
+                  <span aria-hidden className="grid h-12 w-7 shrink-0 place-items-center">
+                    <span className="grid h-7 w-7 place-items-center rounded-full border-2 border-dashed border-walnut/50 text-walnut">
+                      <IconPlus size={16} strokeWidth={2.5} />
+                    </span>
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-bold">Make a new lesson</span>
-                    <span className="block text-xs text-ink-soft">
+                    <span
+                      className={`block font-display text-[15px] leading-5 font-semibold ${focusing ? "text-ink-soft" : "text-walnut"}`}
+                    >
+                      Make a new lesson
+                    </span>
+                    <span className="mt-0.5 block text-[13px] leading-5 font-medium text-ink-soft">
                       {focusing
                         ? "Opens a new tab — available after your pomodoro"
                         : "Opens the AI Learning Studio in a new tab"}
                     </span>
                   </span>
+                  {!focusing && <IconArrowUpRight size={16} className="mr-2.5 text-ink-soft" />}
                 </button>
               </li>
             </ul>
           </section>
         </div>
 
-        <footer className="flex items-center justify-center gap-3 border-t border-ink/10 px-6 py-3 text-xs font-bold text-ink-soft">
-          <span className="flex items-center gap-1">
-            <span className={KBD_SM}>↑</span>
-            <span className={KBD_SM}>↓</span> choose
+        <footer
+          className={`flex items-center justify-center gap-5 border-t-2 border-dashed ${DIVIDER} px-6 py-3 font-display text-xs font-medium text-ink-soft`}
+        >
+          <span className="flex items-center gap-1.5">
+            <kbd className={KBD_SM}>
+              <IconChevronDown size={12} className="rotate-180" />
+              <span className="sr-only">Up arrow</span>
+            </kbd>
+            <kbd className={KBD_SM}>
+              <IconChevronDown size={12} />
+              <span className="sr-only">Down arrow</span>
+            </kbd>
+            choose
           </span>
-          <span className="flex items-center gap-1">
-            <span className={KBD_SM}>Enter</span> play
+          <span className="flex items-center gap-1.5">
+            <kbd className={KBD_SM}>Enter</kbd> play
           </span>
-          <span className="flex items-center gap-1">
-            <span className={KBD_SM}>Esc</span> close
+          <span className="flex items-center gap-1.5">
+            <kbd className={KBD_SM}>Esc</kbd> close
           </span>
         </footer>
       </div>

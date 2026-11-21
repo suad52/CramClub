@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SAMPLE_LESSON, SAMPLE_NOTES } from "./mockLesson";
-import { parseLesson } from "./schema";
+import { VisualSchema, parseLesson } from "./schema";
 import {
   captionsFromAlignment,
   chunkPages,
@@ -34,10 +34,16 @@ describe("lesson validation", () => {
     expect(() => parseLesson(l, 4)).toThrow();
   });
 
-  it("rejects a process visual without steps", () => {
+  it("replaces a process visual without steps with one that renders", () => {
     const l = clone(SAMPLE_LESSON);
     l.scenes[1]!.visual.steps = [];
-    expect(() => parseLesson(l, 4)).toThrow();
+    const visual = parseLesson(l, 4).scenes[1]!.visual;
+    expect(visual.type).not.toBe("process");
+    expect(VisualSchema.safeParse(visual).success).toBe(true);
+  });
+
+  it("still rejects a lesson with no scenes", () => {
+    expect(() => parseLesson({ ...clone(SAMPLE_LESSON), scenes: [] }, 4)).toThrow();
   });
 
   it("makes scene ids safe and unique", () => {
@@ -79,5 +85,23 @@ describe("notes and captions", () => {
       { text: "Hi there.", startMs: 0, endMs: 900 },
       { text: "Bye.", startMs: 1000, endMs: 1400 },
     ]);
+  });
+});
+
+describe("tidyLessonJson", () => {
+  it("trims long quotes and replaces a half-filled visual instead of failing", async () => {
+    const { tidyLessonJson } = await import("./schema");
+    const out = tidyLessonJson({
+      scenes: [
+        {
+          title: "Inhibition",
+          visual: { type: "comparison", labels: ["Km up | Vmax same"] },
+          sourceReferences: [{ page: 1, excerpt: "x".repeat(260) }],
+        },
+      ],
+    }) as { scenes: { visual: unknown; sourceReferences: { excerpt: string }[] }[] };
+    const scene = out.scenes[0]!;
+    expect(scene.sourceReferences[0]!.excerpt.length).toBeLessThanOrEqual(200);
+    expect(VisualSchema.safeParse(scene.visual).success).toBe(true);
   });
 });

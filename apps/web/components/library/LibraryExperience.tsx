@@ -7,9 +7,13 @@ import { useEffect, useState } from "react";
 import { SPAWN_POINTS } from "@ovr/shared";
 import { CharacterStudio } from "@/components/creator/CharacterStudio";
 import { TitleScreen } from "@/components/entry/TitleScreen";
+import { BTN, PANEL, RIBBON } from "@/components/ui/styles";
 import { LibraryScene } from "@/components/world/LibraryScene";
 import { useProfileStore } from "@/lib/avatar/profile";
 import { exitPointerLock } from "@/lib/game/pointer";
+import { watchTableAccess } from "@/lib/game/tableAccess";
+import { startMultiplayer, useNet } from "@/lib/net/connection";
+import { remoteLive, useRemotePlayers } from "@/lib/net/players";
 import { usePomodoro } from "@/lib/game/pomodoro";
 import { resetRuntime, runtime } from "@/lib/game/runtime";
 import {
@@ -35,6 +39,7 @@ import {
 import { PomodoroLayer } from "./Pomodoro";
 import { LibrarianOverlay } from "./LibrarianOverlay";
 import { ProgressOverlay } from "./ProgressOverlay";
+import { TableHoldLayer } from "./TableHold";
 import { librarianPresence } from "@/lib/librarian/presence";
 
 // Stable reference: R3F re-applies renderer props whenever this object changes identity.
@@ -56,23 +61,22 @@ function hasWebGL2() {
 
 function ErrorCard({ title, body }: { title: string; body: string }) {
   return (
-    <div className="fixed inset-0 grid place-items-center bg-parchment p-6">
-      <div className="max-w-md rounded-3xl border border-ink/10 bg-cream p-8 text-center shadow-xl">
-        <h1 className="font-display text-2xl font-semibold">{title}</h1>
-        <p className="mt-3 text-ink-soft">{body}</p>
-        <div className="mt-6 flex justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="rounded-full bg-ink px-5 py-2.5 text-sm font-bold text-cream hover:bg-wood-dark"
-          >
+    <div className="fixed inset-0 grid place-items-center bg-canvas p-6">
+      <div className={`${PANEL} title-pop relative max-w-md p-8 pt-9 text-center`}>
+        <span
+          aria-hidden
+          className={`${RIBBON} absolute -top-4 left-1/2 -translate-x-1/2 -rotate-2`}
+        >
+          Uh oh
+        </span>
+        <h1 className="font-display text-[28px] leading-tight font-bold text-walnut">{title}</h1>
+        <p className="mt-3 font-medium text-ink-soft">{body}</p>
+        <div className="mt-7 flex flex-wrap justify-center gap-3">
+          <button type="button" onClick={() => window.location.reload()} className={BTN.primary}>
             Try again
           </button>
-          <Link
-            href="/"
-            className="rounded-full px-5 py-2.5 text-sm font-bold text-ink-soft hover:bg-ink/5"
-          >
-            Back home
+          <Link href="/librarian" className={BTN.secondary}>
+            Ask the Librarian instead
           </Link>
         </div>
       </div>
@@ -108,6 +112,23 @@ export default function LibraryExperience() {
   const quality = useGameStore((s) => s.settings.quality);
   const phase = useGameStore((s) => s.phase);
   const lessonFullscreen = useBoardLessons((s) => s.fullscreen);
+  const creatorFrom = useGameStore((s) => s.creatorFrom);
+  const sceneReady = useGameStore((s) => s.ready);
+  // In the library (walking in, walking around, or restyling from there): others see you, and
+  // you them. Not on the title screen or a first visit's character studio. (`ready` is reset on
+  // every visit, so a previous visit's phase never connects early.)
+  const inLibrary =
+    sceneReady &&
+    (phase === "entering" ||
+      phase === "playing" ||
+      (phase === "creator" && creatorFrom === "playing"));
+
+  useEffect(() => {
+    if (!inLibrary) return;
+    return startMultiplayer();
+  }, [inLibrary]);
+  // The table you sit at can go private under you: stand up (calmly) when it does.
+  useEffect(() => watchTableAccess(), []);
 
   useEffect(() => {
     // Fresh session state every time someone walks in.
@@ -135,6 +156,7 @@ export default function LibraryExperience() {
         boardLessons: useBoardLessons,
         pomodoro: usePomodoro,
         librarian: librarianPresence,
+        net: { useNet, remoteLive, useRemotePlayers },
       };
     }
     return () => {
@@ -189,6 +211,7 @@ export default function LibraryExperience() {
       <Hud />
       <BoardLessonsLayer />
       <PomodoroLayer />
+      <TableHoldLayer />
       <FaceViewFrame />
       <TrackingPanel />
       <WhiteboardPanel />

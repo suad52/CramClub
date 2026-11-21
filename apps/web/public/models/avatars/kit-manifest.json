@@ -1,433 +1,715 @@
 {
-  "version": 1,
-  "generator": "art/avatars/scripts/build_kit.py",
-  "units": "metres; glTF +Y up; the character faces +Z",
-  "bones": [
-    "Root",
-    "Hips",
-    "Spine",
-    "Chest",
-    "Neck",
-    "Head",
-    "UpperArm.L",
-    "LowerArm.L",
-    "Hand.L",
-    "UpperArm.R",
-    "LowerArm.R",
-    "Hand.R",
-    "UpperLeg.L",
-    "LowerLeg.L",
-    "Foot.L",
-    "UpperLeg.R",
-    "LowerLeg.R",
-    "Foot.R"
-  ],
-  "parts": [
-    {
-      "name": "Body_Feet",
-      "vertices": 276,
-      "materials": ["MAT_Skin"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": []
-    },
-    {
-      "name": "Body_Forearms",
-      "vertices": 520,
-      "materials": ["MAT_Skin"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": []
-    },
-    {
-      "name": "Body_Hands",
-      "vertices": 482,
-      "materials": ["MAT_Skin"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": []
-    },
-    {
-      "name": "Body_Neck",
-      "vertices": 152,
-      "materials": ["MAT_Skin"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": []
-    },
-    {
-      "name": "Body_Shins",
-      "vertices": 550,
-      "materials": ["MAT_Skin"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": []
-    },
-    {
-      "name": "Body_Thighs",
-      "vertices": 452,
-      "materials": ["MAT_Skin"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": []
-    },
-    {
-      "name": "Body_Torso",
-      "vertices": 226,
-      "materials": ["MAT_Skin"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": []
-    },
-    {
-      "name": "Body_UpperArms",
-      "vertices": 532,
-      "materials": ["MAT_Skin"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": []
-    },
-    {
-      "name": "Head_Base",
-      "vertices": 1846,
-      "materials": ["MAT_Skin"],
-      "morphs": ["Face_Round", "Face_Long", "Face_Heart"],
-      "hidesBody": []
-    },
-    {
-      "name": "Eyes_Round",
-      "vertices": 960,
-      "materials": ["MAT_EyeDark", "MAT_EyeShine", "MAT_Iris"],
-      "morphs": ["Blink_Left", "Blink_Right"],
-      "hidesBody": []
-    },
-    {
-      "name": "Eyes_Almond",
-      "vertices": 1184,
-      "materials": ["MAT_EyeDark", "MAT_EyeShine", "MAT_Iris"],
-      "morphs": ["Blink_Left", "Blink_Right"],
-      "hidesBody": []
-    },
-    {
-      "name": "Eyes_Sleepy",
-      "vertices": 1258,
-      "materials": ["MAT_EyeDark", "MAT_Iris", "MAT_Skin"],
-      "morphs": ["Blink_Left", "Blink_Right"],
-      "hidesBody": []
-    },
-    {
-      "name": "Eyes_Sparkle",
-      "vertices": 1524,
-      "materials": ["MAT_EyeDark", "MAT_EyeShine", "MAT_Iris"],
-      "morphs": ["Blink_Left", "Blink_Right"],
-      "hidesBody": []
-    },
-    {
-      "name": "Brows_Soft",
-      "vertices": 160,
-      "materials": ["MAT_Brows"],
-      "morphs": ["Brow_Raise"],
-      "hidesBody": []
-    },
-    {
-      "name": "Brows_Straight",
-      "vertices": 160,
-      "materials": ["MAT_Brows"],
-      "morphs": ["Brow_Raise"],
-      "hidesBody": []
-    },
-    {
-      "name": "Brows_Arched",
-      "vertices": 160,
-      "materials": ["MAT_Brows"],
-      "morphs": ["Brow_Raise"],
-      "hidesBody": []
-    },
-    {
-      "name": "Brows_Bold",
-      "vertices": 160,
-      "materials": ["MAT_Brows"],
-      "morphs": ["Brow_Raise"],
-      "hidesBody": []
-    },
-    {
-      "name": "Mouth_Base",
-      "vertices": 430,
-      "materials": ["MAT_Lip", "MAT_MouthInner"],
-      "morphs": ["Smile", "Jaw_Open", "Frown"],
-      "hidesBody": []
-    },
-    {
-      "name": "Nose_Button",
-      "vertices": 178,
-      "materials": ["MAT_SkinShade"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Nose_Soft",
-      "vertices": 178,
-      "materials": ["MAT_SkinShade"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Nose_Pointed",
-      "vertices": 80,
-      "materials": ["MAT_SkinShade"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Detail_Freckles",
-      "vertices": 1152,
-      "materials": ["MAT_Freckle"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Detail_Blush",
-      "vertices": 144,
-      "materials": ["MAT_Blush"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Detail_BeautyMark",
-      "vertices": 72,
-      "materials": ["MAT_Freckle"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Detail_Stars",
-      "vertices": 40,
-      "materials": ["MAT_Sticker"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Hair_Crop",
-      "vertices": 3385,
-      "materials": ["MAT_Hair"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Hair_Buzz",
-      "vertices": 1657,
-      "materials": ["MAT_Hair"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Hair_Bob",
-      "vertices": 5785,
-      "materials": ["MAT_Hair"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Hair_Long",
-      "vertices": 7073,
-      "materials": ["MAT_Hair"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Hair_Curly",
-      "vertices": 7935,
-      "materials": ["MAT_Hair"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Hair_Bun",
-      "vertices": 3291,
-      "materials": ["MAT_Hair", "MAT_HairAccent"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Hair_Ponytail",
-      "vertices": 3689,
-      "materials": ["MAT_Hair", "MAT_HairAccent"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Hair_Twists",
-      "vertices": 7633,
-      "materials": ["MAT_Hair"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Hair_Swept",
-      "vertices": 3489,
-      "materials": ["MAT_Hair"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Hair_Spacebuns",
-      "vertices": 3525,
-      "materials": ["MAT_Hair", "MAT_HairAccent"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Top_Tshirt",
-      "vertices": 2362,
-      "materials": ["MAT_Top", "MAT_TopTrim"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": ["Torso"]
-    },
-    {
-      "name": "Top_Hoodie",
-      "vertices": 4137,
-      "materials": ["MAT_Lace", "MAT_Top", "MAT_TopTrim"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": ["Torso", "UpperArms", "Forearms"]
-    },
-    {
-      "name": "Top_Sweater",
-      "vertices": 3233,
-      "materials": ["MAT_Top", "MAT_TopTrim"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": ["Torso", "UpperArms", "Forearms"]
-    },
-    {
-      "name": "Top_Cardigan",
-      "vertices": 4181,
-      "materials": ["MAT_Button", "MAT_Top", "MAT_TopInner", "MAT_TopTrim"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": ["Torso", "UpperArms", "Forearms"]
-    },
-    {
-      "name": "Top_Jacket",
-      "vertices": 5683,
-      "materials": ["MAT_Button", "MAT_Top", "MAT_TopAccent", "MAT_TopTrim"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": ["Torso", "UpperArms", "Forearms"]
-    },
-    {
-      "name": "Top_Shirt",
-      "vertices": 3115,
-      "materials": ["MAT_Button", "MAT_Top", "MAT_TopTrim"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": ["Torso", "UpperArms"]
-    },
-    {
-      "name": "Bottom_Jeans",
-      "vertices": 2923,
-      "materials": ["MAT_Bottom", "MAT_BottomTrim", "MAT_Button"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": ["Thighs", "Shins"]
-    },
-    {
-      "name": "Bottom_Chinos",
-      "vertices": 2605,
-      "materials": ["MAT_Bottom", "MAT_BottomTrim"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": ["Thighs", "Shins"]
-    },
-    {
-      "name": "Bottom_Shorts",
-      "vertices": 1679,
-      "materials": ["MAT_Bottom", "MAT_BottomTrim"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": []
-    },
-    {
-      "name": "Bottom_Skirt",
-      "vertices": 1385,
-      "materials": ["MAT_Bottom", "MAT_BottomTrim"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": []
-    },
-    {
-      "name": "Shoes_Sneakers",
-      "vertices": 1942,
-      "materials": ["MAT_Lace", "MAT_Shoes", "MAT_Sole"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": ["Feet"]
-    },
-    {
-      "name": "Shoes_Boots",
-      "vertices": 1810,
-      "materials": ["MAT_Button", "MAT_Shoes", "MAT_Sole"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": ["Feet"]
-    },
-    {
-      "name": "Shoes_Loafers",
-      "vertices": 2124,
-      "materials": ["MAT_Shoes", "MAT_Sole"],
-      "morphs": ["Build_Broad", "Build_Slim"],
-      "hidesBody": ["Feet"]
-    },
-    {
-      "name": "Acc_GlassesRound",
-      "vertices": 1716,
-      "materials": ["MAT_Frame"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Acc_GlassesSquare",
-      "vertices": 820,
-      "materials": ["MAT_Frame"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Acc_Headphones",
-      "vertices": 1072,
-      "materials": ["MAT_Acc", "MAT_AccDark", "MAT_Metal"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Acc_Beanie",
-      "vertices": 2865,
-      "materials": ["MAT_Acc", "MAT_AccDark"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Acc_Cap",
-      "vertices": 1933,
-      "materials": ["MAT_Acc", "MAT_AccDark"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Acc_HairClip",
-      "vertices": 168,
-      "materials": ["MAT_AccAccent", "MAT_Metal"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Acc_Earrings",
-      "vertices": 240,
-      "materials": ["MAT_Metal"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Acc_Necklace",
-      "vertices": 782,
-      "materials": ["MAT_AccAccent", "MAT_Metal"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Acc_Scarf",
-      "vertices": 1168,
-      "materials": ["MAT_Acc", "MAT_AccDark"],
-      "morphs": [],
-      "hidesBody": []
-    },
-    {
-      "name": "Acc_Backpack",
-      "vertices": 504,
-      "materials": ["MAT_Acc", "MAT_AccDark"],
-      "morphs": [],
-      "hidesBody": []
-    }
-  ]
+ "version": 1,
+ "generator": "art/avatars/scripts/build_kit.py",
+ "units": "metres; glTF +Y up; the character faces +Z",
+ "bones": [
+  "Root",
+  "Hips",
+  "Spine",
+  "Chest",
+  "Neck",
+  "Head",
+  "UpperArm.L",
+  "LowerArm.L",
+  "Hand.L",
+  "UpperArm.R",
+  "LowerArm.R",
+  "Hand.R",
+  "UpperLeg.L",
+  "LowerLeg.L",
+  "Foot.L",
+  "UpperLeg.R",
+  "LowerLeg.R",
+  "Foot.R"
+ ],
+ "parts": [
+  {
+   "name": "Body_Feet",
+   "vertices": 276,
+   "materials": [
+    "MAT_Skin"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Body_Forearms",
+   "vertices": 520,
+   "materials": [
+    "MAT_Skin"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Body_Hands",
+   "vertices": 482,
+   "materials": [
+    "MAT_Skin"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Body_Neck",
+   "vertices": 152,
+   "materials": [
+    "MAT_Skin"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Body_Shins",
+   "vertices": 550,
+   "materials": [
+    "MAT_Skin"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Body_Thighs",
+   "vertices": 452,
+   "materials": [
+    "MAT_Skin"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Body_Torso",
+   "vertices": 226,
+   "materials": [
+    "MAT_Skin"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Body_UpperArms",
+   "vertices": 532,
+   "materials": [
+    "MAT_Skin"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Head_Base",
+   "vertices": 1846,
+   "materials": [
+    "MAT_Skin"
+   ],
+   "morphs": [
+    "Face_Round",
+    "Face_Long",
+    "Face_Heart"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Eyes_Round",
+   "vertices": 960,
+   "materials": [
+    "MAT_EyeDark",
+    "MAT_EyeShine",
+    "MAT_Iris"
+   ],
+   "morphs": [
+    "Blink_Left",
+    "Blink_Right"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Eyes_Almond",
+   "vertices": 1184,
+   "materials": [
+    "MAT_EyeDark",
+    "MAT_EyeShine",
+    "MAT_Iris"
+   ],
+   "morphs": [
+    "Blink_Left",
+    "Blink_Right"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Eyes_Sleepy",
+   "vertices": 1258,
+   "materials": [
+    "MAT_EyeDark",
+    "MAT_Iris",
+    "MAT_Skin"
+   ],
+   "morphs": [
+    "Blink_Left",
+    "Blink_Right"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Eyes_Sparkle",
+   "vertices": 1524,
+   "materials": [
+    "MAT_EyeDark",
+    "MAT_EyeShine",
+    "MAT_Iris"
+   ],
+   "morphs": [
+    "Blink_Left",
+    "Blink_Right"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Brows_Soft",
+   "vertices": 160,
+   "materials": [
+    "MAT_Brows"
+   ],
+   "morphs": [
+    "Brow_Raise"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Brows_Straight",
+   "vertices": 160,
+   "materials": [
+    "MAT_Brows"
+   ],
+   "morphs": [
+    "Brow_Raise"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Brows_Arched",
+   "vertices": 160,
+   "materials": [
+    "MAT_Brows"
+   ],
+   "morphs": [
+    "Brow_Raise"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Brows_Bold",
+   "vertices": 160,
+   "materials": [
+    "MAT_Brows"
+   ],
+   "morphs": [
+    "Brow_Raise"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Mouth_Base",
+   "vertices": 638,
+   "materials": [
+    "MAT_Lip",
+    "MAT_MouthInner"
+   ],
+   "morphs": [
+    "Smile",
+    "Jaw_Open",
+    "Frown"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Nose_Button",
+   "vertices": 178,
+   "materials": [
+    "MAT_SkinShade"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Nose_Soft",
+   "vertices": 178,
+   "materials": [
+    "MAT_SkinShade"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Nose_Pointed",
+   "vertices": 80,
+   "materials": [
+    "MAT_SkinShade"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Detail_Freckles",
+   "vertices": 1152,
+   "materials": [
+    "MAT_Freckle"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Detail_Blush",
+   "vertices": 144,
+   "materials": [
+    "MAT_Blush"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Detail_BeautyMark",
+   "vertices": 72,
+   "materials": [
+    "MAT_Freckle"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Detail_Stars",
+   "vertices": 40,
+   "materials": [
+    "MAT_Sticker"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Hair_Crop",
+   "vertices": 3385,
+   "materials": [
+    "MAT_Hair"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Hair_Buzz",
+   "vertices": 1657,
+   "materials": [
+    "MAT_Hair"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Hair_Bob",
+   "vertices": 5785,
+   "materials": [
+    "MAT_Hair"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Hair_Long",
+   "vertices": 7073,
+   "materials": [
+    "MAT_Hair"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Hair_Curly",
+   "vertices": 7935,
+   "materials": [
+    "MAT_Hair"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Hair_Bun",
+   "vertices": 3291,
+   "materials": [
+    "MAT_Hair",
+    "MAT_HairAccent"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Hair_Ponytail",
+   "vertices": 3689,
+   "materials": [
+    "MAT_Hair",
+    "MAT_HairAccent"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Hair_Twists",
+   "vertices": 7633,
+   "materials": [
+    "MAT_Hair"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Hair_Swept",
+   "vertices": 3489,
+   "materials": [
+    "MAT_Hair"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Hair_Spacebuns",
+   "vertices": 3525,
+   "materials": [
+    "MAT_Hair",
+    "MAT_HairAccent"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Top_Tshirt",
+   "vertices": 2362,
+   "materials": [
+    "MAT_Top",
+    "MAT_TopTrim"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": [
+    "Torso"
+   ]
+  },
+  {
+   "name": "Top_Hoodie",
+   "vertices": 4137,
+   "materials": [
+    "MAT_Lace",
+    "MAT_Top",
+    "MAT_TopTrim"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": [
+    "Torso",
+    "UpperArms",
+    "Forearms"
+   ]
+  },
+  {
+   "name": "Top_Sweater",
+   "vertices": 3233,
+   "materials": [
+    "MAT_Top",
+    "MAT_TopTrim"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": [
+    "Torso",
+    "UpperArms",
+    "Forearms"
+   ]
+  },
+  {
+   "name": "Top_Cardigan",
+   "vertices": 4181,
+   "materials": [
+    "MAT_Button",
+    "MAT_Top",
+    "MAT_TopInner",
+    "MAT_TopTrim"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": [
+    "Torso",
+    "UpperArms",
+    "Forearms"
+   ]
+  },
+  {
+   "name": "Top_Jacket",
+   "vertices": 5683,
+   "materials": [
+    "MAT_Button",
+    "MAT_Top",
+    "MAT_TopAccent",
+    "MAT_TopTrim"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": [
+    "Torso",
+    "UpperArms",
+    "Forearms"
+   ]
+  },
+  {
+   "name": "Top_Shirt",
+   "vertices": 3115,
+   "materials": [
+    "MAT_Button",
+    "MAT_Top",
+    "MAT_TopTrim"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": [
+    "Torso",
+    "UpperArms"
+   ]
+  },
+  {
+   "name": "Bottom_Jeans",
+   "vertices": 2923,
+   "materials": [
+    "MAT_Bottom",
+    "MAT_BottomTrim",
+    "MAT_Button"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": [
+    "Thighs",
+    "Shins"
+   ]
+  },
+  {
+   "name": "Bottom_Chinos",
+   "vertices": 2605,
+   "materials": [
+    "MAT_Bottom",
+    "MAT_BottomTrim"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": [
+    "Thighs",
+    "Shins"
+   ]
+  },
+  {
+   "name": "Bottom_Shorts",
+   "vertices": 1679,
+   "materials": [
+    "MAT_Bottom",
+    "MAT_BottomTrim"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Bottom_Skirt",
+   "vertices": 1385,
+   "materials": [
+    "MAT_Bottom",
+    "MAT_BottomTrim"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": []
+  },
+  {
+   "name": "Shoes_Sneakers",
+   "vertices": 1942,
+   "materials": [
+    "MAT_Lace",
+    "MAT_Shoes",
+    "MAT_Sole"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": [
+    "Feet"
+   ]
+  },
+  {
+   "name": "Shoes_Boots",
+   "vertices": 1810,
+   "materials": [
+    "MAT_Button",
+    "MAT_Shoes",
+    "MAT_Sole"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": [
+    "Feet"
+   ]
+  },
+  {
+   "name": "Shoes_Loafers",
+   "vertices": 2124,
+   "materials": [
+    "MAT_Shoes",
+    "MAT_Sole"
+   ],
+   "morphs": [
+    "Build_Broad",
+    "Build_Slim"
+   ],
+   "hidesBody": [
+    "Feet"
+   ]
+  },
+  {
+   "name": "Acc_GlassesRound",
+   "vertices": 1716,
+   "materials": [
+    "MAT_Frame"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Acc_GlassesSquare",
+   "vertices": 820,
+   "materials": [
+    "MAT_Frame"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Acc_Headphones",
+   "vertices": 1072,
+   "materials": [
+    "MAT_Acc",
+    "MAT_AccDark",
+    "MAT_Metal"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Acc_Beanie",
+   "vertices": 2865,
+   "materials": [
+    "MAT_Acc",
+    "MAT_AccDark"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Acc_Cap",
+   "vertices": 1933,
+   "materials": [
+    "MAT_Acc",
+    "MAT_AccDark"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Acc_HairClip",
+   "vertices": 168,
+   "materials": [
+    "MAT_AccAccent",
+    "MAT_Metal"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Acc_Earrings",
+   "vertices": 240,
+   "materials": [
+    "MAT_Metal"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Acc_Necklace",
+   "vertices": 782,
+   "materials": [
+    "MAT_AccAccent",
+    "MAT_Metal"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Acc_Scarf",
+   "vertices": 1168,
+   "materials": [
+    "MAT_Acc",
+    "MAT_AccDark"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  },
+  {
+   "name": "Acc_Backpack",
+   "vertices": 504,
+   "materials": [
+    "MAT_Acc",
+    "MAT_AccDark"
+   ],
+   "morphs": [],
+   "hidesBody": []
+  }
+ ]
 }

@@ -7,7 +7,7 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @ovr/web --filter @ovr/game-server dev",
+    "dev": "pnpm --parallel --filter @ovr/web --filter @ovr/game-server run \"/^dev(:worker)?$/\"",
     "dev:web": "pnpm --filter @ovr/web dev",
     "dev:server": "pnpm --filter @ovr/game-server dev",
     "build": "pnpm -r build",
@@ -21,7 +21,8 @@
     "avatar:pack": "gltf-transform meshopt art/avatars/build/avatar-kit.raw.glb apps/web/public/models/avatars/avatar-kit.glb --level medium",
     "library:plan": "python3 art/library/scripts/plan.py",
     "library:export": "\"${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}\" -b --factory-startup --python-exit-code 1 --python art/library/scripts/export_library.py -- --blend \"${LIBRARY_BLEND:-art/library/build/library.blend}\" --out art/library/build/library.raw.glb",
-    "library:pack": "node art/library/scripts/pack_books.mjs art/library/build/library.raw.glb art/library/build/library.books.glb && gltf-transform optimize art/library/build/library.books.glb apps/web/public/models/library/library.glb --compress meshopt --texture-compress webp --texture-size 2048 --instance true --instance-min 2 --join true --simplify false --flatten false"
+    "library:pack": "node art/library/scripts/pack_books.mjs art/library/build/library.raw.glb art/library/build/library.books.glb && gltf-transform optimize art/library/build/library.books.glb apps/web/public/models/library/library.glb --compress meshopt --texture-compress webp --texture-size 2048 --instance true --instance-min 2 --join true --simplify false --flatten false",
+    "dev:worker": "pnpm --filter @ovr/web dev:worker"
   },
   "devDependencies": {
     "@gltf-transform/cli": "4.5.1",

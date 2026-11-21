@@ -13,7 +13,7 @@ import {
   wrapAngle,
   zoneAt,
 } from "@ovr/shared";
-import { Avatar, type AvatarMotion } from "@/components/avatar/Avatar";
+import { Avatar, type AvatarMotion, usePlayerFaceHead } from "@/components/avatar/Avatar";
 import { startPomodoro } from "@/components/library/Pomodoro";
 import { useKeyboardMovement } from "@/hooks/useKeyboardMovement";
 import {
@@ -40,6 +40,7 @@ import {
   useBoardLessons,
 } from "@/lib/learning-studio/boardLessons";
 import { useGameStore } from "@/lib/game/store";
+import { isSeatTakenByOther } from "@/lib/net/players";
 import { faceState, useTrackingStore } from "@/lib/facial-tracking/tracker";
 import { FacePreview } from "./FacePreview";
 
@@ -57,6 +58,8 @@ function dampAngle(current: number, target: number, lambda: number, dt: number) 
 export function LocalPlayer({ config }: { config: AvatarConfig }) {
   const group = useRef<Group>(null);
   const head = useRef<Object3D>(null);
+  // Chibi head or the player's real face (Character Studio → Head).
+  const faceHead = usePlayerFaceHead();
   const trackingOn = useTrackingStore((s) => s.status !== "off" && s.status !== "error");
   const showFaceView = useTrackingStore((s) => s.showFaceView);
   const quality = useGameStore((s) => s.settings.quality);
@@ -195,7 +198,8 @@ export function LocalPlayer({ config }: { config: AvatarConfig }) {
     if (!store.seatId) {
       let best: number = PLAYER.interactRange;
       for (const s of SEATS) {
-        if (Math.abs(s.y - runtime.y) > SAME_FLOOR) continue;
+        // Someone else is sitting there: it's not on offer.
+        if (Math.abs(s.y - runtime.y) > SAME_FLOOR || isSeatTakenByOther(s.id)) continue;
         const d = distance2D(s, runtime);
         if (d < best) {
           best = d;
@@ -263,7 +267,7 @@ export function LocalPlayer({ config }: { config: AvatarConfig }) {
     <>
       <group ref={group}>
         <Suspense fallback={null}>
-          <Avatar config={config} motion={motion} headRef={head} />
+          <Avatar config={config} motion={motion} headRef={head} faceHead={faceHead} />
         </Suspense>
       </group>
       {trackingOn && showFaceView && (

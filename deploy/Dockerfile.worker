@@ -1,0 +1,17 @@
+# syntax=docker/dockerfile:1.7
+#
+# OVR background worker (apps/web/worker): claims lesson jobs from Postgres, runs TinyFish → Gemini
+# → ElevenLabs and saves the files to Vultr Object Storage (contract: apps/web/lib/jobs/types.ts).
+#
+# It is the web app's code, so it reuses the web image instead of installing and building again:
+# docker-compose.yml passes the built `web` service image as the named build context "web"
+# (additional_contexts: web: service:web), which also makes Compose build web first.
+# Build it through Compose (`docker compose build worker`), not with a bare `docker build`.
+
+FROM web
+
+ENV NODE_ENV=production
+USER node
+WORKDIR /app/apps/web
+# The `worker` script in apps/web/package.json.
+CMD ["pnpm", "run", "worker"]

@@ -52,7 +52,8 @@ export interface LessonPlayback {
 /**
  * Plays `lesson`. A different lesson needs a fresh playback, so key the caller by lesson.
  * `autoStart` begins speaking on mount; browsers only allow that soon after a click or key press,
- * so use it right after one (like pressing Join).
+ * so use it right after one (like pressing Join). `audio` maps scene indexes to stored narration
+ * (a cloud lesson's MP3s): those scenes play the file instead of asking for new speech.
  */
 export function useLessonPlayback(
   lesson: Lesson,
@@ -60,10 +61,12 @@ export function useLessonPlayback(
     startScene = 0,
     autoStart = false,
     onProgress,
+    audio,
   }: {
     startScene?: number;
     autoStart?: boolean;
     onProgress?: (scene: number, completed: boolean) => void;
+    audio?: Readonly<Record<number, string>>;
   } = {},
 ): LessonPlayback {
   const [index, setIndex] = useState(() =>
@@ -74,7 +77,7 @@ export function useLessonPlayback(
   const [captionsOn, setCaptionsOn] = useState(true);
   const [questionDone, setQuestionDone] = useState<Record<string, boolean>>({});
   const scene = lesson.scenes[index]!;
-  const narration = useNarration(scene.narration, { rate, volume });
+  const narration = useNarration(scene.narration, { rate, volume }, audio?.[index] ?? null);
   const last = index === lesson.scenes.length - 1;
   const playing = narration.state === "playing" || narration.state === "loading";
   const showQuestion =

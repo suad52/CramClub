@@ -126,6 +126,20 @@ try {
     (await get("leaderboard")).json.rows.some((r) => r.isMe && r.xp === 60),
     true,
   );
+  const byFocus = (await get("leaderboard?by=focus")).json;
+  assert.equal(byFocus.by, "focus");
+  assert.equal(
+    byFocus.rows.some((r) => r.isMe && r.focusMinutes === 25),
+    true,
+  );
+  assert.equal(
+    byFocus.rows.every(
+      (r, i, rows) => r.focusMinutes > 0 && (i === 0 || rows[i - 1].focusMinutes >= r.focusMinutes),
+    ),
+    true,
+  );
+  assert.equal(JSON.stringify(byFocus).includes(userId), false);
+  step("by=focus: ranked by focus time, only learners with some");
   const community = (await get("community")).json;
   assert.equal(JSON.stringify(community).includes("Smoke test lesson"), false);
   step(`opt back in → ranked; community view aggregated (${community.learners} learners)`);

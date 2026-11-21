@@ -5,14 +5,18 @@ import {
   type CaptionSegment,
   captionsFromAlignment,
   estimateCaptions,
+  fitCaptions,
   splitSentences,
 } from "./text";
 
 /**
  * Narration for one scene. Uses ElevenLabs audio (via /api/learning-studio/tts, with real
  * character timings for captions) when the server has a key; otherwise the browser's own voice,
- * spoken a sentence at a time so captions and visuals stay in step. Never starts on its own:
- * the player calls play() from a click, as browsers require.
+ * spoken a sentence at a time so captions and visuals stay in step. A scene whose narration is
+ * already stored (a cloud lesson's MP3, served by /api/lessons/:id/audio/:scene) plays that file
+ * instead, so reopening a lesson never asks for the speech again; if the file can't be played,
+ * the browser's voice reads the scene. Never starts on its own: the player calls play() from a
+ * click, as browsers require.
  */
 export type NarrationState = "idle" | "loading" | "playing" | "paused" | "ended";
 export type NarrationMode = "elevenlabs" | "browser" | "text";
@@ -20,6 +24,8 @@ export type NarrationMode = "elevenlabs" | "browser" | "text";
 interface Clip {
   url: string;
   captions: CaptionSegment[];
+  /** A stored file (no character timings: the estimated captions are fitted to its length). */
+  stored?: boolean;
 }
 const clips = new Map<string, Promise<Clip | null>>();
 /** Set once the server says TTS isn't configured, so we stop asking. */
@@ -57,7 +63,12 @@ function fetchClip(text: string): Promise<Clip | null> {
   return p;
 }
 
-export function useNarration(text: string, opts: { rate: number; volume: number }) {
+export function useNarration(
+  text: string,
+  opts: { rate: number; volume: number },
+  /** This scene's stored narration, if it has one: played as is, never synthesized again. */
+  storedUrl?: string | null,
+) {
   const [state, setState] = useState<NarrationState>("idle");
   const [progress, setProgress] = useState(0);
   const [caption, setCaption] = useState("");
@@ -135,13 +146,22 @@ export function useNarration(text: string, opts: { rate: number; volume: number 
     [text],
   );
 
-  const playAudio = useCallback((clip: Clip, id: number, from = 0) => {
+  const playAudio = useCallback((clip: Clip, id: number, from = 0, onFail?: () => void) => {
     const el = new Audio(clip.url);
     el.playbackRate = optsRef.current.rate;
     el.volume = optsRef.current.volume;
     el.currentTime = from;
     audio.current = el;
     if (clip.captions.length) captions.current = clip.captions;
+    else if (clip.stored)
+      el.onloadedmetadata = () => {
+        if (run.current === id)
+          captions.current = fitCaptions(captions.current, el.duration * 1000);
+      };
+    if (onFail)
+      el.onerror = () => {
+        if (run.current === id) onFail();
+      };
     el.ontimeupdate = () => {
       if (run.current !== id || !el.duration) return;
       const ms = el.currentTime * 1000;
@@ -173,6 +193,26 @@ export function useNarration(text: string, opts: { rate: number; volume: number 
     stop();
     const id = ++run.current;
     setState("loading");
+    if (storedUrl) {
+      setMode("elevenlabs");
+      playAudio({ url: storedUrl, captions: [], stored: true }, id, 0, () => {
+        // The stored file is missing or can't be decoded: read the scene in the browser's voice
+        // rather than paying for the speech again. (A new run id, so the failed play() is ignored.)
+        const next = ++run.current;
+        audio.current = null;
+        if (typeof speechSynthesis === "undefined") {
+          setMode("text");
+          setCaption(text);
+          setProgress(1);
+          setState("ended");
+          return;
+        }
+        setMode("browser");
+        setState("playing");
+        speakFrom(0, next);
+      });
+      return;
+    }
     const clip = await fetchClip(text);
     if (run.current !== id) return;
     if (clip) {
@@ -191,7 +231,7 @@ export function useNarration(text: string, opts: { rate: number; volume: number 
     setMode("browser");
     setState("playing");
     speakFrom(0, id);
-  }, [text, playAudio, speakFrom, stop]);
+  }, [text, storedUrl, playAudio, speakFrom, stop]);
 
   const play = useCallback(async () => {
     if (state !== "paused") return start();

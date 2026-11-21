@@ -19,6 +19,7 @@
     "@ovr/shared": "workspace:*"
   },
   "devDependencies": {
+    "@colyseus/sdk": "^0.18.10",
     "@ovr/config": "workspace:*",
     "@types/node": "^24.0.0",
     "eslint": "^9.39.0",

@@ -1,0 +1,9 @@
+# Auth0 credentials
+.env.local
+
+.auth0-mcp-state.json
+
+.auth0-mcp-writes.log
+
+# Local object storage for generated lessons (lib/storage/local.ts)
+.data/

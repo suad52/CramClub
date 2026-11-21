@@ -6,6 +6,7 @@ import type {
   Dashboard,
   DayActivity,
   Leaderboard,
+  LeaderboardOrder,
   LeaderboardRow,
   PeriodTotals,
   SubjectProgress,
@@ -92,9 +93,10 @@ export async function timeline(
 
 /**
  * Everyone with XP in the period, ranked: XP, then focus time, then active days, then who
- * joined first. Opted-out learners aren't ranked. Rows carry user ids: never send them out.
+ * joined first. By "focus" it's everyone with focus time, ranked by it, then XP, then the same.
+ * Opted-out learners aren't ranked. Rows carry user ids: never send them out.
  */
-async function ranking(sql: Sql, period: "week" | "month") {
+async function ranking(sql: Sql, period: "week" | "month", by: LeaderboardOrder = "xp") {
   return sql`
     WITH b AS (
       SELECT date_trunc(${period}, now() AT TIME ZONE ${TZ}) AS local_start),
@@ -109,10 +111,12 @@ async function ranking(sql: Sql, period: "week" | "month") {
       FROM learning_daily d, bounds WHERE d.day >= bounds.start AND d.day < bounds.stop
       GROUP BY d.user_id)
     SELECT row_number() OVER (
-        ORDER BY t.xp DESC, t.focus DESC, t.days DESC, l.created_at, l.user_id)::int AS rank,
+        ORDER BY CASE WHEN ${by} = 'focus' THEN t.focus ELSE t.xp END DESC,
+          CASE WHEN ${by} = 'focus' THEN t.xp ELSE t.focus END DESC,
+          t.days DESC, l.created_at, l.user_id)::int AS rank,
       l.user_id, l.display_name, l.is_demo, t.xp, t.focus, t.days, bounds.start, bounds.stop
     FROM t JOIN learners l USING (user_id), bounds
-    WHERE t.xp > 0 AND l.leaderboard_opt_in
+    WHERE CASE WHEN ${by} = 'focus' THEN t.focus ELSE t.xp END > 0 AND l.leaderboard_opt_in
     ORDER BY rank`;
 }
 
@@ -120,12 +124,14 @@ export async function leaderboard(
   sql: Sql,
   userId: string | null,
   period: "week" | "month",
+  by: LeaderboardOrder = "xp",
 ): Promise<Leaderboard> {
   const t0 = performance.now();
   const [ranked, mine, [bounds]] = await Promise.all([
-    ranking(sql, period),
+    ranking(sql, period, by),
     userId
-      ? sql`SELECT l.leaderboard_opt_in, coalesce(sum(d.xp), 0)::int AS xp
+      ? sql`SELECT l.leaderboard_opt_in, coalesce(sum(d.xp), 0)::int AS xp,
+            coalesce(sum(d.focus_seconds), 0)::int AS focus
           FROM learners l LEFT JOIN learning_daily d ON d.user_id = l.user_id
             AND d.day >= date_trunc(${period}, now() AT TIME ZONE ${TZ}) AT TIME ZONE ${TZ}
           WHERE l.user_id = ${userId} GROUP BY l.leaderboard_opt_in`
@@ -147,6 +153,7 @@ export async function leaderboard(
   const meRow = ranked.find((r) => r.user_id === userId);
   return {
     period,
+    by,
     from: (bounds!.start as Date).toISOString(),
     to: (bounds!.stop as Date).toISOString(),
     rows: ranked.slice(0, 25).map(toRow),
@@ -154,6 +161,7 @@ export async function leaderboard(
       ? {
           rank: meRow ? int(meRow.rank) : null,
           xp: int(mine[0].xp),
+          focusMinutes: Math.round(int(mine[0].focus) / 60),
           optedIn: mine[0].leaderboard_opt_in as boolean,
         }
       : null,

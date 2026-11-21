@@ -1,19 +1,54 @@
 "use client";
 
+import {
+  IconBook,
+  IconCheck,
+  IconClock,
+  IconGraduationCap,
+  IconInfo,
+  IconWarning,
+} from "@/components/ui/icons";
+import { BODY, BTN, BTN_SM, FOCUS as SHARED_FOCUS, PANEL, TAG } from "@/components/ui/styles";
 import type { TimelineEntry } from "@/lib/learning/types";
 import { type Resource, useOnline } from "./api";
 import { entryKind, entryScore, entryTitle, formatSeconds } from "./format";
 
-/** Shared pieces of the progress dashboard: cards, headings, states and timeline rows. */
+/**
+ * Shared pieces of the progress dashboard: panels, headings, states and timeline rows, in the
+ * cartoon look (components/ui/styles.ts; gold standard: the title screen). They keep their old
+ * names because the Librarian's panel uses some of them too.
+ */
 
-export const FOCUS =
-  "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ember";
-export const CARD = "rounded-3xl bg-cream p-5 shadow-sm ring-1 ring-ink/10";
-export const SMALL_BUTTON = `inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-bold ring-1 ring-ink/15 transition hover:bg-ink/5 ${FOCUS}`;
-export const DARK_BUTTON = `inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-bold text-cream shadow transition hover:bg-wood-dark ${FOCUS}`;
+/** The visible focus ring every control here uses. */
+export const FOCUS = SHARED_FOCUS;
+/** A content panel with standard padding: cream, 3px walnut outline, sticker shadow. */
+export const CARD = `${PANEL} relative p-5 sm:p-6`;
+/** A secondary action inside content. */
+export const SMALL_BUTTON = BTN_SM.secondary;
+/** The single main action of a view. */
+export const DARK_BUTTON = BTN.primary;
+/** A one-line notice (offline, where you stand): a small cream sticker. */
+export const NOTE =
+  "flex items-start gap-2.5 rounded-[16px] border-2 border-walnut bg-surface px-4 py-3 text-sm leading-5 font-semibold text-walnut shadow-[0_3px_0_#1f1a16]";
+
+/** The little round sticker an icon sits in (walnut outline, flat colour). */
+export const ICON_DOT =
+  "grid shrink-0 place-items-center rounded-full border-2 border-walnut text-walnut";
 
 /** Where the dashboard is shown: its own page, or over the 3D library. */
 export type DashboardContext = "page" | "library";
+
+/** The title screen's decoration: a tangerine bar and two dots (sun, leaf). */
+export function DotRow({ className = "" }: { className?: string }) {
+  const dot = "rounded-full border-[2.5px] border-walnut shadow-[0_2px_0_#1f1a16]";
+  return (
+    <span aria-hidden className={`flex items-center gap-1.5 ${className}`}>
+      <span className={`${dot} h-3 w-14 bg-tangerine`} />
+      <span className={`${dot} h-3 w-3 bg-sun`} />
+      <span className={`${dot} h-3 w-3 bg-leaf`} />
+    </span>
+  );
+}
 
 export function SectionTitle({
   id,
@@ -27,19 +62,19 @@ export function SectionTitle({
   aside?: React.ReactNode;
 }) {
   return (
-    <div className="mb-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+    <div className="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
       <div className="min-w-0">
-        <h3 id={id} className="font-display text-lg leading-tight font-semibold">
+        <h3 id={id} className="font-display text-[19px] leading-6 font-semibold text-walnut">
           {title}
         </h3>
-        {sub && <p className="mt-0.5 text-xs text-ink-soft">{sub}</p>}
+        {sub && <p className="mt-0.5 text-[13.5px] leading-5 font-medium text-ink-soft">{sub}</p>}
       </div>
       {aside}
     </div>
   );
 }
 
-/** A row of mutually exclusive choices (Week / Month, XP / Focus). */
+/** A chunky segmented control for mutually exclusive choices (Week / Month, XP / Focus). */
 export function Segmented<T extends string>({
   label,
   options,
@@ -55,19 +90,22 @@ export function Segmented<T extends string>({
     <div
       role="group"
       aria-label={label}
-      className="inline-flex shrink-0 rounded-full bg-parchment p-1 ring-1 ring-ink/10"
+      className="inline-flex max-w-full shrink-0 gap-1 overflow-x-auto rounded-[16px] border-[2.5px] border-walnut bg-canvas p-1.5 shadow-[0_3px_0_#1f1a16]"
     >
-      {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          aria-pressed={value === o.id}
-          onClick={() => onChange(o.id)}
-          className={`rounded-full px-3 py-1 text-xs font-extrabold transition ${FOCUS} ${value === o.id ? "bg-ink text-cream shadow" : "text-ink-soft hover:text-ink"}`}
-        >
-          {o.label}
-        </button>
-      ))}
+      {options.map((o) => {
+        const on = value === o.id;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(o.id)}
+            className={`relative h-8 shrink-0 rounded-[11px] border-2 px-3 font-display text-[13.5px] font-semibold whitespace-nowrap transition-[background-color,color,border-color] duration-150 focus-visible:z-10 motion-reduce:transition-none ${FOCUS} ${on ? "border-walnut bg-sun text-walnut" : "border-transparent text-ink-soft hover:border-walnut/30 hover:bg-surface hover:text-walnut"}`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -82,21 +120,18 @@ export function Tag({
   title?: string;
 }) {
   const tones = {
-    plain: "bg-ink/[0.06] text-ink-soft",
-    you: "bg-ink text-cream",
-    demo: "bg-sage/20 text-sage-dark",
+    plain: TAG.neutral,
+    you: TAG.forest,
+    demo: "inline-flex items-center rounded-full border-2 border-dashed border-walnut/55 bg-canvas px-2.5 py-0.5 font-display text-xs font-semibold text-ink-soft",
   };
   return (
-    <span
-      title={title}
-      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[0.65rem] font-extrabold tracking-wide uppercase ${tones[tone]}`}
-    >
+    <span title={title} className={`${tones[tone]} shrink-0 leading-4`}>
       {children}
     </span>
   );
 }
 
-/** A calm, centred card for empty, offline, error and "not set up" states. */
+/** A friendly, centred panel for empty, offline, error and "not set up" states. */
 export function StateCard({
   title,
   children,
@@ -110,43 +145,50 @@ export function StateCard({
   tone?: "calm" | "alert";
   live?: boolean;
 }) {
+  const alert = tone === "alert";
   return (
     <div
-      role={tone === "alert" ? "alert" : live ? "status" : undefined}
-      className={`${CARD} mx-auto max-w-xl px-6 py-8 text-center`}
+      role={alert ? "alert" : live ? "status" : undefined}
+      className={`${PANEL} relative mx-auto max-w-xl px-6 py-10 text-center sm:px-10`}
     >
-      <BookStack />
-      <p className="mt-3 font-display text-xl font-semibold">{title}</p>
-      {children && <div className="mt-1.5 text-sm text-ink-soft">{children}</div>}
-      {action && <div className="mt-5 flex flex-wrap justify-center gap-2">{action}</div>}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-2.5 rounded-[16px] border-2 border-dashed border-walnut/20"
+      />
+      <span
+        aria-hidden
+        className={`title-pop relative mx-auto grid h-14 w-14 -rotate-6 place-items-center rounded-full border-[3px] border-walnut shadow-[0_4px_0_#1f1a16] ${alert ? "bg-[#fbe9e5] text-danger" : "bg-sun text-walnut"}`}
+      >
+        {alert ? (
+          <IconWarning size={26} strokeWidth={2.25} />
+        ) : (
+          <IconBook size={26} strokeWidth={2.25} />
+        )}
+      </span>
+      <p className="relative mt-5 font-display text-[24px] leading-tight font-bold text-walnut">
+        {title}
+      </p>
+      <DotRow className="relative mt-3 justify-center" />
+      {children && (
+        <div className={`${BODY} relative mx-auto mt-3 max-w-[46ch] text-balance`}>{children}</div>
+      )}
+      {action && <div className="relative mt-6 flex flex-wrap justify-center gap-3">{action}</div>}
     </div>
   );
 }
 
-function BookStack() {
-  return (
-    <span className="mx-auto flex h-9 items-end justify-center gap-1" aria-hidden>
-      {["#8c3f3a", "#3f5f4a", "#c99a45", "#34466a"].map((c, i) => (
-        <span
-          key={c}
-          className="w-2.5 rounded-sm"
-          style={{ background: c, height: `${22 + (i % 3) * 6}px` }}
-        />
-      ))}
-    </span>
-  );
-}
-
+/** Placeholder shapes in the layout's own outline while the first numbers load. */
 function Loading({ label }: { label: string }) {
+  const block =
+    "rounded-[24px] border-[3px] border-walnut/15 bg-surface-muted motion-safe:animate-pulse";
   return (
-    <div role="status" aria-live="polite" className="space-y-4">
+    <div role="status" aria-live="polite" className="space-y-6">
       <span className="sr-only">{label}</span>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-hidden>
-        {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-3xl bg-cream ring-1 ring-ink/5" />
-        ))}
+      <div className={`${block} h-28`} aria-hidden />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]" aria-hidden>
+        <div className={`${block} h-72`} />
+        <div className={`${block} h-72`} />
       </div>
-      <div className="h-56 animate-pulse rounded-3xl bg-cream ring-1 ring-ink/5" aria-hidden />
     </div>
   );
 }
@@ -179,10 +221,10 @@ export function Gate<T>({
     return (
       <>
         {!online && (
-          <p
-            role="status"
-            className="mb-4 rounded-2xl bg-lamp/40 px-4 py-2.5 text-sm font-bold text-ink"
-          >
+          <p role="status" className={`${NOTE} mb-5`}>
+            <span className={`${ICON_DOT} h-6 w-6 bg-sun`}>
+              <IconInfo size={14} strokeWidth={2.5} />
+            </span>
             You&apos;re offline. This is what had loaded; it&apos;ll refresh when you&apos;re back.
           </p>
         )}
@@ -203,7 +245,7 @@ export function Gate<T>({
         tone="alert"
         title="Couldn't load your progress"
         action={
-          <button type="button" onClick={reload} className={DARK_BUTTON}>
+          <button type="button" onClick={reload} className={BTN.secondary}>
             Try again
           </button>
         }
@@ -215,10 +257,16 @@ export function Gate<T>({
   return <Loading label={label} />;
 }
 
-const KIND_COLOR: Record<TimelineEntry["type"], string> = {
-  study_session_completed: "#d64535",
-  lesson_completed: "var(--color-wood)",
-  quiz_completed: "var(--color-sage)",
+/** Each kind of entry gets its own icon and sticker colour; the words beside it say what it is. */
+const KIND_ICON: Record<TimelineEntry["type"], typeof IconClock> = {
+  study_session_completed: IconClock,
+  lesson_completed: IconGraduationCap,
+  quiz_completed: IconCheck,
+};
+const KIND_COLOUR: Record<TimelineEntry["type"], string> = {
+  study_session_completed: "bg-leaf",
+  lesson_completed: "bg-sun",
+  quiz_completed: "bg-tangerine",
 };
 
 /** One timeline entry: when, what, which subject, how long or how well, and the XP. */
@@ -229,25 +277,28 @@ export function EntryRow({ entry, when }: { entry: TimelineEntry; when: React.Re
     entry.durationSeconds !== null ? formatSeconds(entry.durationSeconds) : null,
     score,
   ].filter(Boolean);
+  const Icon = KIND_ICON[entry.type];
   return (
-    <li className="flex items-start gap-3 py-2.5">
-      <span className="w-[4.5rem] shrink-0 pt-0.5 text-xs font-bold text-ink-soft tabular-nums">
+    <li className="flex items-start gap-4 py-3">
+      <span className="tabular w-[4.75rem] shrink-0 pt-0.5 font-display text-[13px] leading-5 font-medium text-ink-soft">
         {when}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 text-[0.7rem] font-extrabold tracking-wide text-ink-soft uppercase">
-          <span
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ background: KIND_COLOR[entry.type] }}
-            aria-hidden
-          />
-          {entryKind(entry.type)}
+        <p className="truncate font-display text-[16px] leading-6 font-semibold text-walnut">
+          {entryTitle(entry)}
         </p>
-        <p className="truncate font-bold">{entryTitle(entry)}</p>
-        {meta.length > 0 && <p className="text-xs text-ink-soft">{meta.join(" · ")}</p>}
+        <p className="mt-1 flex items-start gap-2 text-[13px] leading-5 font-medium text-ink-soft">
+          <span className={`${ICON_DOT} h-5 w-5 ${KIND_COLOUR[entry.type]}`}>
+            <Icon size={12} strokeWidth={2.5} />
+          </span>
+          <span className="min-w-0">
+            {entryKind(entry.type)}
+            {meta.length > 0 && ` · ${meta.join(" · ")}`}
+          </span>
+        </p>
       </div>
       <span
-        className={`shrink-0 pt-0.5 text-sm font-extrabold tabular-nums ${entry.xp > 0 ? "text-ink" : "text-ink-soft"}`}
+        className={`tabular mt-0.5 shrink-0 rounded-full border-2 px-2.5 py-0.5 font-display text-[13px] leading-4 font-semibold ${entry.xp > 0 ? "border-walnut bg-sun text-walnut shadow-[0_2px_0_#1f1a16]" : "border-walnut/30 bg-canvas text-ink-soft"}`}
         title={entry.xp > 0 ? undefined : "No XP: past the daily cap, or already counted"}
       >
         {entry.xp > 0 ? `+${entry.xp}` : "0"} XP

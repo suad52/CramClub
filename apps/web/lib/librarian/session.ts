@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { SPEAK_MS, librarianPresence } from "./presence";
+import { notesMessage, notesTurn } from "./notes";
 import type { LibrarianTask } from "./types";
 import { sayAloud } from "./voice";
 
@@ -49,9 +49,11 @@ const message = (from: ChatMessage["from"], text: string, questions: string[] = 
 const replyOf = (task: LibrarianTask) =>
   message("librarian", task.reply, task.status === "awaiting_details" ? task.questions : []);
 
-/** She says a reply that just arrived: aloud in her voice when there is one, else just her jaw. */
+/**
+ * She says a reply that just arrived: aloud in her voice (cutting off the line before it), with
+ * its text revealed as she says it (voice.ts revealedChars); with no voice, she mouths it.
+ */
 function speak(text: string) {
-  librarianPresence.speakUntil = performance.now() + SPEAK_MS;
   void sayAloud(text);
 }
 
@@ -76,7 +78,18 @@ export const useLibrarianSession = create<LibrarianSession>()((set) => ({
       };
     }),
   reopen: (task, now) => {
-    const messages = [message("student", task.request)];
+    // Notes requests open the way they were sent: "Shared 2 files of notes", then the message.
+    const asked =
+      task.type === "study_from_notes"
+        ? notesTurn(
+            task.notes.length,
+            notesMessage(
+              task.request,
+              task.notes.map((n) => n.name),
+            ),
+          )
+        : task.request;
+    const messages = [message("student", asked)];
     if (task.reply.trim()) {
       messages.push(replyOf(task));
       speak(task.reply);

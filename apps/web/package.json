@@ -9,6 +9,8 @@
     "dev": "pnpm assets && next dev --port 3000",
     "build": "pnpm assets && next build",
     "start": "next start --port 3000",
+    "worker": "tsx --conditions=react-server --env-file-if-exists=.env.local --tsconfig tsconfig.json worker/index.ts",
+    "dev:worker": "tsx watch --conditions=react-server --env-file-if-exists=.env.local --tsconfig tsconfig.json worker/index.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
@@ -18,6 +20,10 @@
     "db:smoke": "node db/smoke.mjs"
   },
   "dependencies": {
+    "@auth0/nextjs-auth0": "4.33.0",
+    "@aws-sdk/client-s3": "^3.1173.0",
+    "@aws-sdk/s3-request-presigner": "^3.1173.0",
+    "@colyseus/sdk": "^0.18.10",
     "@google/genai": "3.4.0",
     "@mediapipe/tasks-vision": "1.2.3",
     "@ovr/shared": "workspace:*",
@@ -46,6 +52,7 @@
     "eslint": "^9.39.0",
     "eslint-config-next": "16.4.6",
     "tailwindcss": "^4.3.5",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "vitest": "~5.1.0"
   }

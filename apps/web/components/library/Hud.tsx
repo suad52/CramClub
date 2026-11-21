@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ZONES } from "@ovr/shared";
+import { IconUsers } from "@/components/ui/icons";
+import { HUD_CHIP, HUD_MUTED } from "@/components/ui/styles";
 import {
   WHITEBOARDS,
   getLift,
@@ -9,66 +12,112 @@ import {
   interact,
   joinNearbyLesson,
   openLessonPicker,
-  openLibrarian,
   openTableBoard,
 } from "@/lib/game/actions";
 import { exitPointerLock } from "@/lib/game/pointer";
 import { isFocusing, usePomodoro } from "@/lib/game/pomodoro";
 import { useGameStore } from "@/lib/game/store";
 import { tableNumberOf, useBoardLessons } from "@/lib/learning-studio/boardLessons";
-import { TrackingButton } from "./ExpressionTracking";
-import { openProgress } from "./ProgressOverlay";
+import { useNet } from "@/lib/net/connection";
+import { CameraOnChip } from "./ExpressionTracking";
+
+/*
+ * The HUD over the 3D library stays minimal: where you are (top left), the menu (top right), and
+ * what you can do right here (bottom centre). Everything else lives in the menu sheet (PauseMenu
+ * in Overlays.tsx). Its height matters: the pomodoro card sits just under the zone chip (and the
+ * "Walking faster" chip) at top-20 / top-[7.25rem], see Pomodoro.tsx.
+ */
 
 const zoneById = new Map(ZONES.map((z) => [z.id, z]));
 
-function IconButton({
-  label,
-  shortcut,
-  unavailable,
-  onClick,
-  children,
-}: {
-  label: string;
-  shortcut?: string;
-  /** Why it can't be used right now; it stays focusable so the reason can be read. */
-  unavailable?: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={unavailable ? undefined : onClick}
-      aria-disabled={unavailable ? true : undefined}
-      title={unavailable ?? (shortcut ? `${label} (${shortcut})` : label)}
-      className={`pointer-events-auto flex h-10 items-center gap-2 rounded-full bg-cream/90 px-3.5 text-sm font-bold text-ink shadow-md ring-1 ring-ink/10 backdrop-blur transition focus-visible:outline-3 focus-visible:outline-ember ${unavailable ? "cursor-not-allowed opacity-60" : "hover:bg-cream"}`}
-    >
-      {children}
-      <span className="sr-only">{unavailable ? `${label}. ${unavailable}` : label}</span>
-      {shortcut && <span className="kbd !h-6 !min-w-6 !text-[0.7rem]">{shortcut}</span>}
-    </button>
-  );
-}
+/**
+ * A cream sticker with a black outline over the scene (the title screen's chosen menu item): the
+ * things you can click right now. It lifts on hover and presses down on click.
+ */
+const CREAM_STICKER =
+  "inline-flex items-center rounded-[16px] border-[3px] border-black/80 bg-surface font-display font-semibold text-walnut shadow-[0_4px_0_rgb(0_0_0/0.55)] transition-[background-color,transform,box-shadow] duration-150 ease-out outline-none hover:-translate-y-px hover:bg-[#fff6dc] focus-visible:ring-4 focus-visible:ring-sun focus-visible:ring-offset-2 focus-visible:ring-offset-walnut active:translate-y-[3px] active:shadow-[0_1px_0_rgb(0_0_0/0.55)] motion-reduce:transition-none";
 
-function ZoneBadge() {
+/** A sun keycap for the cream stickers (the plain keycap is cream too). */
+const SUN_KEY = "kbd !bg-sun";
+
+/** Where you are: the zone's name and its one-line description. */
+function ZoneChip() {
   const zoneId = useGameStore((s) => s.zoneId);
   const zone = zoneId ? zoneById.get(zoneId) : undefined;
   return (
-    <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-cream/90 py-2 pr-4 pl-3 shadow-md ring-1 ring-ink/10 backdrop-blur">
-      <span className="font-display text-xl font-semibold tracking-tight">OVR</span>
-      <span className="h-6 w-px bg-ink/15" aria-hidden />
-      <div className="min-w-36" aria-live="polite">
-        <p key={zone?.id} className="text-sm leading-tight font-extrabold ">
-          {zone?.name ?? "The library"}
+    <div
+      className={`${HUD_CHIP} pointer-events-auto max-w-[calc(100vw-9rem)] sm:max-w-80 px-3.5 py-2`}
+    >
+      <div aria-live="polite">
+        <p
+          key={zone?.id}
+          className="title-pop flex items-center gap-2 text-[14px] leading-5 font-semibold"
+        >
+          <span
+            aria-hidden
+            className="h-2.5 w-2.5 shrink-0 rounded-full border-2 border-black/80 bg-leaf"
+          />
+          <span className="min-w-0 truncate">{zone?.name ?? "The library"}</span>
         </p>
-        <p className="text-xs leading-tight text-ink-soft">{zone?.blurb ?? ""}</p>
+        {zone?.blurb && (
+          <p className={`truncate pl-[1.125rem] text-xs leading-4 font-medium ${HUD_MUTED}`}>
+            {zone.blurb}
+          </p>
+        )}
       </div>
-      <span
-        className="ml-1 rounded-full bg-ember/15 px-2 py-0.5 text-[0.68rem] font-extrabold tracking-wide text-ember uppercase"
-        title="You're exploring on your own for now. Studying with other people arrives in a later update."
-      >
-        Solo preview
+    </div>
+  );
+}
+
+/**
+ * Who's here (top right): "3 here" while you're in a shared library, with how the link is doing
+ * when it isn't. Hidden when there's no game server at all (the library is simply solo).
+ */
+function PresenceChip() {
+  const status = useNet((s) => s.status);
+  const count = useNet((s) => s.count);
+  const name = useNet((s) => s.name);
+  if (status === "offline") return null;
+  const online = status === "online";
+  const label = online
+    ? count <= 1
+      ? "Just you here"
+      : `${count} here`
+    : status === "connecting"
+      ? "Connecting…"
+      : status === "full"
+        ? "Library full: exploring solo"
+        : "Offline: exploring solo";
+  const you = name ? ` Others see you as ${name}.` : "";
+  const title = online
+    ? count <= 1
+      ? `You're the only one in this library right now. Others appear as they come in.${you}`
+      : `${count} people in this library, you included.${you}`
+    : status === "connecting"
+      ? "Joining the library so you can see who else is here."
+      : status === "full"
+        ? "Every library is full right now. You can keep studying; we'll let you in when there's room."
+        : "Can't reach the library server. You can keep studying on your own; we'll keep trying.";
+  const dot = online
+    ? "bg-leaf"
+    : status === "connecting"
+      ? "bg-sun animate-pulse"
+      : "bg-walnut-muted";
+  return (
+    <div
+      role="status"
+      title={title}
+      className={`${HUD_CHIP} pointer-events-auto inline-flex h-10 items-center gap-2 px-3 text-[14px] font-semibold`}
+    >
+      <IconUsers size={18} strokeWidth={2.25} />
+      <span className="whitespace-nowrap">
+        {label}
+        {online && count > 1 && <span className="sr-only"> in this library</span>}
       </span>
+      <span
+        aria-hidden
+        className={`h-2.5 w-2.5 shrink-0 rounded-full border-2 border-black/80 motion-reduce:animate-none ${dot}`}
+      />
     </div>
   );
 }
@@ -83,16 +132,70 @@ function WalkFastChip() {
       type="button"
       onClick={toggle}
       title="Walking faster (R to switch off)"
-      className="pointer-events-auto flex items-center gap-2 rounded-full bg-cream/90 py-1 pr-1.5 pl-3 text-xs font-extrabold text-ink shadow-md ring-1 ring-ink/10 backdrop-blur hover:bg-cream"
+      aria-keyshortcuts="R"
+      className={`${HUD_CHIP} pointer-events-auto inline-flex items-center gap-2 py-1 pr-1.5 pl-2.5 text-xs font-semibold transition-[background-color,transform,box-shadow] duration-150 outline-none hover:-translate-y-px hover:bg-walnut/95 focus-visible:ring-4 focus-visible:ring-sun active:translate-y-[3px] active:bg-walnut active:shadow-[0_1px_0_rgb(0_0_0/0.55)] motion-reduce:transition-none`}
     >
+      <span
+        aria-hidden
+        className="h-2.5 w-2.5 shrink-0 rounded-full border-2 border-black/80 bg-leaf"
+      />
       Walking faster
-      <span className="kbd !h-5 !min-w-5 !text-[0.65rem]">R</span>
+      <kbd className="kbd kbd-dark !h-5 !min-w-5 !text-[0.68rem]" aria-hidden>
+        R
+      </kbd>
     </button>
   );
 }
 
-const PROMPT_BUTTON =
-  "pointer-events-auto flex items-center gap-3 rounded-full bg-ink/85 py-2.5 pr-5 pl-2.5 text-[0.95rem] font-bold text-cream shadow-lg backdrop-blur transition hover:bg-ink";
+/** Top right: the one way into everything else. */
+function MenuButton() {
+  const setMenuOpen = useGameStore((s) => s.setMenuOpen);
+  const menuOpen = useGameStore((s) => s.menuOpen);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        exitPointerLock();
+        setMenuOpen(true);
+      }}
+      title="Menu (Esc)"
+      aria-haspopup="dialog"
+      aria-expanded={menuOpen}
+      aria-keyshortcuts="Escape"
+      className={`${CREAM_STICKER} pointer-events-auto h-10 gap-2.5 px-3.5 text-[15px]`}
+    >
+      Menu
+      <kbd className={SUN_KEY} aria-hidden>
+        Esc
+      </kbd>
+    </button>
+  );
+}
+
+const PROMPT_BUTTON = `${CREAM_STICKER} pointer-events-auto gap-2.5 py-1.5 pr-4 pl-1.5 text-[15px] title-pop`;
+
+/** A prompt for something you can do right here: its key, then what it does. */
+function Prompt({
+  keyLabel,
+  onClick,
+  children,
+}: {
+  keyLabel: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button type="button" onClick={onClick} aria-keyshortcuts={keyLabel} className={PROMPT_BUTTON}>
+      <kbd className={`${SUN_KEY} !h-7 !min-w-7 !text-[0.85rem]`} aria-hidden>
+        {keyLabel}
+      </kbd>
+      {children}
+    </button>
+  );
+}
+
+/** The plan's seat prompts, in the redesign's words ("Use desk" for the study tables). */
+const SEAT_PROMPTS: Record<string, string> = { "Study at table": "Use desk" };
 
 function InteractionPrompt() {
   const seatId = useGameStore((s) => s.seatId);
@@ -103,6 +206,7 @@ function InteractionPrompt() {
   const nearbyLift = useGameStore((s) => s.nearbyLiftId);
   const nearbyLibrarian = useGameStore((s) => s.nearbyLibrarian);
   const seat = getSeat(seatId);
+  const seatPrompt = getSeat(nearby)?.prompt;
   const label = seatId
     ? "Stand up"
     : nearbyBoard
@@ -110,8 +214,8 @@ function InteractionPrompt() {
       : nearbyLift
         ? getLift(nearbyLift)?.label
         : nearbyLibrarian
-          ? "Ask the librarian"
-          : getSeat(nearby)?.prompt;
+          ? "Speak with the Librarian"
+          : seatPrompt && (SEAT_PROMPTS[seatPrompt] ?? seatPrompt);
   const tableBoard =
     seat?.tableId && WHITEBOARDS.some((b) => b.boardId === seat.tableId) ? seat.tableId : null;
   // The board L puts a lesson on (see lessonBoardId), and a nearby lesson you could join.
@@ -130,34 +234,83 @@ function InteractionPrompt() {
   if (!label || lessonOverlay) return null;
   return (
     <div
-      className={`pointer-events-none absolute inset-x-0 bottom-10 flex flex-wrap-reverse justify-center gap-3 ${previewShown ? "px-[21.5rem]" : ""}`}
+      className={`pointer-events-none absolute inset-x-0 bottom-10 flex flex-wrap-reverse justify-center gap-2.5 ${previewShown ? "px-[21.5rem]" : "px-4"}`}
     >
       {!seatLocked && (
-        <button type="button" onClick={() => interact()} className={PROMPT_BUTTON}>
-          <span className="kbd">E</span>
+        <Prompt keyLabel="E" onClick={() => interact()}>
           {label}
-        </button>
+        </Prompt>
       )}
       {tableBoard && (
-        <button type="button" onClick={() => openTableBoard()} className={PROMPT_BUTTON}>
-          <span className="kbd">B</span>
+        <Prompt keyLabel="B" onClick={() => openTableBoard()}>
           Table whiteboard
-        </button>
+        </Prompt>
       )}
       {lessonBoard && (
-        <button type="button" onClick={() => openLessonPicker()} className={PROMPT_BUTTON}>
-          <span className="kbd">L</span>
+        <Prompt keyLabel="L" onClick={() => openLessonPicker()}>
           {boardHasLesson ? "Lessons" : "Play a lesson"}
-        </button>
+        </Prompt>
       )}
       {lessonBoard && joinable && (
-        <button type="button" onClick={() => joinNearbyLesson()} className={PROMPT_BUTTON}>
-          <span className="kbd">J</span>
+        <Prompt keyLabel="J" onClick={() => joinNearbyLesson()}>
           {joinable === lessonBoard
             ? "Join lesson"
             : `Join Table ${tableNumberOf(joinable)}'s lesson`}
-        </button>
+        </Prompt>
       )}
+    </div>
+  );
+}
+
+/** How long the first "how to move" hint stays up once you're walking around. */
+const HINT_MS = 6000;
+const MOVE_KEYS = new Set([
+  "KeyW",
+  "KeyA",
+  "KeyS",
+  "KeyD",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+]);
+
+/**
+ * Bottom left, just after you walk in: the three controls you need first. It fades away after a
+ * few seconds or as soon as you start walking. The clock waits while the controls guide is open.
+ */
+function ControlsHint() {
+  const guideOpen = useGameStore((s) => s.guideOpen);
+  const [gone, setGone] = useState(false);
+  useEffect(() => {
+    if (gone || guideOpen) return;
+    const timer = setTimeout(() => setGone(true), HINT_MS);
+    const onKey = (e: KeyboardEvent) => {
+      if (MOVE_KEYS.has(e.code)) setGone(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [gone, guideOpen]);
+  return (
+    <div
+      aria-hidden={gone}
+      className={`${HUD_CHIP} pointer-events-none absolute bottom-4 left-4 hidden items-center gap-4 py-1.5 pr-3.5 pl-1.5 text-xs font-semibold transition-opacity duration-500 motion-reduce:transition-none sm:flex ${gone ? "opacity-0" : "opacity-100"}`}
+    >
+      <span className="flex items-center gap-2">
+        <kbd className="kbd kbd-dark">W A S D</kbd>
+        <span className={HUD_MUTED}>Move</span>
+      </span>
+      <span className="flex items-center gap-2">
+        <kbd className="kbd kbd-dark">Mouse</kbd>
+        <span className={HUD_MUTED}>Look</span>
+      </span>
+      <span className="flex items-center gap-2">
+        <kbd className="kbd kbd-dark">Shift</kbd>
+        <span className={HUD_MUTED}>Free the cursor</span>
+      </span>
     </div>
   );
 }
@@ -169,80 +322,28 @@ function Crosshair() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute top-1/2 left-1/2 h-1.5 w-1.5 -translate-1/2 rounded-full bg-cream/90 shadow-[0_0_0_1.5px_rgb(45_36_32/0.5)]"
+      className="pointer-events-none absolute top-1/2 left-1/2 h-2.5 w-2.5 -translate-1/2 rounded-full border-2 border-black/70 bg-surface/95"
     />
   );
 }
 
 export function Hud() {
   const ready = useGameStore((s) => s.ready);
-  const cameraMode = useGameStore((s) => s.cameraMode);
-  const toggleCamera = useGameStore((s) => s.toggleCameraMode);
-  const setGuideOpen = useGameStore((s) => s.setGuideOpen);
-  const setMenuOpen = useGameStore((s) => s.setMenuOpen);
   const phase = useGameStore((s) => s.phase);
-  const focusing = usePomodoro(isFocusing);
   if (!ready || phase !== "playing") return null;
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
       <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
-        <ZoneBadge />
+        <ZoneChip />
         <WalkFastChip />
       </div>
-      <div className="absolute top-4 right-4 flex gap-2">
-        <IconButton
-          label="AI Learning Studio: turn your notes into a lesson (opens in a new tab)"
-          unavailable={focusing ? "Opens a new tab — available after your pomodoro" : undefined}
-          onClick={() => {
-            exitPointerLock();
-            window.open("/learning-studio", "_blank", "noopener");
-          }}
-        >
-          <span aria-hidden>🎓</span>
-          <span className="hidden lg:inline">Learning Studio</span>
-        </IconButton>
-        <IconButton
-          label="My Progress: your focus time, lessons, quizzes and leaderboards"
-          onClick={openProgress}
-        >
-          <span aria-hidden>📈</span>
-          <span className="hidden lg:inline">My Progress</span>
-        </IconButton>
-        <IconButton
-          label="Ask the Librarian: research a topic, find sources, build a study plan or a lesson"
-          onClick={openLibrarian}
-        >
-          <span aria-hidden>📚</span>
-          <span className="hidden lg:inline">Ask the Librarian</span>
-        </IconButton>
-        <TrackingButton />
-        <IconButton
-          label={
-            cameraMode === "first-person" ? "Switch to third person" : "Switch to first person"
-          }
-          shortcut="V"
-          onClick={toggleCamera}
-        >
-          <span aria-hidden>{cameraMode === "first-person" ? "👁" : "🧍"}</span>
-          <span className="hidden lg:inline">
-            {cameraMode === "first-person" ? "First person" : "Third person"}
-          </span>
-        </IconButton>
-        <IconButton label="Controls" onClick={() => setGuideOpen(true)}>
-          <span aria-hidden>?</span>
-        </IconButton>
-        <IconButton
-          label="Menu"
-          shortcut="Esc"
-          onClick={() => {
-            exitPointerLock();
-            setMenuOpen(true);
-          }}
-        >
-          <span aria-hidden>☰</span>
-        </IconButton>
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        <PresenceChip />
+        <CameraOnChip />
+        <MenuButton />
       </div>
       <InteractionPrompt />
+      <ControlsHint />
       <Crosshair />
     </div>
   );

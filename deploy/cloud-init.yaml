@@ -1,0 +1,72 @@
+#cloud-config
+#
+# First-boot setup for the OVR Vultr server (Ubuntu 24.04 LTS). Paste this whole file into
+# "Cloud-Init User-Data" when deploying the instance (docs/vultr.md). It:
+#   - installs Docker Engine + the Compose plugin from Docker's apt repository
+#   - creates the `deploy` user (in the docker group) with the SSH key(s) you picked for the server
+#   - opens only SSH, HTTP and HTTPS in ufw
+#   - adds 4 GB of swap (next build needs more than 2 GB of memory at its peak)
+# Progress: ssh root@SERVER 'cloud-init status --wait' ; full log: /var/log/cloud-init-output.log
+
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - rsync
+  - ufw
+
+# Key-only SSH (the Vultr web console still accepts the root password).
+ssh_pwauth: false
+
+users:
+  - default
+  - name: deploy
+    shell: /bin/bash
+    lock_passwd: true
+
+write_files:
+  # Keep container logs from filling the disk.
+  - path: /etc/docker/daemon.json
+    permissions: "0644"
+    content: |
+      { "log-driver": "local", "log-opts": { "max-size": "20m", "max-file": "5" } }
+
+runcmd:
+  # Docker Engine + Compose plugin (https://docs.docker.com/engine/install/ubuntu/)
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - >-
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc]
+    https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable"
+    > /etc/apt/sources.list.d/docker.list
+  - apt-get update
+  - >-
+    DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io
+    docker-buildx-plugin docker-compose-plugin
+  - systemctl enable --now docker
+  # The docker group exists only now. Membership in it is root-equivalent: keep this user's key safe.
+  - usermod -aG docker deploy
+
+  # The deploy user logs in with the SSH key(s) chosen in the Vultr dashboard (copied from root or
+  # the image's default user, without any forced-command prefix those copies may carry).
+  - install -d -m 0700 -o deploy -g deploy /home/deploy/.ssh
+  - "cat /root/.ssh/authorized_keys /home/ubuntu/.ssh/authorized_keys 2>/dev/null | grep -oE '(sk-)?(ssh|ecdsa)-[A-Za-z0-9@.-]+ AAAA[A-Za-z0-9+/=]+' | sort -u > /tmp/deploy_keys"
+  - install -m 0600 -o deploy -g deploy /tmp/deploy_keys /home/deploy/.ssh/authorized_keys
+  - rm -f /tmp/deploy_keys
+  - install -d -m 0755 -o deploy -g deploy /home/deploy/ovr
+
+  # Firewall: SSH, HTTP (Let's Encrypt + redirect), HTTPS (TCP, and UDP for HTTP/3).
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow OpenSSH
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw allow 443/udp
+  - ufw --force enable
+
+  # 4 GB swap file.
+  - "[ -f /swapfile ] || (fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && echo '/swapfile none swap sw 0 0' >> /etc/fstab)"
+
+final_message: "OVR server ready after $UPTIME s: deploy with deploy/deploy.sh <server-ip>"

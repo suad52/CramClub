@@ -58,7 +58,11 @@ export type Section =
     }
   | { kind: "swatches"; title: string; field: AvatarIdField; options: readonly ColorOption[] }
   | { kind: "slider"; title: string; field: "build" | "height"; left: string; right: string }
-  | { kind: "presets" };
+  | { kind: "presets" }
+  /** Chibi head or "my real face" (components/creator/HeadPanel.tsx). */
+  | { kind: "head" }
+  /** The voice changer and its tester (components/creator/VoicePanel.tsx). */
+  | { kind: "voice" };
 
 export type IconId =
   | "spark"
@@ -73,7 +77,9 @@ export type IconId =
   | "bottom"
   | "shoe"
   | "glasses"
-  | "star";
+  | "star"
+  | "head"
+  | "voice";
 
 export interface Category {
   id: string;
@@ -103,6 +109,22 @@ export const CATEGORIES: Category[] = [
       { kind: "slider", title: "Build", field: "build", left: "Slim", right: "Broad" },
       { kind: "slider", title: "Height", field: "height", left: "Shorter", right: "Taller" },
     ],
+  },
+  {
+    id: "head",
+    label: "Head",
+    blurb: "Keep the chibi head, or wear your real face. Your photo stays on this device.",
+    icon: "head",
+    framing: "head",
+    sections: [{ kind: "head" }],
+  },
+  {
+    id: "voice",
+    label: "Voice",
+    blurb: "Change how you sound to others, and test it before you go in.",
+    icon: "voice",
+    framing: "head",
+    sections: [{ kind: "voice" }],
   },
   {
     id: "skin",

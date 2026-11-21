@@ -12,8 +12,10 @@ import {
   TOPS,
   labelOf,
 } from "@ovr/shared";
-import { NAME_MAX, cleanName } from "@/lib/avatar/profile";
 import { hashString } from "@ovr/shared";
+import { IconArrowLeft, IconRefresh } from "@/components/ui/icons";
+import { BTN, EYEBROW, LABEL, RIBBON, TITLE } from "@/components/ui/styles";
+import { NAME_MAX, cleanName } from "@/lib/avatar/profile";
 
 const ADJECTIVES = [
   "Quiet",
@@ -50,9 +52,14 @@ export function suggestName(seed: number): string {
   return `${ADJECTIVES[h % ADJECTIVES.length]} ${NOUNS[Math.floor(h / ADJECTIVES.length) % NOUNS.length]}`;
 }
 
+/** The name field: the shared input look, written in the handwriting font, like a signature. */
+const SIGNATURE_INPUT =
+  "h-12 w-full min-w-0 flex-1 rounded-[14px] border-[3px] border-walnut bg-white px-3.5 pt-0.5 font-[family-name:var(--font-caveat)] text-[1.65rem] leading-none text-walnut shadow-[inset_0_3px_0_rgb(31_26_22/0.08)] outline-none placeholder:text-ink-soft focus-visible:ring-4 focus-visible:ring-sun";
+
 /**
- * The last step of the studio: a library membership card with the character's name and a
- * summary of the look. Saving here is the only thing that overwrites the saved character.
+ * The last step of the studio: a tilted cream library card (like the title screen's member card,
+ * with its tangerine ribbon and round stamp) holding the character's name and a summary of the
+ * look, over a walnut scrim. Saving here is the only thing that overwrites the saved character.
  */
 export function LibraryCard({
   config,
@@ -92,7 +99,7 @@ export function LibraryCard({
 
   return (
     <div
-      className="absolute inset-0 z-30 grid place-items-center bg-ink/40 p-6 backdrop-blur-[3px] studio-fade-in"
+      className="absolute inset-0 z-30 grid place-items-center overflow-y-auto bg-walnut/50 p-5 pt-8 transition-opacity duration-200 ease-out starting:opacity-0 motion-reduce:transition-none sm:p-8"
       role="dialog"
       aria-modal="true"
       aria-labelledby="card-title"
@@ -102,43 +109,46 @@ export function LibraryCard({
           e.preventDefault();
           if (clean) onConfirm(clean);
         }}
-        className="studio-card-in relative w-full max-w-[30rem] rotate-[-1.2deg] rounded-[1.6rem] bg-[#fbf3e2] p-7 text-ink shadow-[0_40px_90px_-25px_rgb(20_12_6/0.75)] ring-1 ring-ink/10"
+        className="title-pop relative w-full max-w-[30rem] -rotate-[1.5deg] rounded-[24px] border-[3px] border-walnut bg-[#fbf3e2] p-6 pt-8 text-walnut shadow-[0_9px_0_#1f1a16] sm:p-7 sm:pt-9"
       >
         <div
-          className="pointer-events-none absolute inset-3 rounded-[1.2rem] border-2 border-dashed border-wood/25"
           aria-hidden
+          className="pointer-events-none absolute inset-2.5 rounded-[16px] border-2 border-dashed border-walnut/25"
         />
-        <div className="flex items-start justify-between gap-4">
+        <p className={`${RIBBON} absolute -top-4 left-6`}>OVR library card</p>
+        <span
+          aria-hidden
+          className="absolute -top-4 -right-4 grid h-14 w-14 rotate-12 place-items-center rounded-full border-[3px] border-walnut bg-sun font-display text-[0.95rem] font-bold text-walnut shadow-[0_4px_0_#1f1a16]"
+        >
+          OVR
+        </span>
+        <div className="relative flex items-start justify-between gap-4 pr-8">
           <div>
-            <p className="text-[0.68rem] font-extrabold tracking-[0.22em] text-wood uppercase">
-              OVR Library · Member card
-            </p>
-            <h2 id="card-title" className="mt-1 font-display text-3xl font-semibold">
+            <h2 id="card-title" className={TITLE}>
               Sign your card
             </h2>
+            <span aria-hidden className="mt-2.5 flex items-center gap-2">
+              <span className="h-2.5 w-16 rounded-full border-2 border-walnut bg-tangerine shadow-[0_2px_0_#1f1a16]" />
+              <span className="h-2.5 w-2.5 rounded-full border-2 border-walnut bg-sun shadow-[0_2px_0_#1f1a16]" />
+              <span className="h-2.5 w-2.5 rounded-full border-2 border-walnut bg-leaf shadow-[0_2px_0_#1f1a16]" />
+            </span>
           </div>
-          <div
-            className="grid h-16 w-16 shrink-0 rotate-12 place-items-center rounded-full border-[3px] border-ember/70 text-center text-[0.55rem] leading-tight font-extrabold tracking-wider text-ember/80 uppercase"
-            aria-hidden
-          >
+          <p className={`${EYEBROW} shrink-0 pt-1 text-right leading-5`}>
             Issued
-            <br />
-            {today}
-          </div>
+            <span className="tabular block font-semibold text-walnut">{today}</span>
+          </p>
         </div>
 
-        <label className="mt-6 block">
-          <span className="text-xs font-extrabold tracking-wide text-ink-soft uppercase">
-            Name others will see
-          </span>
-          <div className="mt-1 flex items-end gap-2 border-b-2 border-ink/25 focus-within:border-wood">
+        <label className="relative mt-6 block">
+          <span className={LABEL}>Name others will see</span>
+          <span className="mt-1.5 flex items-center gap-2">
             <input
               ref={input}
               value={name}
               maxLength={NAME_MAX + 4}
               onChange={(e) => setName(e.target.value)}
               placeholder={suggestName(seed)}
-              className="min-w-0 flex-1 bg-transparent pb-1 font-[family-name:var(--font-caveat)] text-4xl leading-none text-ink outline-none placeholder:text-ink/25"
+              className={SIGNATURE_INPUT}
               aria-describedby="name-hint"
             />
             <button
@@ -147,39 +157,37 @@ export function LibraryCard({
                 setName(suggestName(seed));
                 setSeed((s) => s + 1);
               }}
-              className="mb-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold text-wood hover:bg-wood/10"
+              className={BTN.secondary}
               title="Suggest a name"
             >
+              <IconRefresh size={16} strokeWidth={2.5} />
               Suggest
             </button>
-          </div>
-          <span id="name-hint" className="mt-1 block text-xs text-ink-soft">
-            {NAME_MAX - clean.length} characters left. You can change it any time.
+          </span>
+          <span
+            id="name-hint"
+            className="mt-1.5 block text-[13px] leading-5 font-medium text-ink-soft"
+          >
+            <span className="tabular">{NAME_MAX - clean.length}</span> characters left. You can
+            change it any time.
           </span>
         </label>
 
-        <dl className="mt-5 space-y-1.5 text-sm">
+        <dl className="relative mt-6 divide-y-2 divide-dashed divide-walnut/15 rounded-[18px] border-[2.5px] border-walnut bg-surface px-4 py-1 text-sm shadow-[0_3px_0_#1f1a16]">
           {summary.map(([k, v]) => (
-            <div key={k} className="flex gap-3 border-b border-ink/10 pb-1.5">
-              <dt className="w-16 shrink-0 font-extrabold text-ink-soft">{k}</dt>
-              <dd className="truncate font-bold">{v}</dd>
+            <div key={k} className="flex gap-4 py-2">
+              <dt className="w-16 shrink-0 font-display font-semibold text-ink-soft">{k}</dt>
+              <dd className="min-w-0 truncate font-semibold text-walnut">{v}</dd>
             </div>
           ))}
         </dl>
 
-        <div className="mt-7 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-full px-4 py-2.5 text-sm font-bold text-ink-soft hover:bg-ink/5 hover:text-ink"
-          >
+        <div className="relative mt-7 flex flex-wrap items-center justify-between gap-3">
+          <button type="button" onClick={onBack} className={`${BTN.quiet} -ml-3`}>
+            <IconArrowLeft size={16} strokeWidth={2.5} />
             Back to studio
           </button>
-          <button
-            type="submit"
-            disabled={!clean}
-            className="rounded-full bg-sage-dark px-6 py-3 text-base font-extrabold text-cream shadow-[0_10px_24px_-10px_rgb(86_115_79/0.9)] transition hover:bg-[#46623f] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ember"
-          >
+          <button type="submit" disabled={!clean} className={BTN.primary}>
             {confirmLabel}
           </button>
         </div>

@@ -1,4 +1,5 @@
 import { clientKey, createRateLimiter, readJson } from "@/lib/ai/http";
+import { crossOriginRefused, crossOriginWrite } from "@/lib/auth/sameOrigin";
 import { db } from "@/lib/learning/server/db";
 import { learnerFor } from "@/lib/learning/server/identity";
 import {
@@ -18,8 +19,9 @@ import type { TimelineKind } from "@/lib/learning/types";
 
 /**
  * The learning analytics API (Tiger Data). GET reads the asking learner's record and the
- * aggregate views; POST records validated activity. The learner always comes from the signed
- * cookie, never from the request.
+ * aggregate views; POST records validated activity. The learner always comes from the Auth0
+ * session or the signed cookie (lib/learning/server/identity.ts), never from the request. POSTs
+ * must come from this site (lib/auth/sameOrigin.ts), and the learner's own views aren't cached.
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +29,8 @@ export const dynamic = "force-dynamic";
 const allowRead = createRateLimiter(120, 60_000);
 const allowWrite = createRateLimiter(60, 60_000);
 const KINDS: TimelineKind[] = ["all", "lessons", "quizzes", "sessions"];
+/** The asking learner's own record: never kept by a browser or a shared cache. */
+const PRIVATE = { headers: { "cache-control": "private, no-store" } };
 
 type Ctx = { params: Promise<{ action: string }> };
 
@@ -56,7 +60,7 @@ export async function GET(request: Request, { params }: Ctx) {
     const me = (await learnerFor(sql, request, false))?.id ?? null;
     switch (action) {
       case "dashboard":
-        return Response.json(await dashboard(sql, me));
+        return Response.json(await dashboard(sql, me), PRIVATE);
       case "timeline": {
         const kind = url.searchParams.get("kind") as TimelineKind | null;
         const before = url.searchParams.get("before");
@@ -67,11 +71,18 @@ export async function GET(request: Request, { params }: Ctx) {
             subject: url.searchParams.get("subject")?.slice(0, 60) || null,
             before: beforeDate && !Number.isNaN(beforeDate.getTime()) ? beforeDate : null,
           }),
+          PRIVATE,
         );
       }
       case "leaderboard":
         return Response.json(
-          await leaderboard(sql, me, url.searchParams.get("period") === "month" ? "month" : "week"),
+          await leaderboard(
+            sql,
+            me,
+            url.searchParams.get("period") === "month" ? "month" : "week",
+            url.searchParams.get("by") === "focus" ? "focus" : "xp",
+          ),
+          PRIVATE,
         );
       case "community":
         return Response.json(await community(sql));
@@ -86,6 +97,7 @@ export async function GET(request: Request, { params }: Ctx) {
 
 export async function POST(request: Request, { params }: Ctx) {
   const { action } = await params;
+  if (crossOriginWrite(request)) return crossOriginRefused();
   if (!(action in Bodies)) return fail("not_found", "Unknown action.", 404);
   const sql = setup();
   if (!sql) return NOT_CONFIGURED();

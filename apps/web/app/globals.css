@@ -1,19 +1,58 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens (the redesign: "a modern digital university"). The Figma file
+ * "OVR — Virtual Library redesign" holds the same tokens. Older names (parchment, cream, ink, …)
+ * stay as aliases of the new palette so every screen shares one system.
+ */
 @theme {
-  --color-parchment: #f5ede0;
-  --color-cream: #fbf7ef;
-  --color-ink: #2d2420;
-  --color-ink-soft: #66574c;
-  --color-wood: #9a6a43;
-  --color-wood-dark: #6e4a33;
-  --color-sage: #6f8f6a;
-  --color-sage-dark: #56734f;
-  --color-ember: #c8743f;
-  --color-lamp: #ffd99a;
+  /* Surfaces */
+  --color-canvas: #f5f2ea;
+  --color-surface: #fffefa;
+  --color-surface-muted: #ede9df;
+  /* Text */
+  --color-ink: #252923;
+  --color-ink-soft: #5f6158;
+  --color-ink-inverse: #fbf8f1;
+  /* Accents: forest for actions and selection, brass sparingly */
+  --color-forest: #29483a;
+  --color-forest-deep: #1d352b;
+  --color-forest-tint: #e3eae2;
+  --color-brass: #b18a50;
+  /* Lines */
+  --color-line: #dedacf;
+  --color-line-strong: #c6bfaf;
+  /* Status (always paired with words or icons, never colour alone) */
+  --color-success: #527a5b;
+  --color-warning: #9a6b2c;
+  --color-danger: #a9504a;
+  /* UI drawn over the 3D library */
+  --color-walnut: #1f1a16;
+  --color-walnut-text: #f4efe4;
+  --color-walnut-muted: #bcb3a3;
+  --color-walnut-key: #3e3731;
+  --color-walnut-key-edge: #7d746a;
 
-  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
-  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+  /* Older names, now aliases of the palette above */
+  --color-parchment: var(--color-canvas);
+  --color-cream: var(--color-surface);
+  --color-wood: #7a5a3a;
+  --color-wood-dark: #3b2c21;
+  --color-sage: var(--color-success);
+  --color-sage-dark: #3f6249;
+  --color-ember: var(--color-warning);
+  --color-lamp: #e9c98a;
+
+  --font-display: var(--font-cartoon), var(--font-nunito), ui-rounded, system-ui, sans-serif;
+  --font-sans: var(--font-nunito), ui-rounded, ui-sans-serif, system-ui, sans-serif;
+  --color-tangerine: #e07a3f;
+  --color-leaf: #7fb27a;
+  --color-sun: #f2cf7e;
+  --shadow-pop: 0 4px 0 #1f1a16;
+  --shadow-pop-lg: 0 8px 0 #1f1a16;
+
+  --radius-control: 10px;
+  --radius-panel: 16px;
 }
 
 :root {
@@ -22,7 +61,7 @@
 
 html,
 body {
-  background: var(--color-parchment);
+  background: var(--color-canvas);
   color: var(--color-ink);
 }
 
@@ -31,23 +70,37 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Statistics and timers line up. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Keyboard keycap used in the HUD and guides. */
 .kbd {
   display: inline-flex;
-  min-width: 1.75rem;
-  height: 1.75rem;
+  min-width: 1.6rem;
+  height: 1.6rem;
   align-items: center;
   justify-content: center;
   padding: 0 0.45rem;
-  border-radius: 0.45rem;
-  border: 1px solid rgb(45 36 32 / 0.18);
-  border-bottom-width: 3px;
-  background: var(--color-cream);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  font-size: 0.8rem;
-  font-weight: 800;
+  border-radius: 8px;
+  border: 2px solid var(--color-walnut);
+  background: var(--color-surface);
+  color: var(--color-walnut);
+  box-shadow: 0 2.5px 0 var(--color-walnut);
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 600;
   line-height: 1;
+  white-space: nowrap;
+}
+
+/* The same keycap over the dark 3D scene. */
+.kbd-dark {
+  border-color: #000;
+  background: var(--color-surface);
+  color: var(--color-walnut);
+  box-shadow: 0 2.5px 0 rgb(0 0 0 / 0.7);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -172,6 +225,41 @@ body {
 }
 .title-rise {
   animation: title-rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+/* Cartoony title screen: things pop in with a little overshoot, and the card bobs. */
+@keyframes title-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.04);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes title-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -6px;
+  }
+}
+.title-pop {
+  animation: title-pop 0.7s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+.title-bob {
+  animation: title-bob 4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .title-pop,
+  .title-bob {
+    animation: none;
+  }
 }
 .title-glow {
   animation: title-glow 2.4s ease-in-out infinite;

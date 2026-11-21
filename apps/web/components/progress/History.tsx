@@ -1,10 +1,12 @@
 "use client";
 
 import { useId, useState } from "react";
+import { IconChevronDown, IconWarning } from "@/components/ui/icons";
+import { BTN, FOCUS, LABEL, PANEL } from "@/components/ui/styles";
 import type { SubjectProgress, TimelineEntry, TimelineKind } from "@/lib/learning/types";
 import { type ApiError, asApiError, getJson, useApi } from "./api";
 import { dayHeading, formatTime, groupByDay } from "./format";
-import { CARD, DARK_BUTTON, EntryRow, FOCUS, Gate, SMALL_BUTTON, StateCard } from "./ui";
+import { DotRow, EntryRow, Gate, SMALL_BUTTON, Segmented, StateCard } from "./ui";
 
 interface TimelinePage {
   entries: TimelineEntry[];
@@ -67,38 +69,33 @@ export function History({ subjects }: { subjects: SubjectProgress[] | undefined 
   const noun = KINDS.find((k) => k.id === kind)!.noun;
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <div role="group" aria-label="Show" className="flex flex-wrap gap-2">
-          {KINDS.map((k) => (
-            <button
-              key={k.id}
-              type="button"
-              aria-pressed={kind === k.id}
-              onClick={() => setKind(k.id)}
-              className={`rounded-full px-3.5 py-1.5 text-sm font-bold ring-1 transition ${FOCUS} ${kind === k.id ? "bg-ink text-cream ring-ink" : "bg-cream text-ink-soft ring-ink/10 hover:text-ink hover:ring-ink/30"}`}
-            >
-              {k.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 sm:ml-auto">
-          <label htmlFor={selectId} className="text-sm font-bold">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <Segmented label="Show" options={KINDS} value={kind} onChange={setKind} />
+        <div className="flex items-center gap-2.5 sm:ml-auto">
+          <label htmlFor={selectId} className={LABEL}>
             Subject
           </label>
-          <select
-            id={selectId}
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className={`max-w-[14rem] rounded-xl bg-cream px-3 py-2 text-sm ring-1 ring-ink/15 ${FOCUS}`}
-          >
-            <option value="">All subjects</option>
-            {subjects?.map((s) => (
-              <option key={s.subjectId} value={s.subjectId}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+          <span className="relative flex">
+            <select
+              id={selectId}
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              className={`h-11 max-w-[14rem] cursor-pointer appearance-none truncate rounded-[14px] border-[2.5px] border-walnut bg-surface pr-10 pl-3.5 font-display text-[14.5px] font-semibold text-walnut shadow-[0_3px_0_#1f1a16] transition-colors duration-150 hover:bg-canvas motion-reduce:transition-none ${FOCUS}`}
+            >
+              <option value="">All subjects</option>
+              {subjects?.map((s) => (
+                <option key={s.subjectId} value={s.subjectId}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <IconChevronDown
+              size={17}
+              strokeWidth={2.75}
+              className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-walnut"
+            />
+          </span>
         </div>
       </div>
 
@@ -130,34 +127,48 @@ export function History({ subjects }: { subjects: SubjectProgress[] | undefined 
               </StateCard>
             )
           ) : (
-            <div className="space-y-4">
-              {groupByDay(entries).map((g) => (
-                <section key={g.key} className={CARD} aria-label={dayHeading(g.date, now)}>
-                  <h3 className="font-display text-base font-semibold">
-                    {dayHeading(g.date, now)}
-                  </h3>
-                  <ul className="mt-1 divide-y divide-ink/10">
-                    {g.entries.map((e) => (
-                      <EntryRow key={e.id} entry={e} when={formatTime(e.at)} />
-                    ))}
-                  </ul>
-                </section>
-              ))}
-              <div className="flex flex-col items-center gap-2 pt-1">
+            <div className="space-y-5">
+              <div className={`${PANEL} divide-y-2 divide-dashed divide-walnut/20`}>
+                {groupByDay(entries).map((g) => (
+                  <section
+                    key={g.key}
+                    className="px-5 pt-5 pb-1 sm:px-6"
+                    aria-label={dayHeading(g.date, now)}
+                  >
+                    {/* Each day is a little cream sticker label. */}
+                    <h3 className="inline-flex items-center rounded-full border-2 border-walnut bg-canvas px-3 py-0.5 font-display text-[13.5px] leading-5 font-semibold text-walnut shadow-[0_2px_0_#1f1a16]">
+                      {dayHeading(g.date, now)}
+                    </h3>
+                    <ul className="mt-1 divide-y-2 divide-walnut/10">
+                      {g.entries.map((e) => (
+                        <EntryRow key={e.id} entry={e} when={formatTime(e.at)} />
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+              <div className="flex flex-col items-center gap-2">
                 {next ? (
                   <button
                     type="button"
                     onClick={loadMore}
                     aria-disabled={extra?.loading || undefined}
-                    className={DARK_BUTTON}
+                    className={`${BTN.secondary} aria-disabled:cursor-wait aria-disabled:opacity-60`}
                   >
                     {extra?.loading ? "Loading…" : "Load more"}
                   </button>
                 ) : (
-                  <p className="text-xs font-bold text-ink-soft">That&apos;s everything.</p>
+                  <p className="flex items-center gap-3 font-display text-[13.5px] font-semibold text-ink-soft">
+                    <DotRow />
+                    That&apos;s everything.
+                  </p>
                 )}
                 {extra?.error && (
-                  <p role="alert" className="text-sm font-bold text-ink">
+                  <p
+                    role="alert"
+                    className="flex items-start gap-2 text-sm leading-5 font-semibold text-walnut"
+                  >
+                    <IconWarning size={18} strokeWidth={2.25} className="text-danger" />
                     Couldn&apos;t load more: {extra.error.message}
                   </p>
                 )}

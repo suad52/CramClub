@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { hashString } from "@ovr/shared";
+import { IconBoard, IconClose, IconCopy, IconTrash, IconWarning } from "@/components/ui/icons";
+import { BTN, BTN_SM, DIVIDER, FOCUS, HUD_CHIP, ICON_BTN, PANEL } from "@/components/ui/styles";
 import {
   AskAiError,
   type Solution,
@@ -20,6 +22,7 @@ import { ImageCache, drawItems, loadHandFont, strokePath } from "@/lib/whiteboar
 import { layoutStrokes, loadStrokeFont, measureLine } from "@/lib/whiteboard/strokeFont";
 import { type WritingSchedule, frameAt, scheduleWriting } from "@/lib/whiteboard/writer";
 import { type Tool, useWhiteboardStore } from "@/lib/whiteboard/store";
+import { type FingerSample, startFingerPen } from "@/lib/whiteboard/fingerPen";
 import {
   BOARD_H,
   BOARD_W,
@@ -40,6 +43,78 @@ type AiState =
   | { status: "error"; message: string };
 
 const ERASER_RADIUS = 14;
+
+/** Drawn like the shared icon set (24px grid, currentColor, hidden from readers), a bit bolder. */
+function LineIcon({ d, size = 18 }: { d: string; size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.25}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable="false"
+      className="shrink-0"
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
+const TOOL_ICONS: Record<Tool, string> = {
+  // A pencil.
+  pen: "M4.75 19.25l.9-3.9L15.6 5.4a1.9 1.9 0 012.7 0l.3.3a1.9 1.9 0 010 2.7L8.65 18.35zM13.75 7.25l3 3",
+  // A block eraser on its edge.
+  eraser:
+    "M9 19.25h10.25M5.45 13.55l8.1-8.1a1.9 1.9 0 012.7 0l2.3 2.3a1.9 1.9 0 010 2.7l-7.4 7.4a3 3 0 01-2.12.88H8.6a1.9 1.9 0 01-1.35-.55l-1.8-1.8a1.9 1.9 0 010-2.83zM9.25 9.75l5 5",
+  // A selection box with a question in it.
+  ask: "M4.75 8.25v-3.5h3.5M15.75 4.75h3.5v3.5M19.25 15.75v3.5h-3.5M8.25 19.25h-3.5v-3.5M10.1 10.1a1.95 1.95 0 113 1.65c-.6.38-1.1.8-1.1 1.5M12 15.4v.1",
+};
+const UNDO_ICON = "M9 5.75 4.75 10 9 14.25M4.75 10h9.5a5 5 0 010 10H12";
+const REDO_ICON = "M15 5.75 19.25 10 15 14.25M19.25 10h-9.5a5 5 0 000 10H12";
+
+/** A segmented group of tool buttons: a chunky outlined tray, the chosen one a sun key. */
+const SEGMENTED = "flex items-center gap-1 rounded-[14px] border-2 border-walnut bg-canvas p-1";
+/** A small walnut keycap for the Esc hints. */
+const KBD_SM = "kbd !h-5 !min-w-5 !px-1 !text-[0.68rem]";
+
+/** A small spinner for "working on it" (still under reduced motion). */
+function Spinner() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      focusable="false"
+      className="h-4 w-4 shrink-0 text-sun motion-safe:animate-spin"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="8.25"
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity={0.3}
+        strokeWidth={3}
+      />
+      <path
+        d="M20.25 12A8.25 8.25 0 0012 3.75"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={3}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** A pointing hand, for drawing with your finger. */
+const FINGER_ICON =
+  "M9.5 11V4.75a1.5 1.5 0 013 0V10m0 0V9a1.5 1.5 0 013 0v2m0-.5a1.5 1.5 0 013 0v3.25a6.5 6.5 0 01-6.5 6.5h-.6a5.5 5.5 0 01-4.6-2.5L5 15.25a1.5 1.5 0 012.45-1.7L9.5 15";
 
 function ToolButton({
   active,
@@ -62,8 +137,12 @@ function ToolButton({
       aria-pressed={active}
       disabled={disabled}
       onClick={onClick}
-      className={`flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-xl px-2.5 text-sm font-bold transition disabled:opacity-35 ${
-        active ? "bg-ink text-cream" : "text-ink hover:bg-ink/8"
+      className={`inline-flex h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 border-2 px-2.5 font-display text-[13.5px] font-semibold whitespace-nowrap transition-[background-color,color,transform,box-shadow] duration-150 ease-out disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none ${FOCUS} ${
+        active
+          ? "rounded-[10px] border-walnut bg-sun text-walnut shadow-[0_2px_0_#1f1a16]"
+          : active === false
+            ? "rounded-[10px] border-transparent text-ink-soft enabled:hover:bg-surface enabled:hover:text-walnut"
+            : "rounded-[12px] border-walnut bg-surface text-walnut shadow-[0_3px_0_#1f1a16] enabled:hover:-translate-y-px enabled:hover:bg-canvas enabled:active:translate-y-[2px] enabled:active:shadow-[0_1px_0_#1f1a16]"
       }`}
     >
       {children}
@@ -90,6 +169,13 @@ function Board({ id }: { id: string }) {
   const [selection, setSelection] = useState<Rect | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [ai, setAi] = useState<AiState>({ status: "idle" });
+  /** Drawing with your finger through the webcam (lib/whiteboard/fingerPen.ts). */
+  const [finger, setFinger] = useState<"off" | "starting" | "on" | "error">("off");
+  const [tip, setTip] = useState<FingerSample | null>(null);
+  const fingerStop = useRef<(() => void) | null>(null);
+  const fingerStroke = useRef(false);
+  const previewBox = useRef<HTMLDivElement>(null);
+  const penNow = useRef({ color, size, busy: false });
   const abort = useRef<AbortController | null>(null);
   /** The answer currently being written out stroke by stroke, if any. */
   const writer = useRef<{
@@ -180,9 +266,10 @@ function Board({ id }: { id: string }) {
     if (box) {
       ctx.save();
       ctx.setLineDash([12, 8]);
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = ai.status === "writing" ? "#c8743f" : "#6f8f6a";
-      ctx.fillStyle = ai.status === "writing" ? "rgba(200,116,63,0.08)" : "rgba(111,143,106,0.08)";
+      ctx.lineWidth = 3;
+      // Tangerine while the AI writes, walnut for your own selection (the cartoon palette).
+      ctx.strokeStyle = ai.status === "writing" ? "#e07a3f" : "#1f1a16";
+      ctx.fillStyle = ai.status === "writing" ? "rgba(224,122,63,0.12)" : "rgba(242,207,126,0.22)";
       ctx.fillRect(box.x, box.y, box.w, box.h);
       ctx.strokeRect(box.x, box.y, box.w, box.h);
       ctx.restore();
@@ -190,7 +277,7 @@ function Board({ id }: { id: string }) {
     if (tool === "eraser" && cursor) {
       ctx.beginPath();
       ctx.arc(cursor.x, cursor.y, ERASER_RADIUS, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(45,36,32,0.5)";
+      ctx.strokeStyle = "rgba(37,41,35,0.5)";
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }
@@ -201,6 +288,10 @@ function Board({ id }: { id: string }) {
   });
   // The animation loop calls whatever the latest draw function is.
   const drawRef = useRef(draw);
+  useEffect(() => {
+    penNow.current = { color, size, busy };
+  });
+  useEffect(() => () => fingerStop.current?.(), []);
   useEffect(() => {
     drawRef.current = draw;
   });
@@ -239,6 +330,62 @@ function Board({ id }: { id: string }) {
     finishWriting();
     useWhiteboardStore.getState().close();
   }, [finishWriting]);
+
+  /** One camera frame: the fingertip moves the cursor; pointing draws, anything else lifts the pen. */
+  const onFinger = useCallback((s: FingerSample | null) => {
+    setTip(s);
+    const { color: c, size: sz, busy: b } = penNow.current;
+    if (s?.drawing && !b) {
+      const pt: Point = [s.x * BOARD_W, s.y * BOARD_H, 0.5];
+      const cur = live.current;
+      if (!fingerStroke.current || !cur) {
+        fingerStroke.current = true;
+        live.current = {
+          kind: "stroke",
+          id: newId(),
+          points: [pt],
+          color: c,
+          size: sz,
+          pressure: false,
+        };
+      } else {
+        const last = cur.points[cur.points.length - 1]!;
+        // Ignore tiny jitter so a held finger doesn't scribble.
+        if (Math.hypot(pt[0] - last[0], pt[1] - last[1]) < 2) return;
+        live.current = { ...cur, points: [...cur.points, pt] };
+      }
+      drawRef.current();
+    } else if (fingerStroke.current) {
+      fingerStroke.current = false;
+      const stroke = live.current;
+      live.current = null;
+      if (stroke && stroke.points.length > 1) {
+        const store = useWhiteboardStore.getState();
+        store.commit([...store.items, stroke]);
+      }
+      drawRef.current();
+    }
+  }, []);
+
+  const toggleFinger = async () => {
+    if (fingerStop.current || finger === "starting") {
+      fingerStop.current?.();
+      fingerStop.current = null;
+      setFinger("off");
+      setTip(null);
+      return;
+    }
+    setFinger("starting");
+    try {
+      const { stop, video } = await startFingerPen(onFinger);
+      fingerStop.current = stop;
+      video.className = "h-full w-full -scale-x-100 object-cover";
+      previewBox.current?.replaceChildren(video);
+      setFinger("on");
+    } catch {
+      setFinger("error");
+    }
+  };
 
   const toBoard = (e: React.PointerEvent): { x: number; y: number } => {
     const rect = canvas.current!.getBoundingClientRect();
@@ -473,30 +620,47 @@ function Board({ id }: { id: string }) {
         : "Drag a box around your question, then press Ask AI. This sends that part of the board to Google Gemini.";
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      <header className="flex flex-wrap items-center gap-2 rounded-2xl bg-cream px-3 py-2 shadow-md ring-1 ring-ink/10">
-        <h2 id="board-title" className="mr-2 font-display text-lg font-semibold">
+    <div className="relative flex h-full flex-col overflow-hidden rounded-[24px] border-[3px] border-walnut bg-canvas shadow-[0_6px_0_#1f1a16]">
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b-[3px] border-walnut bg-surface px-4 py-2.5">
+        <span
+          aria-hidden
+          className="grid h-9 w-9 shrink-0 -rotate-6 place-items-center rounded-[12px] border-2 border-walnut bg-sun text-walnut shadow-[0_3px_0_#1f1a16]"
+        >
+          <IconBoard size={20} strokeWidth={2.25} />
+        </span>
+        <h2
+          id="board-title"
+          className="mr-1 font-display text-[21px] leading-7 font-bold text-walnut"
+        >
           Table {tableNumber} whiteboard
         </h2>
-        <div className="flex items-center gap-1" role="group" aria-label="Pen colour">
-          {INK_COLORS.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              title={c.label}
-              aria-label={`${c.label} pen`}
-              aria-pressed={tool === "pen" && color === c.color}
-              onClick={() => setColor(c.color)}
-              className={`h-7 w-7 rounded-full ring-2 ring-offset-2 ring-offset-cream transition ${
-                tool === "pen" && color === c.color
-                  ? "ring-ink"
-                  : "ring-transparent hover:ring-ink/30"
-              }`}
-              style={{ background: c.color }}
-            />
-          ))}
+        <div className="flex items-center" role="group" aria-label="Pen colour">
+          {INK_COLORS.map((c) => {
+            const on = tool === "pen" && color === c.color;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                title={c.label}
+                aria-label={`${c.label} pen`}
+                aria-pressed={on}
+                onClick={() => setColor(c.color)}
+                className={`group grid h-10 w-10 place-items-center rounded-full transition-colors duration-150 hover:bg-canvas ${FOCUS}`}
+              >
+                <span
+                  aria-hidden
+                  className={`h-6 w-6 rounded-full border-2 border-walnut transition-[box-shadow,transform] duration-150 motion-reduce:transition-none ${
+                    on
+                      ? "scale-110 ring-[3px] ring-walnut ring-offset-2 ring-offset-surface"
+                      : "shadow-[0_2px_0_#1f1a16] group-hover:-translate-y-px"
+                  }`}
+                  style={{ background: c.color }}
+                />
+              </button>
+            );
+          })}
         </div>
-        <div className="flex items-center gap-0.5" role="group" aria-label="Pen size">
+        <div className={SEGMENTED} role="group" aria-label="Pen size">
           {PEN_SIZES.map((p) => (
             <ToolButton
               key={p.id}
@@ -511,57 +675,70 @@ function Board({ id }: { id: string }) {
             </ToolButton>
           ))}
         </div>
-        <span className="mx-1 h-6 w-px bg-ink/15" aria-hidden />
-        {(
-          [
-            ["pen", "Pen", "✏️"],
-            ["eraser", "Eraser", "🧽"],
-            ["ask", "Ask AI", "✨ Ask AI"],
-          ] as [Tool, string, string][]
-        ).map(([t, label, icon]) => (
-          <ToolButton
-            key={t}
-            label={label}
-            active={tool === t}
-            onClick={() => setTool(t)}
-            disabled={busy}
-          >
-            {icon}
-          </ToolButton>
-        ))}
-        <span className="mx-1 h-6 w-px bg-ink/15" aria-hidden />
-        <ToolButton label="Undo (Ctrl/⌘ Z)" onClick={undo} disabled={!canUndo || busy}>
-          ↶
-        </ToolButton>
-        <ToolButton label="Redo (Shift Ctrl/⌘ Z)" onClick={redo} disabled={!canRedo || busy}>
-          ↷
-        </ToolButton>
+        <div className={SEGMENTED} role="group" aria-label="Tools">
+          {(
+            [
+              ["pen", "Pen"],
+              ["eraser", "Eraser"],
+              ["ask", "Ask AI"],
+            ] as [Tool, string][]
+          ).map(([t, label]) => (
+            <ToolButton
+              key={t}
+              label={label}
+              active={tool === t}
+              onClick={() => setTool(t)}
+              disabled={busy}
+            >
+              <LineIcon d={TOOL_ICONS[t]} />
+              {label}
+            </ToolButton>
+          ))}
+        </div>
         <ToolButton
-          label="Clear board"
-          onClick={() => commit([])}
-          disabled={items.length === 0 || busy}
+          label={
+            finger === "on" ? "Stop drawing with your finger" : "Draw with your finger (camera)"
+          }
+          active={finger === "on"}
+          onClick={() => void toggleFinger()}
+          disabled={busy}
         >
-          Clear
+          <LineIcon d={FINGER_ICON} />
+          {finger === "starting" ? "Starting…" : "Finger"}
         </ToolButton>
-        <button
-          type="button"
-          onClick={closeBoard}
-          className="ml-auto flex h-9 items-center gap-2 rounded-xl bg-ink px-3 text-sm font-bold text-cream hover:bg-wood-dark"
-        >
-          Done{" "}
-          <span className="kbd !h-5 !min-w-5 !border-cream/20 !bg-cream/15 !text-[0.65rem] !text-cream">
-            Esc
-          </span>
+        <span className="h-7 w-[3px] rounded-full bg-walnut/15" aria-hidden />
+        <div className="flex items-center gap-1.5">
+          <ToolButton label="Undo (Ctrl/⌘ Z)" onClick={undo} disabled={!canUndo || busy}>
+            <LineIcon d={UNDO_ICON} />
+          </ToolButton>
+          <ToolButton label="Redo (Shift Ctrl/⌘ Z)" onClick={redo} disabled={!canRedo || busy}>
+            <LineIcon d={REDO_ICON} />
+          </ToolButton>
+          <ToolButton
+            label="Clear board"
+            onClick={() => commit([])}
+            disabled={items.length === 0 || busy}
+          >
+            <IconTrash size={18} strokeWidth={2.25} />
+            Clear
+          </ToolButton>
+        </div>
+        <button type="button" onClick={closeBoard} className={`${BTN.secondary} ml-auto`}>
+          Done <kbd className={KBD_SM}>Esc</kbd>
         </button>
       </header>
 
-      <div ref={wrap} className="relative flex min-h-0 flex-1 items-center justify-center">
+      <div
+        ref={wrap}
+        className="relative flex min-h-0 flex-1 items-center justify-center p-4 sm:p-6"
+      >
         <div className="relative" style={{ width: cssSize.w, height: cssSize.h }}>
           <canvas
             ref={canvas}
             aria-label="Whiteboard. Draw with the mouse or a pen."
             role="img"
-            className={`h-full w-full touch-none rounded-2xl bg-white shadow-[0_20px_50px_-20px_rgb(20_12_6/0.6)] ring-8 ring-[#b8bcc0] ${
+            // A ring, not a border, so the drawing surface keeps exactly the board's size.
+            className={`h-full w-full touch-none rounded-[16px] bg-white shadow-[0_8px_0_#1f1a16] ring-[3px] ring-walnut ${
               tool === "ask"
                 ? "cursor-crosshair"
                 : tool === "eraser"
@@ -575,34 +752,60 @@ function Board({ id }: { id: string }) {
             onPointerCancel={onPointerUp}
             onPointerLeave={() => setCursor(null)}
           />
+          {finger === "on" && tip && (
+            <span
+              aria-hidden
+              className={`pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-walnut transition-[background-color,transform] duration-100 ${tip.drawing ? "scale-75" : "scale-100 bg-white/60"}`}
+              style={{
+                left: `${tip.x * 100}%`,
+                top: `${tip.y * 100}%`,
+                backgroundColor: tip.drawing ? color : undefined,
+              }}
+            />
+          )}
+          <div
+            className={`absolute right-3 bottom-3 overflow-hidden rounded-[14px] border-[3px] border-walnut bg-walnut shadow-[0_4px_0_#1f1a16] ${finger === "on" ? "h-[90px] w-[120px]" : "hidden"}`}
+          >
+            <div ref={previewBox} className="h-full w-full" />
+          </div>
+          {(finger === "on" || finger === "error") && (
+            <p
+              role="status"
+              className="absolute bottom-3 left-3 rounded-full border-2 border-walnut bg-surface px-3 py-1 font-display text-[13px] font-semibold text-walnut shadow-[0_3px_0_#1f1a16]"
+            >
+              {finger === "error"
+                ? "Couldn't start the camera. Allow it in the browser and try again."
+                : tip
+                  ? tip.drawing
+                    ? "Drawing: open your hand to lift the pen"
+                    : "Point with one finger to draw"
+                  : "Show your hand to the camera"}
+            </p>
+          )}
           {selection && tool === "ask" && ai.status === "idle" && (
             <div
-              className="absolute flex gap-1.5"
+              className="absolute flex gap-1.5 rounded-[16px] border-[3px] border-walnut bg-surface p-1.5 shadow-[0_4px_0_#1f1a16]"
               style={{
                 left: `${((selection.x + selection.w) / BOARD_W) * 100}%`,
                 top: `${((selection.y + selection.h) / BOARD_H) * 100}%`,
                 transform: "translate(-100%, 8px)",
               }}
             >
-              <button
-                type="button"
-                onClick={() => setSelection(null)}
-                className="rounded-full bg-cream px-3 py-1.5 text-sm font-bold text-ink shadow ring-1 ring-ink/15"
-              >
+              <button type="button" onClick={() => setSelection(null)} className={BTN_SM.secondary}>
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={() => void askAi()}
-                className="rounded-full bg-sage-dark px-4 py-1.5 text-sm font-bold text-cream shadow"
-              >
-                ✨ Ask AI
+              <button type="button" onClick={() => void askAi()} className={BTN_SM.primary}>
+                <LineIcon d={TOOL_ICONS.ask} size={16} />
+                Ask AI
               </button>
             </div>
           )}
           {busy && (
             <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
-              <span className="flex items-center gap-3 rounded-full bg-ink/85 py-2 pr-2 pl-4 text-sm font-bold text-cream shadow-lg">
+              <span
+                className={`${HUD_CHIP} flex items-center gap-2.5 py-1.5 pr-1.5 pl-3.5 text-[13.5px] font-semibold`}
+              >
+                <Spinner />
                 {ai.status === "reading"
                   ? "Reading your question…"
                   : writingOut
@@ -612,12 +815,14 @@ function Board({ id }: { id: string }) {
                   <button
                     type="button"
                     onClick={finishWriting}
-                    className="pointer-events-auto rounded-full bg-cream/15 px-3 py-1 text-xs hover:bg-cream/25"
+                    className={`pointer-events-auto inline-flex h-8 items-center gap-1.5 rounded-full border-2 border-black/80 bg-walnut-key px-2.5 text-xs font-semibold shadow-[0_2px_0_rgb(0_0_0/0.55)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-[#4a423b] active:translate-y-[2px] active:shadow-none motion-reduce:transition-none ${FOCUS}`}
                   >
-                    Skip <span className="opacity-70">(Esc)</span>
+                    Skip <kbd className={`${KBD_SM} kbd-dark`}>Esc</kbd>
                   </button>
                 ) : (
-                  <span className="pr-2 opacity-70">(Esc to cancel)</span>
+                  <span className="flex items-center gap-1.5 pr-1.5 text-xs font-medium text-walnut-muted">
+                    <kbd className={`${KBD_SM} kbd-dark`}>Esc</kbd> to cancel
+                  </span>
                 )}
               </span>
             </div>
@@ -625,10 +830,13 @@ function Board({ id }: { id: string }) {
         </div>
       </div>
 
-      <footer className="flex flex-wrap items-start justify-between gap-3">
-        <p className="text-sm text-cream/85">{hint}</p>
+      <footer
+        className={`flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed ${DIVIDER} px-4 py-2.5`}
+      >
+        <p className="text-[13px] leading-5 font-medium text-ink-soft">{hint}</p>
         {saveFailed && (
-          <p className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-800">
+          <p className="flex items-center gap-1.5 rounded-full border-2 border-danger bg-surface px-3 py-1 font-display text-xs font-semibold text-walnut shadow-[0_2px_0_#a9504a]">
+            <IconWarning size={16} strokeWidth={2.25} className="text-danger" />
             Couldn&apos;t save: this browser&apos;s storage is full.
           </p>
         )}
@@ -637,36 +845,37 @@ function Board({ id }: { id: string }) {
       {(ai.status === "done" || ai.status === "error") && (
         <aside
           aria-live="polite"
-          className="absolute right-6 bottom-14 max-h-[45%] max-w-xs overflow-y-auto rounded-2xl bg-cream/95 p-3.5 text-sm text-ink shadow-xl ring-1 ring-ink/10 backdrop-blur"
+          className={`${PANEL} title-pop absolute right-6 bottom-16 max-h-[45%] w-80 max-w-[calc(100%-3rem)] overflow-y-auto p-4 text-sm leading-6 text-walnut`}
         >
           <div className="flex items-start justify-between gap-3">
-            <h3 className="font-display text-base font-semibold">
-              {ai.status === "done" ? "AI answer" : "Couldn't answer"}
-            </h3>
+            {ai.status === "error" ? (
+              <h3 className="flex items-center gap-2 font-display text-[19px] leading-7 font-bold">
+                <IconWarning size={18} strokeWidth={2.25} className="text-danger" />
+                Couldn&apos;t answer
+              </h3>
+            ) : (
+              <p className="pt-1 text-[14px] leading-5 font-medium text-ink-soft">
+                <span className="font-display font-semibold text-walnut">Read:</span>{" "}
+                {ai.solution.question || "your selection"}
+              </p>
+            )}
             <button
               type="button"
               aria-label="Dismiss"
               onClick={() => setAi({ status: "idle" })}
-              className="-mt-1 -mr-1 rounded-full px-2 text-lg leading-none text-ink-soft hover:bg-ink/5"
+              className={`${ICON_BTN} -mt-1.5 -mr-2`}
             >
-              ×
+              <IconClose size={18} />
             </button>
           </div>
           {ai.status === "error" ? (
-            <p className="mt-1 text-ink-soft">{ai.message}</p>
+            <p className="mt-1 font-medium text-ink-soft">{ai.message}</p>
           ) : (
             <>
-              {ai.solution.question && (
-                <p className="mt-1 text-xs text-ink-soft">
-                  <span className="font-bold">Read:</span> {ai.solution.question}
-                </p>
-              )}
-              <p className="mt-2 whitespace-pre-line">
+              <p className="mt-2.5 rounded-[14px] border-2 border-walnut bg-sun/35 px-3.5 py-2.5 text-[15px] font-semibold whitespace-pre-line">
                 {ai.solution.answer || ai.solution.lines.join("\n")}
               </p>
-              {ai.note && <p className="mt-2 text-xs text-ember">{ai.note}</p>}
-              <div className="mt-3 flex items-center justify-between gap-3 text-xs text-ink-soft">
-                <span>AI can make mistakes. Check important answers.</span>
+              <div className="mt-2.5 flex justify-end">
                 <button
                   type="button"
                   onClick={() =>
@@ -674,8 +883,9 @@ function Board({ id }: { id: string }) {
                       ai.solution.answer || ai.solution.lines.join("\n"),
                     )
                   }
-                  className="rounded-full px-2.5 py-1 font-bold text-ink hover:bg-ink/5"
+                  className={`${BTN_SM.quiet} -mr-1`}
                 >
+                  <IconCopy size={16} />
                   Copy
                 </button>
               </div>
@@ -696,7 +906,7 @@ export function WhiteboardPanel() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="board-title"
-      className="absolute inset-0 z-30 bg-ink/70 p-4 backdrop-blur-[3px] sm:p-6"
+      className="absolute inset-0 z-30 bg-walnut/50 p-4 transition-opacity duration-200 ease-out starting:opacity-0 motion-reduce:transition-none sm:p-6"
     >
       <Board key={openId} id={openId} />
     </div>

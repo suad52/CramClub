@@ -143,8 +143,9 @@ Ask AI: box ─► PNG crop ─► POST /api/ai/whiteboard/solve ─► Gemini t
 ## Game server
 
 `LibraryRoom` sets `maxClients = 15`. Colyseus locks a full room and `joinOrCreate` opens a new
-one; `server.test.ts` proves the 16th seat goes to a second room. The player schema, movement
-validation and reconnection arrive in Phase 3. Colyseus 0.18 is used through `defineServer` /
+one; `server.test.ts` proves the 16th seat goes to a second room. Joining takes a signed ticket
+from the web app; the room syncs every player, validates movement, owns seats and relays faces.
+See [multiplayer.md](multiplayer.md). Colyseus 0.18 is used through `defineServer` /
 `defineRoom` / `createRouter`.
 
 ## Decisions and assumptions

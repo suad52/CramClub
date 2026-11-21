@@ -72,6 +72,21 @@ export function estimateCaptions(text: string, charsPerSecond = 15): CaptionSegm
   });
 }
 
+/**
+ * Stretches (or squeezes) estimated captions to a clip's real length, for stored narration that
+ * came without character timings: the sentences keep their share of the time.
+ */
+export function fitCaptions(segments: readonly CaptionSegment[], durationMs: number) {
+  const total = segments.at(-1)?.endMs ?? 0;
+  if (!total || !Number.isFinite(durationMs) || durationMs <= 0) return [...segments];
+  const k = durationMs / total;
+  return segments.map((s) => ({
+    text: s.text,
+    startMs: Math.round(s.startMs * k),
+    endMs: Math.round(s.endMs * k),
+  }));
+}
+
 /** Sentence captions from per-character timings (ElevenLabs "with timestamps" alignment). */
 export function captionsFromAlignment(
   text: string,

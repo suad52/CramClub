@@ -1,11 +1,16 @@
 "use client";
 
-import { ContactShadows, Environment, Lightformer, Sparkles } from "@react-three/drei";
+import { ContactShadows, Environment, Lightformer } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { type RefObject, Suspense, useCallback, useEffect, useRef } from "react";
 import { type Group, MathUtils, NeutralToneMapping, type PerspectiveCamera } from "three";
 import { type AvatarConfig, type FacialParams } from "@ovr/shared";
-import { Avatar, type AvatarMotion, neutralFace } from "@/components/avatar/Avatar";
+import {
+  Avatar,
+  type AvatarMotion,
+  type FaceHeadSource,
+  neutralFace,
+} from "@/components/avatar/Avatar";
 import { FRAMINGS, type FramingId } from "./categories";
 
 export type StudioPose = "idle" | "wave" | "sit";
@@ -95,11 +100,11 @@ function Podium() {
       </mesh>
       <mesh position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.74, 0.8, 72]} />
-        <meshStandardMaterial color="#8fa58a" roughness={0.9} />
+        <meshStandardMaterial color="#29483a" roughness={0.9} />
       </mesh>
       <mesh position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.83, 0.85, 72]} />
-        <meshStandardMaterial color="#c99a45" roughness={0.4} metalness={0.6} />
+        <meshStandardMaterial color="#b18a50" roughness={0.4} metalness={0.6} />
       </mesh>
     </group>
   );
@@ -172,12 +177,14 @@ function Scene({
   expression,
   controls,
   insets,
+  faceHead,
 }: {
   config: AvatarConfig;
   pose: StudioPose;
   expression: StudioExpression;
   controls: RefObject<StudioControls>;
   insets: { left: number; right: number };
+  faceHead: FaceHeadSource | null;
 }) {
   const live = useRef({ sitBlend: 0, pose, face: null as FacialParams | null });
   useEffect(() => {
@@ -238,7 +245,7 @@ function Scene({
       </Environment>
       <Director controls={controls} scale={scale} insets={insets}>
         <Suspense fallback={null}>
-          <Avatar config={config} motion={motion} />
+          <Avatar config={config} motion={motion} faceHead={faceHead} />
         </Suspense>
         <StoolFollow live={live} />
       </Director>
@@ -253,15 +260,6 @@ function Scene({
         color="#3a2416"
       />
       <DevHandle />
-      <Sparkles
-        count={36}
-        scale={[3.4, 2.6, 2]}
-        position={[0, 1.4, -0.4]}
-        size={2.2}
-        speed={0.25}
-        opacity={0.55}
-        color="#ffd99a"
-      />
     </>
   );
 }
@@ -299,12 +297,15 @@ export function StudioCanvas({
   expression,
   controls,
   insets,
+  faceHead = null,
 }: {
   config: AvatarConfig;
   pose: StudioPose;
   expression: StudioExpression;
   controls: RefObject<StudioControls>;
   insets: { left: number; right: number };
+  /** The draft "my real face" head, or null for the chibi head. */
+  faceHead?: FaceHeadSource | null;
 }) {
   return (
     <Canvas
@@ -323,6 +324,7 @@ export function StudioCanvas({
         expression={expression}
         controls={controls}
         insets={insets}
+        faceHead={faceHead}
       />
     </Canvas>
   );

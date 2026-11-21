@@ -278,20 +278,30 @@ MOUTH_Z = 1.522
 
 
 def build_mouth(head, rig, lip_mat, inner_mat):
+    """Two lips along the resting curve (they meet as one lip line when closed) and a dark inner
+    mouth hidden between them. Jaw_Open parts the lips into an oval around the inner mouth, so an
+    open mouth never shows the closed lip line across it."""
     surf = Surface(head)
     w = 0.024
-    pts = []
-    for k in range(7):
-        x = -w + 2 * w * k / 6
-        z = MOUTH_Z - 0.009 * (1 - (x / w) ** 2)
-        point, normal = surf.front(x, z)
-        pts.append(point + normal * 0.0045)
-    lips = tube("lips", pts, [0.0035, 0.0048, 0.0055, 0.0056, 0.0055, 0.0048, 0.0035], lip_mat, segments=8)
+    radii = [0.0028, 0.0038, 0.0043, 0.0044, 0.0043, 0.0038, 0.0028]
+
+    def lip(name, dz):
+        pts = []
+        for k in range(7):
+            x = -w + 2 * w * k / 6
+            z = MOUTH_Z - 0.009 * (1 - (x / w) ** 2) + dz
+            point, normal = surf.front(x, z)
+            pts.append(point + normal * 0.0045)
+        return tube(name, pts, radii, lip_mat, segments=8)
+
+    upper = lip("lip_upper", 0.0008)
+    lower = lip("lip_lower", -0.0008)
     centre, normal = surf.front(0, MOUTH_Z - 0.008)
     inner = uv_sphere("inner", 1, (0, 0, 0), (0.019, 0.004, 0.0016), 20, 12, inner_mat)
     _place(inner, centre, normal, push=0.0025)
-    n_lips = len(lips.data.vertices)
-    ob = join([lips, inner], "Mouth_Base")
+    n_upper = len(upper.data.vertices)
+    n_lips = n_upper + len(lower.data.vertices)
+    ob = join([upper, lower, inner], "Mouth_Base")
     ob.shape_key_add(name="Basis", from_mix=False)
     keys = {name: ob.shape_key_add(name=name, from_mix=False) for name in ("Smile", "Jaw_Open", "Frown")}
     for i, v in enumerate(ob.data.vertices):
@@ -300,12 +310,15 @@ def build_mouth(head, rig, lip_mat, inner_mat):
         middle = 1 - t * t
         if i < n_lips:
             keys["Smile"].data[i].co = co + Vector((co.x * 0.18, 0, 0.007 * (1 - middle) - 0.004 * middle))
-            keys["Jaw_Open"].data[i].co = co + Vector((0, 0, -0.013 * middle - 0.003))
             keys["Frown"].data[i].co = co + Vector((0, 0, 0.016 * middle - 0.003))
-        else:
+            if i < n_upper:  # upper lip rises and flattens: the top of the oval
+                keys["Jaw_Open"].data[i].co = co + Vector((co.x * 0.04, 0, 0.0065 * middle + 0.0008))
+            else:  # lower lip drops: the bottom of the oval
+                keys["Jaw_Open"].data[i].co = co + Vector((co.x * 0.04, 0, -0.012 * middle - 0.0015))
+        else:  # the inner mouth fills the opening between the lips
             dz = co.z - centre.z
             keys["Smile"].data[i].co = co
-            keys["Jaw_Open"].data[i].co = Vector((co.x * 1.08, co.y - 0.0015, centre.z - 0.007 + dz * 9.0))
+            keys["Jaw_Open"].data[i].co = Vector((co.x * 1.04, co.y - 0.0015, centre.z - 0.0028 + dz * 5.4))
             keys["Frown"].data[i].co = co
     skin(ob, rig, rigid="Head")
     return ob

@@ -126,8 +126,60 @@ export interface Chunk {
  * Validates AI output and drops anything that can't be trusted: page references outside the
  * document are removed (never invented), scene ids are made unique.
  */
+/**
+ * Small, safe repairs before validation, so one over-long quote or one half-filled visual doesn't
+ * throw away a whole lesson: quotes are trimmed to fit, and a visual missing the fields its type
+ * needs becomes a simpler one built from what it does have (or an illustration of the scene).
+ */
+export function tidyLessonJson(data: unknown): unknown {
+  if (!data || typeof data !== "object") return data;
+  const raw = data as { scenes?: unknown };
+  if (!Array.isArray(raw.scenes)) return data;
+  const clip = (v: unknown, max: number) =>
+    typeof v === "string" && v.trim().length > max
+      ? `${v
+          .trim()
+          .slice(0, max - 1)
+          .trimEnd()}…`
+      : v;
+  const scenes = raw.scenes.map((scene: unknown) => {
+    if (!scene || typeof scene !== "object") return scene;
+    const sc = { ...(scene as Record<string, unknown>) };
+    if (Array.isArray(sc.sourceReferences))
+      sc.sourceReferences = sc.sourceReferences.map((r: unknown) =>
+        r && typeof r === "object"
+          ? { ...(r as object), excerpt: clip((r as { excerpt?: unknown }).excerpt, 200) }
+          : r,
+      );
+    if (sc.visual && typeof sc.visual === "object" && !VisualSchema.safeParse(sc.visual).success) {
+      const v = sc.visual as Record<string, unknown>;
+      const labels = Array.isArray(v.labels) ? v.labels : [];
+      const steps = Array.isArray(v.steps) ? v.steps : [];
+      const title = typeof v.title === "string" ? v.title : undefined;
+      const fallbacks = [
+        { type: "process", title, steps },
+        { type: "concept", title, labels },
+        {
+          type: "image",
+          title,
+          altText: clip(
+            (typeof v.altText === "string" && v.altText) ||
+              (typeof v.explanation === "string" && v.explanation) ||
+              (typeof sc.title === "string" && sc.title) ||
+              "An illustration of this scene",
+            300,
+          ),
+        },
+      ];
+      sc.visual = fallbacks.find((f) => VisualSchema.safeParse(f).success) ?? sc.visual;
+    }
+    return sc;
+  });
+  return { ...raw, scenes };
+}
+
 export function parseLesson(data: unknown, totalPages: number): Lesson {
-  const lesson = LessonSchema.parse(data);
+  const lesson = LessonSchema.parse(tidyLessonJson(data));
   const seen = new Set<string>();
   lesson.scenes = lesson.scenes.map((s, i) => {
     let id = s.id.replace(/[^a-z0-9-]/gi, "-").toLowerCase() || `scene-${i + 1}`;

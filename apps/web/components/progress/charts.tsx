@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { IconChevronDown } from "@/components/ui/icons";
+import { BTN_SM } from "@/components/ui/styles";
 import {
   formatMinutes,
   formatMinutesTick,
@@ -11,17 +13,24 @@ import {
 } from "./format";
 
 /*
- * Small hand-drawn charts for the progress dashboard: plain SVG, no chart library. Marks follow
- * one spec: columns at most 24px wide with a 4px rounded top on a single baseline, hairline
- * gridlines, ink-coloured text (the mark carries the colour, never the label).
+ * Small hand-drawn charts for the progress dashboard: plain SVG, no chart library, in the cartoon
+ * look. Marks follow one spec: chunky columns (at most 24px wide, rounded tops) with a walnut
+ * outline, sitting on one thick walnut baseline; faint dashed gridlines; ink-soft labels (the
+ * mark carries the colour, never the label). Every chart shows one measure at a time in one flat
+ * fill; the outline, not the fill, is what separates a mark from the cream card behind it.
  */
 
+const WALNUT = "var(--color-walnut)";
+
 export const SERIES = {
-  xp: "var(--color-wood)",
-  focus: "var(--color-sage)",
-  lessons: "var(--color-ember)",
-  learners: "var(--color-wood-dark)",
+  xp: "var(--color-sun)",
+  focus: "var(--color-leaf)",
+  lessons: "var(--color-tangerine)",
+  learners: "var(--color-sun)",
 } as const;
+
+/** The one highlight colour, used for a single point at a time. */
+const HIGHLIGHT = "var(--color-tangerine)";
 
 /** Width of an element as it lays out (0 until measured). */
 function useWidth<T extends HTMLElement>() {
@@ -41,7 +50,7 @@ function useWidth<T extends HTMLElement>() {
 
 /** A column with a rounded top and a square foot on the baseline. */
 function columnPath(x: number, y: number, w: number, h: number) {
-  const r = Math.min(4, w / 2, h);
+  const r = Math.min(6, w / 2, h);
   return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
 }
 
@@ -57,11 +66,12 @@ export interface Bar {
   detail: string;
 }
 
-const M = { top: 10, right: 6, bottom: 24, left: 38 };
+const M = { top: 22, right: 6, bottom: 28, left: 40 };
 
 /**
- * Columns over time (or hour of day) with a hover tooltip, a title per column, and the numbers
- * behind a "Show the numbers" disclosure. Hidden (null) slots get a short grey dash.
+ * Columns over time (or hour of day) with a hover tooltip, a title per column, a direct label on
+ * the tallest column, and the numbers behind a "Show the numbers" disclosure. Hidden (null) slots
+ * get a short grey dash.
  */
 export function BarChart({
   bars,
@@ -95,10 +105,14 @@ export function BarChart({
   const plotH = height - M.top - M.bottom;
   const band = bars.length ? plotW / bars.length : 0;
   const barW = Math.max(2, Math.min(24, band * 0.7));
+  // Thin columns (30 days on a phone) get a thinner outline, so some fill still shows.
+  const outline = barW >= 10 ? 2.5 : barW >= 5 ? 1.5 : 1;
   const y = (v: number) => M.top + plotH - (v / top) * plotH;
   const cx = (i: number) => M.left + band * i + band / 2;
   const tickLabel = (n: number) => (minutes ? formatMinutesTick(n) : formatTick(n, top));
   const hovered = hover === null ? undefined : bars[hover];
+  // The tallest column (the first, on a tie) carries its own value, so the peak reads at a glance.
+  const peak = max > 0 ? values.indexOf(max) : -1;
 
   return (
     <figure className="m-0">
@@ -114,23 +128,29 @@ export function BarChart({
           >
             {ticks.map((t) => (
               <g key={t}>
-                <line
-                  x1={M.left}
-                  x2={width - M.right}
-                  y1={y(t)}
-                  y2={y(t)}
-                  stroke="var(--color-ink)"
-                  strokeOpacity={t === 0 ? 0.22 : 0.08}
-                  shapeRendering="crispEdges"
-                />
+                {/* The zero line is the thick baseline, drawn after the columns. */}
+                {t !== 0 && (
+                  <line
+                    x1={M.left}
+                    x2={width - M.right}
+                    y1={y(t)}
+                    y2={y(t)}
+                    stroke={WALNUT}
+                    strokeOpacity={0.14}
+                    strokeWidth={1.5}
+                    strokeDasharray="4 5"
+                    strokeLinecap="round"
+                  />
+                )}
                 <text
-                  x={M.left - 6}
+                  x={M.left - 8}
                   y={y(t)}
                   dy="0.32em"
                   textAnchor="end"
-                  fontSize={11}
+                  fontSize={12}
+                  fontWeight={600}
                   fill="var(--color-ink-soft)"
-                  className="tabular-nums"
+                  className="tabular font-display"
                 >
                   {tickLabel(t)}
                 </text>
@@ -148,27 +168,48 @@ export function BarChart({
                   {v === null ? (
                     <rect
                       x={x}
-                      y={y(0) - 3}
+                      y={y(0) - 6}
                       width={barW}
-                      height={2}
-                      rx={1}
-                      fill="var(--color-ink)"
-                      fillOpacity={0.25}
+                      height={3}
+                      rx={1.5}
+                      fill={WALNUT}
+                      fillOpacity={0.45}
                     />
                   ) : v > 0 ? (
                     <path
                       d={columnPath(x, y(v), barW, y(0) - y(v))}
                       fill={color}
-                      opacity={dim ? 0.45 : 1}
+                      stroke={WALNUT}
+                      strokeWidth={outline}
+                      strokeLinejoin="round"
+                      opacity={dim ? 0.35 : 1}
+                      className="transition-opacity duration-150 motion-reduce:transition-none"
                     />
                   ) : null}
+                  {i === peak && v !== null && hover === null && (
+                    <text
+                      x={tx}
+                      y={y(v) - 7}
+                      textAnchor={anchor}
+                      fontSize={13}
+                      fontWeight={700}
+                      fill={WALNUT}
+                      className="tabular font-display"
+                      pointerEvents="none"
+                      aria-hidden
+                    >
+                      {formatValue(v)}
+                    </text>
+                  )}
                   {b.tick && (
                     <text
                       x={tx}
-                      y={height - 6}
+                      y={height - 7}
                       textAnchor={anchor}
-                      fontSize={11}
+                      fontSize={12}
+                      fontWeight={600}
                       fill="var(--color-ink-soft)"
+                      className="font-display"
                     >
                       {b.tick}
                     </text>
@@ -185,17 +226,30 @@ export function BarChart({
                 </g>
               );
             })}
+            {/* The thick baseline every column stands on, drawn over their feet. */}
+            <line
+              x1={M.left}
+              x2={width - M.right}
+              y1={y(0)}
+              y2={y(0)}
+              stroke={WALNUT}
+              strokeWidth={3}
+              strokeLinecap="round"
+              pointerEvents="none"
+            />
           </svg>
         )}
         {emptyNote && max === 0 && (
-          <p className="pointer-events-none absolute inset-x-0 top-1/3 text-center text-sm font-bold text-ink-soft">
-            {emptyNote}
+          <p className="pointer-events-none absolute inset-x-0 top-1/3 text-center">
+            <span className="inline-block -rotate-2 rounded-full border-2 border-walnut bg-surface px-3 py-1 font-display text-sm font-semibold text-walnut shadow-[0_3px_0_#1f1a16]">
+              {emptyNote}
+            </span>
           </p>
         )}
         {hovered && hover !== null && (
           <div
             aria-hidden
-            className="pointer-events-none absolute z-10 w-max max-w-52 -translate-x-1/2 -translate-y-full rounded-xl bg-ink px-3 py-2 text-xs text-cream shadow-lg"
+            className="pointer-events-none absolute z-10 w-max max-w-52 -translate-x-1/2 -translate-y-full rounded-[12px] border-2 border-black/80 bg-walnut px-3 py-2 font-display text-xs leading-5 text-walnut-text shadow-[0_3px_0_rgb(0_0_0/0.45)]"
             style={{
               // Centred over the column, but kept inside the chart (half of max-w-52 is 104px).
               left: Math.min(
@@ -205,40 +259,47 @@ export function BarChart({
               top: y(hovered.value ?? 0) - 8,
             }}
           >
-            <p className="font-extrabold">{hovered.label}</p>
-            <p className="text-cream/85">{hovered.detail}</p>
+            <p className="font-semibold">{hovered.label}</p>
+            <p className="tabular font-medium text-walnut-muted">{hovered.detail}</p>
           </div>
         )}
       </div>
-      <details className="mt-2 text-xs">
-        <summary className="w-max cursor-pointer rounded font-bold text-ink-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ember">
+      <details className="group mt-3 text-[13px]">
+        <summary
+          className={`${BTN_SM.quiet} -ml-2.5 cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
+        >
           Show the numbers
+          <IconChevronDown
+            size={16}
+            strokeWidth={2.5}
+            className="transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none"
+          />
         </summary>
-        <div className="mt-2 max-h-56 overflow-y-auto rounded-xl ring-1 ring-ink/10">
+        <div className="mt-2 max-h-56 overflow-y-auto rounded-[16px] border-2 border-walnut bg-surface">
           <table className="w-full text-left">
-            <thead className="sticky top-0 bg-cream text-ink-soft">
+            <thead className="sticky top-0 bg-sun font-display text-walnut shadow-[0_2px_0_#1f1a16]">
               <tr>
-                <th scope="col" className="px-3 py-1.5 font-extrabold">
+                <th scope="col" className="px-3 py-2 font-semibold">
                   When
                 </th>
-                <th scope="col" className="px-3 py-1.5 text-right font-extrabold">
+                <th scope="col" className="px-3 py-2 text-right font-semibold">
                   {unit}
                 </th>
-                <th scope="col" className="hidden px-3 py-1.5 font-extrabold sm:table-cell">
+                <th scope="col" className="hidden px-3 py-2 font-semibold sm:table-cell">
                   Details
                 </th>
               </tr>
             </thead>
-            <tbody className="tabular-nums">
-              {bars.map((b) => (
-                <tr key={b.key} className="border-t border-ink/5">
-                  <th scope="row" className="px-3 py-1 font-bold">
+            <tbody className="tabular font-medium text-walnut">
+              {bars.map((b, i) => (
+                <tr key={b.key} className={i > 0 ? "border-t-2 border-walnut/10" : ""}>
+                  <th scope="row" className="px-3 py-1.5 font-display font-semibold">
                     {b.label}
                   </th>
-                  <td className="px-3 py-1 text-right">
+                  <td className="px-3 py-1.5 text-right font-display font-semibold">
                     {b.value === null ? "Hidden" : formatValue(b.value)}
                   </td>
-                  <td className="hidden px-3 py-1 text-ink-soft sm:table-cell">{b.detail}</td>
+                  <td className="hidden px-3 py-1.5 text-ink-soft sm:table-cell">{b.detail}</td>
                 </tr>
               ))}
             </tbody>
@@ -249,7 +310,7 @@ export function BarChart({
   );
 }
 
-/** A tiny trend line (oldest first) with a dot on the latest value. */
+/** A tiny outlined trend line (oldest first) with a tangerine dot on the latest value. */
 export function Sparkline({
   values,
   label,
@@ -263,7 +324,7 @@ export function Sparkline({
   width?: number;
   height?: number;
 }) {
-  const pad = 4;
+  const pad = 5;
   const max = Math.max(1, ...values);
   const step = values.length > 1 ? (width - pad * 2) / (values.length - 1) : 0;
   const pts = values.map(
@@ -275,30 +336,37 @@ export function Sparkline({
     <svg width={width} height={height} role="img" aria-label={label} className="shrink-0">
       {pts.length > 1 && (
         <>
-          <polygon
-            points={`${pad},${height - pad} ${line} ${width - pad},${height - pad}`}
-            fill={color}
-            fillOpacity={0.12}
+          <line
+            x1={pad}
+            x2={width - pad}
+            y1={height - pad}
+            y2={height - pad}
+            stroke={WALNUT}
+            strokeOpacity={0.18}
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+          {/* A walnut line under a thinner coloured one: an outlined, cartoon stroke. */}
+          <polyline
+            points={line}
+            fill="none"
+            stroke={WALNUT}
+            strokeWidth={5}
+            strokeLinejoin="round"
+            strokeLinecap="round"
           />
           <polyline
             points={line}
             fill="none"
             stroke={color}
-            strokeWidth={2}
+            strokeWidth={2.25}
             strokeLinejoin="round"
             strokeLinecap="round"
           />
         </>
       )}
       {last && (
-        <circle
-          cx={last[0]}
-          cy={last[1]}
-          r={3.5}
-          fill={color}
-          stroke="var(--color-cream)"
-          strokeWidth={2}
-        />
+        <circle cx={last[0]} cy={last[1]} r={4} fill={HIGHLIGHT} stroke={WALNUT} strokeWidth={2} />
       )}
     </svg>
   );
@@ -314,21 +382,50 @@ export function BarList({
 }) {
   const max = Math.max(1, ...items.map((i) => i.value));
   return (
-    <ul className="space-y-3">
-      {items.map((item) => (
-        <li key={item.key}>
-          <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="min-w-0 truncate font-bold">{item.label}</span>
-            <span className="shrink-0 text-xs text-ink-soft tabular-nums">{item.detail}</span>
-          </div>
-          <div className="mt-1 h-2 rounded-full bg-ink/[0.06]" aria-hidden>
-            <div
-              className="h-2 rounded-full"
-              style={{ width: `${(item.value / max) * 100}%`, background: color }}
-            />
-          </div>
-        </li>
-      ))}
+    <ul className="space-y-4">
+      {items.map((item) => {
+        const share = item.value / max;
+        return (
+          <li key={item.key}>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+              <span className="min-w-0 truncate font-display text-[15px] font-semibold text-walnut">
+                {item.label}
+              </span>
+              <span className="tabular shrink-0 text-[13px] font-medium text-ink-soft">
+                {item.detail}
+              </span>
+            </div>
+            <ChunkyBar share={share} color={color} className="mt-1.5" />
+          </li>
+        );
+      })}
     </ul>
+  );
+}
+
+/**
+ * A chunky rounded track with a walnut outline and a flat fill (0 to 1). Decorative: the words
+ * beside it, or the progressbar around it, say the number.
+ */
+export function ChunkyBar({
+  share,
+  color,
+  className = "",
+}: {
+  share: number;
+  color: string;
+  className?: string;
+}) {
+  const pct = Math.min(1, Math.max(0, share)) * 100;
+  return (
+    <div
+      aria-hidden
+      className={`h-4 overflow-hidden rounded-full border-2 border-walnut bg-canvas ${className}`}
+    >
+      <div
+        className={`h-full rounded-full ${pct > 0 && pct < 100 ? "border-r-2 border-walnut" : ""}`}
+        style={{ width: `${pct}%`, background: color }}
+      />
+    </div>
   );
 }

@@ -14,9 +14,12 @@ import { LiveWhiteboards } from "./LiveWhiteboards";
 import { LocalPlayer } from "./LocalPlayer";
 import { Librarian } from "./Librarian";
 import { LibrarianDesk } from "./LibrarianDesk";
+import { Leaderboards } from "./Leaderboards";
 import { PomodoroTimer } from "./PomodoroTimer";
+import { RemotePlayers } from "./RemotePlayers";
 import { SeatHighlight } from "./SeatHighlight";
 import { Sky } from "./Sky";
+import { TableSigns } from "./TableSigns";
 
 /** Flags the scene as ready after a few rendered frames (shaders compiled, first shadows drawn). */
 function ReadySignal() {
@@ -73,12 +76,18 @@ export function LibraryScene() {
       <Lighting quality={quality} />
       <Dust quality={quality} />
       <LocalPlayer config={avatar} />
+      {/* Everyone else in the library room (and the loop that sends your own moves). */}
+      <RemotePlayers />
       <CameraRig />
       <SeatHighlight />
       {/* The Pomodoro timer on the table in front of you while you sit. */}
       <PomodoroTimer quality={quality} />
       <LibrarianDesk />
       <Librarian />
+      {/* This week's focus-time and XP leaderboards, halfway down each side of the hall. */}
+      <Leaderboards />
+      {/* A tent card on each table someone is holding (who, open or private, minutes left). */}
+      <TableSigns />
       <Effects quality={quality} />
       <ResumeAfterStudio />
       <DevHandle />

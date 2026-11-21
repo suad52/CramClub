@@ -1,10 +1,6 @@
-import type { Metadata } from "next";
-import { LibraryClient } from "./LibraryClient";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "The Library · OVR",
-};
-
+/** The library is the home page now; old /library links land there. */
 export default function LibraryPage() {
-  return <LibraryClient />;
+  redirect("/");
 }

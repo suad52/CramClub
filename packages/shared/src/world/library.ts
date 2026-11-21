@@ -9,6 +9,7 @@
  */
 import type { Rect, Vec2 } from "./geometry";
 import plan from "./library-plan.json";
+import { LEADERBOARD_COLLIDERS } from "./leaderboards";
 import { LIBRARIAN_COLLIDERS, REMOVED_PLAN_ITEMS } from "./librarianDesk";
 
 export type ZoneId =
@@ -177,10 +178,14 @@ export const STEP_UP = data.stepUp;
 export const ZONES: readonly Zone[] = data.zones;
 export const SURFACES: readonly Surface[] = data.surfaces;
 export const CEILINGS: readonly CeilingRegion[] = data.ceilings;
-/** The plan's colliders plus the librarian's desk area, which is built in code (librarianDesk.ts). */
+/**
+ * The plan's colliders plus what's built in code: the librarian's desk area (librarianDesk.ts)
+ * and the hall's two leaderboards (leaderboards.ts).
+ */
 export const COLLIDERS: readonly Collider[] = [
   ...data.colliders.filter((c) => !(REMOVED_PLAN_ITEMS as readonly string[]).includes(c.id)),
   ...LIBRARIAN_COLLIDERS,
+  ...LEADERBOARD_COLLIDERS,
 ];
 export const SEATS: readonly Seat[] = data.seats;
 export const SPAWN_POINTS: readonly SpawnPoint[] = data.spawnPoints.map((s) => ({

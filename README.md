@@ -79,6 +79,7 @@ packages/
   config/         Shared ESLint config
 art/avatars/      Blender scripts that model and export the avatar kit (+ the .blend)
 docs/             Architecture, feature status, avatar pipeline
+deploy/           Docker Compose for one Vultr server (guide: docs/vultr.md)
 ```
 
 The library's floor plan lives in `packages/shared/src/world/layout.ts`. The browser renders

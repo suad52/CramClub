@@ -1,0 +1,56 @@
+# syntax=docker/dockerfile:1.7
+#
+# OVR web app (apps/web, Next.js) for the Vultr server. Built by deploy/docker-compose.yml with the
+# repo root as context (see /.dockerignore: no env files, node_modules or build output go in).
+#
+# Stages: base (Node + pnpm) → deps (install, cached on the lockfile) → build (next build) → web.
+# The worker image (Dockerfile.worker) starts FROM the finished `web` image, so the dependencies and
+# source are installed and built once and shared by both containers.
+#
+# NEXT_PUBLIC_* values are inlined into the browser bundle by `next build`, so they are build args,
+# not run-time env. Everything secret is run-time env only (deploy/env/web.env).
+
+ARG NODE_VERSION=26
+
+FROM node:${NODE_VERSION}-slim AS base
+# The version in package.json "packageManager".
+ARG PNPM_VERSION=12.21.0
+ENV CI=true \
+    NEXT_TELEMETRY_DISABLED=1
+RUN npm install -g pnpm@${PNPM_VERSION} && npm cache clean --force
+WORKDIR /app
+
+FROM base AS deps
+# Manifests first, so source edits don't reinstall dependencies.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json apps/web/
+COPY packages/shared/package.json packages/shared/
+COPY packages/config/package.json packages/config/
+# The web app and the workspace packages it uses (not the game server, not the root's art tools).
+RUN --mount=type=cache,id=ovr-pnpm-store,target=/pnpm-store \
+    pnpm install --frozen-lockfile --store-dir /pnpm-store --filter "@ovr/web..."
+
+FROM deps AS build
+COPY tsconfig.base.json ./
+COPY packages packages
+COPY apps/web apps/web
+ARG NEXT_PUBLIC_GAME_SERVER_URL=""
+ARG NEXT_PUBLIC_FACE_MODEL_URL=""
+ARG NEXT_PUBLIC_HAND_MODEL_URL=""
+ENV NEXT_PUBLIC_GAME_SERVER_URL=${NEXT_PUBLIC_GAME_SERVER_URL} \
+    NEXT_PUBLIC_FACE_MODEL_URL=${NEXT_PUBLIC_FACE_MODEL_URL} \
+    NEXT_PUBLIC_HAND_MODEL_URL=${NEXT_PUBLIC_HAND_MODEL_URL}
+# `build` copies the MediaPipe/font assets into public/ and runs `next build`. The build cache is
+# dropped: it only speeds up the next build on the same disk, and this image is rebuilt from scratch.
+RUN pnpm --filter @ovr/web build && rm -rf apps/web/.next/cache
+
+FROM build AS web
+ENV NODE_ENV=production
+# Next writes its image/fetch cache under .next; the local storage driver (used only when the
+# VULTR_OBJECT_STORAGE_* variables are unset) writes under .data, a volume shared with the worker.
+RUN mkdir -p apps/web/.next/cache apps/web/.data \
+    && chown -R node:node apps/web/.next apps/web/.data
+USER node
+WORKDIR /app/apps/web
+EXPOSE 3100
+CMD ["node", "node_modules/next/dist/bin/next", "start", "--port", "3100", "--hostname", "0.0.0.0"]

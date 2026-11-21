@@ -75,14 +75,19 @@ export interface LeaderboardRow {
   isDemo: boolean;
 }
 
+/** What a leaderboard ranks by: XP (the default), or focus time ("most time locked in"). */
+export type LeaderboardOrder = "xp" | "focus";
+
 export interface Leaderboard {
   period: "week" | "month";
+  /** XP: everyone with XP, by XP then focus time. Focus: everyone with focus time, by it then XP. */
+  by: LeaderboardOrder;
   /** ISO start and end of the period. */
   from: string;
   to: string;
   rows: LeaderboardRow[];
   /** Your own standing, even when outside the top rows or opted out (then rank is null). */
-  me: { rank: number | null; xp: number; optedIn: boolean } | null;
+  me: { rank: number | null; xp: number; focusMinutes: number; optedIn: boolean } | null;
   participants: number;
   queryMs: number;
 }

@@ -59,17 +59,19 @@ interactions and a fuller settings panel. The pipeline is documented in
 Built ahead of schedule as a single-player prototype. Other people can't see it until
 multiplayer (Phase 3) can carry the values.
 
-| Feature                    | Status | Notes                                                                                      |
-| -------------------------- | ------ | ------------------------------------------------------------------------------------------ |
-| Opt-in camera              | Done   | "Face" button → panel → Turn on camera; the camera is never requested before that          |
-| On-device face analysis    | Done   | MediaPipe Face Landmarker in the browser, model self-hosted; video never leaves the device |
-| Head, blinks, brows, mouth | Done   | Head turn/nod/tilt, each eye's blink, smile, mouth open, eyebrow raise                     |
-| Calibration                | Done   | Learns your resting face in the first second; Recalibrate button                           |
-| Smoothing                  | Done   | One Euro filter per value; the face relaxes back to idle if you leave the frame            |
-| "Your avatar" face view    | Done   | Small front-on view of your avatar's face in the corner while tracking is on               |
-| Camera-on indicator        | Done   | Pulsing red dot on the HUD button; Turn off camera stops the webcam completely             |
-| Mirror option              | Done   | Off by default (your left eye = avatar's left eye); turn on for mirror-style               |
-| Sync to other players      | Later  | Phase 3/4: send the eight values ~10×/s, never video or landmarks                          |
+| Feature                    | Status | Notes                                                                                                                                                                                                                                                                          |
+| -------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Opt-in camera              | Done   | "Face" button → panel → Turn on camera; the camera is never requested before that                                                                                                                                                                                              |
+| On-device face analysis    | Done   | MediaPipe Face Landmarker in the browser, model self-hosted; video never leaves the device                                                                                                                                                                                     |
+| Head, blinks, brows, mouth | Done   | Head turn/nod/tilt, each eye's blink, smile, mouth open, eyebrow raise                                                                                                                                                                                                         |
+| Calibration                | Done   | Learns your resting face in the first second; Recalibrate button                                                                                                                                                                                                               |
+| Smoothing                  | Done   | One Euro filter per value; the face relaxes back to idle if you leave the frame                                                                                                                                                                                                |
+| "Your avatar" face view    | Done   | Small front-on view of your avatar's face in the corner while tracking is on                                                                                                                                                                                                   |
+| Camera-on indicator        | Done   | Pulsing red dot on the HUD button; Turn off camera stops the webcam completely                                                                                                                                                                                                 |
+| Mirror option              | Done   | Off by default (your left eye = avatar's left eye); turn on for mirror-style                                                                                                                                                                                                   |
+| Look around with your head | Done   | On by default: turning your head turns the view (~1.8× your turn, small moves ignored); the mouse takes priority (moving it pauses head look; it resumes once the mouse rests, from wherever your head is); toggle in the Face panel                                           |
+| Draw with your finger      | Done   | Whiteboard "Finger" toggle: MediaPipe hand tracking follows your index fingertip (on-device); point with one finger to draw, open your hand or show two fingers to lift the pen; reuses the face camera if on; model from NEXT_PUBLIC_HAND_MODEL_URL or Google's MediaPipe CDN |
+| Sync to other players      | Later  | Phase 3/4: send the eight values ~10×/s, never video or landmarks                                                                                                                                                                                                              |
 
 Verified so far: the maths has unit tests (head-angle signs, calibration, smoothing). The
 model and wasm load and run in the browser, and the avatar's face responds correctly to
@@ -134,7 +136,7 @@ activity stored in Tiger Data. Full guide: [learning-analytics.md](learning-anal
 | Leaderboard      | Done   | Weekly/monthly XP, deterministic ties, opt-out, no titles or ids exposed                  |
 | Community        | Done   | Subjects this week, hour-of-day rhythm, 30-day trend; aggregated, groups < 3 hidden       |
 | Tiger Data       | Done   | Hypertable, continuous aggregate with real-time aggregation, columnstore after 30 days    |
-| Accounts         | Later  | Anonymous signed-cookie learners until OVR has accounts                                   |
+| Accounts         | Done   | Auth0 sign-in (optional); anonymous learners link on first sign-in. See auth0.md          |
 | Group challenges | Later  | Needs multiplayer                                                                         |
 
 Verified 2026-11-20 against the live Tiger Cloud service: `pnpm --filter web db:smoke` (11 checks:

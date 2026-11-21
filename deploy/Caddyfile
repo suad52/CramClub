@@ -1,0 +1,24 @@
+# OVR on one Vultr server: Caddy terminates HTTPS and routes to the two app containers.
+#
+# SITE_HOST comes from deploy/.env (deploy.sh writes it): a domain whose A record points at the
+# server, or <ip-with-dashes>.sslip.io when there is no domain (e.g. 203-0-113-7.sslip.io).
+# Caddy gets and renews the Let's Encrypt certificate itself; it is kept in the caddy_data volume.
+#
+#   https://SITE_HOST/game/*  → game:2567  (Colyseus: matchmaking over HTTP + the room WebSocket)
+#   https://SITE_HOST/*       → web:3100   (Next.js: pages, /api/*, Auth0 /auth/*)
+#
+# The browser's NEXT_PUBLIC_GAME_SERVER_URL is wss://SITE_HOST/game. The Colyseus client keeps that
+# path as a prefix (POST /game/matchmake/..., then wss://SITE_HOST/game/<processId>/<roomId>), and
+# handle_path strips /game so the server sees the paths it serves at its root. reverse_proxy
+# passes WebSocket upgrades through as they are, and keeps the browser's Host and Origin headers,
+# which the web app's CSRF check and the game server's ALLOWED_ORIGINS check both rely on.
+
+{$SITE_HOST} {
+	handle_path /game/* {
+		reverse_proxy game:2567
+	}
+
+	handle {
+		reverse_proxy web:3100
+	}
+}

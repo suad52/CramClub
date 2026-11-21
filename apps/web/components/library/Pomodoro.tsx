@@ -1,6 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  IconCheck,
+  IconClock,
+  IconClose,
+  IconInfo,
+  IconPlus,
+  IconSettings,
+} from "@/components/ui/icons";
+import {
+  BODY,
+  BTN,
+  FOCUS,
+  HUD_CHIP,
+  HUD_MUTED,
+  INPUT,
+  PANEL,
+  RIBBON,
+  TITLE,
+} from "@/components/ui/styles";
 import { focusOnDesk, onSeatLockNudge, setTimerPanelOpen, standUp } from "@/lib/game/actions";
 import { exitPointerLock, requestPointerLock } from "@/lib/game/pointer";
 import {
@@ -27,10 +46,10 @@ import { saveProfile, trackPomodoros } from "@/lib/learning/client";
 import { XpToast } from "./XpToast";
 
 /*
- * The table timer's side of the screen (the rules are in lib/game/pomodoro.ts; the tomato on the
- * table is drawn in the 3D scene from the same store). Browsers can't stop anyone switching tabs,
- * so instead leaving is noticed and costs the pomodoro, and the page does what it can to keep you
- * here: full screen, asking before it closes, and a nudge in the tab title.
+ * The table timer's side of the screen (the rules are in lib/game/pomodoro.ts; the walnut desk
+ * clock on the table is drawn in the 3D scene from the same store). Browsers can't stop anyone
+ * switching tabs, so instead leaving is noticed and costs the pomodoro, and the page does what it
+ * can to keep you here: full screen, asking before it closes, and a nudge in the tab title.
  */
 
 /**
@@ -44,23 +63,39 @@ const TOAST_MS = 5000;
 /** "Pomodoro done" and "Break's over" step aside after this; the timer card keeps the news. */
 const CARD_MS = 30_000;
 
-const TITLE_RUNNING = "🍅 Come back — your pomodoro is running";
-const TITLE_WAITING = "🍅 Come back — your pomodoro is waiting";
-const TITLE_LOST = "🍅 Pomodoro lost";
+const TITLE_RUNNING = "Come back: your pomodoro is running";
+const TITLE_WAITING = "Come back: your pomodoro is waiting";
+const TITLE_LOST = "Your pomodoro didn't count";
 
-const TOMATO = "#d64535";
-const FOCUS_RING =
-  "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ember";
-const KBD_SM = "kbd !h-5 !min-w-5 !px-1 !text-[0.65rem]";
+/*
+ * The timer floats over the library as a walnut sticker (the HUD's look, and the screen-side
+ * companion of the walnut desk clock): a black outline, a hard shadow, chunky Fredoka digits and
+ * sun yellow for the one highlight. News worth stopping for (a pomodoro done, a break over) pops up
+ * as a cream card in the middle; the "Leave?" dialog is the light panel over a walnut scrim.
+ */
+const W_BASE = `inline-flex shrink-0 items-center justify-center gap-2 border-black/80 font-display font-semibold whitespace-nowrap shadow-[0_3px_0_rgb(0_0_0/0.55)] transition-[background-color,color,transform,box-shadow] duration-150 ease-out hover:-translate-y-px active:translate-y-[2px] active:shadow-[0_1px_0_rgb(0_0_0/0.55)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:active:translate-y-0 disabled:active:shadow-[0_3px_0_rgb(0_0_0/0.55)] motion-reduce:transition-none ${FOCUS}`;
+/** Buttons on the walnut card (40px tall): a sun key for the main action, walnut keys else. */
+const W_BTN = {
+  primary: `${W_BASE} h-10 rounded-[14px] border-[3px] bg-sun px-4 text-[14px] text-walnut hover:bg-[#f6d98f]`,
+  secondary: `${W_BASE} h-10 rounded-[14px] border-[3px] bg-walnut-key px-3.5 text-[13.5px] text-walnut-text hover:bg-[#4a423b]`,
+} as const;
+const W_ICON = `${W_BASE} h-10 w-10 rounded-[12px] border-2 bg-walnut-key text-walnut-text hover:bg-[#4a423b]`;
+/** The walnut card itself: a chunky sticker, readable over any part of the hall. */
 const CARD =
-  "pointer-events-auto rounded-3xl bg-cream/90 text-ink shadow-[0_20px_50px_-24px_rgb(20_12_6/0.65)] ring-1 ring-ink/10 backdrop-blur";
-const PRIMARY = `flex items-center justify-center gap-2 rounded-full bg-ink px-4 py-2.5 text-sm font-bold text-cream shadow transition hover:bg-wood-dark ${FOCUS_RING}`;
-const PLAIN = `flex items-center justify-center gap-2 rounded-full bg-parchment px-4 py-2.5 text-sm font-bold ring-1 ring-ink/10 transition hover:ring-ink/30 ${FOCUS_RING}`;
-const SECONDARY = `${PLAIN} text-ink`;
-const SMALL_BASE = `flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-extrabold transition ${FOCUS_RING}`;
-const SMALL = `${SMALL_BASE} ring-1 ring-ink/15 hover:bg-ink/5`;
-const SMALL_DARK = `${SMALL_BASE} bg-ink text-cream shadow hover:bg-wood-dark`;
-const ICON = `grid h-8 w-8 shrink-0 place-items-center rounded-full ring-1 ring-ink/15 transition hover:bg-ink/5 ${FOCUS_RING}`;
+  "pointer-events-auto rounded-[22px] border-[3px] border-black/80 bg-walnut/95 text-walnut-text shadow-[0_6px_0_rgb(0_0_0/0.55)]";
+/** A small dark keycap, for P and Shift. */
+const KEY = "kbd kbd-dark !h-5 !min-w-5 !px-1 !text-[0.68rem]";
+/** The same keycap on the light cards. */
+const KEY_LIGHT = "kbd !h-5 !min-w-5 !px-1 !text-[0.68rem]";
+/** A flat coral for "it didn't count" (walnut text on it keeps AA contrast). */
+const WRONG_FILL = "bg-[#f0b3a6]";
+/** A short slide-and-fade in (none with reduced motion). */
+const ENTER =
+  "transition duration-200 ease-out starting:-translate-y-1.5 starting:opacity-0 motion-reduce:transition-none";
+const DIVIDE = "border-dashed border-walnut-text/20";
+/** A round sun badge for the clock mark (tilted, like the title screen's stickers). */
+const CLOCK_BADGE =
+  "grid h-9 w-9 shrink-0 -rotate-6 place-items-center rounded-full border-2 border-black/80 text-walnut shadow-[0_3px_0_rgb(0_0_0/0.55)]";
 
 /* ------------------------------------------------------------------ */
 /* Full screen and the pause menu                                      */
@@ -464,7 +499,7 @@ function clockOf(s: PomodoroState, now: number) {
   return formatClock(Math.min(left, s.endsAt - s.startedAt));
 }
 
-/** Pomodoros finished in this set, as the tomatoes show them. */
+/** Pomodoros finished in this set, as the dots show them. */
 function doneInSet(s: Pick<PomodoroState, "phase" | "inSet" | "settings">) {
   const every = s.settings.longBreakEvery;
   // A long break is the set complete; inSet only goes back to 0 when it ends. Lowering the
@@ -518,20 +553,22 @@ function TimerCard({ compact, onLeave }: { compact: boolean; onLeave: () => void
       aria-label="Timer settings"
       aria-expanded={settingsOpen}
       title="Timer settings"
-      className={ICON}
+      className={W_ICON}
     >
-      <GearIcon />
+      <IconSettings size={18} strokeWidth={2.25} />
     </button>
   );
   const hint = locked && (
-    <p className="mt-2 flex items-center justify-center gap-1 text-[0.7rem] font-bold text-ink-soft">
-      Hold <span className={KBD_SM}>Shift</span> to click
+    <p
+      className={`mt-3 flex items-center justify-center gap-1.5 font-display text-xs font-medium ${HUD_MUTED}`}
+    >
+      Hold <kbd className={KEY}>Shift</kbd> to use the buttons
     </p>
   );
 
   if (settingsOpen) {
     return (
-      <section aria-label="Table timer" className={`${CARD} w-[24rem] max-w-full p-4`}>
+      <section aria-label="Table timer" className={`${CARD} w-[24rem] max-w-full p-5`}>
         <TimerSettings onDone={closeSettings} />
       </section>
     );
@@ -539,42 +576,42 @@ function TimerCard({ compact, onLeave }: { compact: boolean; onLeave: () => void
 
   if (!compact && seated && s.phase === "idle") {
     return (
-      <section
-        aria-label="Table timer"
-        className={`${CARD} w-[24rem] max-w-full p-4 transition duration-300 ease-out starting:-translate-y-2 starting:opacity-0`}
-      >
+      <section aria-label="Table timer" className={`${CARD} ${ENTER} w-[24rem] max-w-full p-5`}>
         <header className="flex items-center gap-3">
-          <TomatoMark className="h-9 w-9 shrink-0" shake />
+          <ClockMark />
           <div className="min-w-0 flex-1">
-            <p className="text-[0.7rem] font-extrabold tracking-wide text-[#c23b2c] uppercase">
-              Table timer
-            </p>
-            <p className="text-xs font-bold text-ink-soft">The Pomodoro method</p>
+            <p className="font-display text-[17px] leading-5 font-bold">Table timer</p>
+            <p className={`text-xs leading-4 font-semibold ${HUD_MUTED}`}>The Pomodoro method</p>
           </div>
-          {gear}
+          <span className="-mr-1">{gear}</span>
         </header>
-        <div className="mt-3 flex items-end gap-3">
-          <p role="timer" className="font-display text-5xl leading-none font-semibold tabular-nums">
+        <div className="mt-4 flex items-end gap-4">
+          <p
+            role="timer"
+            className="tabular shrink-0 font-display text-[56px] leading-[0.85] font-bold tracking-[-0.01em] text-sun [text-shadow:0_4px_0_rgb(0_0_0/0.55)]"
+          >
             {clockOf(s, now)}
           </p>
-          <p className="pb-0.5 text-xs leading-snug text-ink-soft">
+          <p className={`text-[13px] leading-5 font-medium ${HUD_MUTED}`}>
             of focus, then a {s.settings.shortBreakMinutes}-minute break. Stay at the table and in
             this tab until it rings.
           </p>
         </div>
         <TaskInput />
         <SetRow s={s} now={now} />
-        <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+        <div className={`mt-4 grid grid-cols-[1fr_auto] gap-2 border-t-2 pt-4 ${DIVIDE}`}>
           <button
             type="button"
             onClick={() => startPomodoro()}
             aria-keyshortcuts="P"
-            className={PRIMARY}
+            className={W_BTN.primary}
           >
-            <span className={KBD_SM}>P</span>
+            <kbd className={KEY} aria-hidden>
+              P
+            </kbd>
             Start focus
           </button>
-          <button type="button" onClick={onLeave} className={SECONDARY}>
+          <button type="button" onClick={onLeave} className={W_BTN.secondary}>
             Leave table
           </button>
         </div>
@@ -587,17 +624,13 @@ function TimerCard({ compact, onLeave }: { compact: boolean; onLeave: () => void
   return (
     <section
       aria-label="Table timer"
-      className={`${CARD} w-[24rem] max-w-full px-4 pt-3 pb-3.5 transition duration-300 ease-out starting:-translate-y-2 starting:opacity-0`}
+      className={`${CARD} ${ENTER} w-[24rem] max-w-full px-4 pt-4 pb-3.5`}
     >
       <div className="flex items-center gap-3">
-        <TomatoMark className="h-8 w-8 shrink-0" shake />
+        <ClockMark onBreak={onBreak} />
         <div className="min-w-0 flex-1">
-          <p
-            className={`text-[0.68rem] font-extrabold tracking-wide uppercase ${onBreak ? "text-sage-dark" : "text-[#c23b2c]"}`}
-          >
-            {label}
-          </p>
-          <p className="truncate text-sm font-bold">
+          <p className={`font-display text-xs leading-4 font-semibold ${HUD_MUTED}`}>{label}</p>
+          <p className="mt-0.5 truncate font-display text-[15px] leading-5 font-semibold">
             {onBreak
               ? "Stand up, stretch, look away from the screen"
               : s.task || (focusing ? "Focus time" : "Ready when you are")}
@@ -605,7 +638,7 @@ function TimerCard({ compact, onLeave }: { compact: boolean; onLeave: () => void
         </div>
         <p
           role="timer"
-          className="font-display text-[2rem] leading-none font-semibold tabular-nums"
+          className={`tabular shrink-0 font-display text-[32px] leading-none font-bold tracking-[-0.01em] [text-shadow:0_3px_0_rgb(0_0_0/0.55)] ${onBreak ? "text-leaf" : "text-sun"}`}
         >
           {clockOf(s, now)}
         </p>
@@ -617,25 +650,27 @@ function TimerCard({ compact, onLeave }: { compact: boolean; onLeave: () => void
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(progress * 100)}
-          className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-ink/10"
+          className="mt-3 h-3.5 overflow-hidden rounded-full border-2 border-black/80 bg-walnut-key shadow-[inset_0_2px_0_rgb(0_0_0/0.35)]"
         >
           <div
-            className={`h-full rounded-full transition-[width] duration-300 ease-linear ${onBreak ? "bg-sage" : "bg-[#d64535]"}`}
+            className={`h-full rounded-full transition-[width] duration-300 ease-linear motion-reduce:transition-none ${onBreak ? "bg-leaf" : "bg-sun"}`}
             style={{ width: `${progress * 100}%` }}
           />
         </div>
       )}
-      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <SetRow s={s} now={now} inline />
-        <span className="ml-auto flex items-center gap-2">
+        <span className="ml-auto flex items-center gap-1.5">
           {s.phase === "idle" && seated && (
             <button
               type="button"
               onClick={() => startPomodoro()}
               aria-keyshortcuts="P"
-              className={SMALL_DARK}
+              className={W_BTN.primary}
             >
-              <span className={KBD_SM}>P</span>
+              <kbd className={KEY} aria-hidden>
+                P
+              </kbd>
               Start
             </button>
           )}
@@ -648,7 +683,7 @@ function TimerCard({ compact, onLeave }: { compact: boolean; onLeave: () => void
                 // Skipping is its own answer; no "break's over" card for it.
                 p.dismissNotice();
               }}
-              className={SMALL}
+              className={W_BTN.secondary}
             >
               Skip break
             </button>
@@ -659,9 +694,9 @@ function TimerCard({ compact, onLeave }: { compact: boolean; onLeave: () => void
               onClick={() => settleIn(true)}
               aria-label="Back to full screen"
               title="Back to full screen"
-              className={ICON}
+              className={W_ICON}
             >
-              <ExpandIcon />
+              <LineIcon d="M4.75 9.25v-4.5h4.5M14.75 4.75h4.5v4.5M19.25 14.75v4.5h-4.5M9.25 19.25h-4.5v-4.5" />
             </button>
           )}
           {gear}
@@ -670,7 +705,7 @@ function TimerCard({ compact, onLeave }: { compact: boolean; onLeave: () => void
               type="button"
               onClick={onLeave}
               title={focusing ? "Ends this pomodoro early (it won't count)" : undefined}
-              className={SMALL}
+              className={W_BTN.secondary}
             >
               Leave table
             </button>
@@ -687,12 +722,14 @@ function TaskInput() {
   const task = usePomodoro((s) => s.task);
   const setTask = usePomodoro((s) => s.setTask);
   return (
-    <label className="mt-3 block">
-      <span className="sr-only">What are you working on?</span>
+    <label className="mt-5 block">
+      <span className="mb-1.5 block font-display text-[14px] leading-5 font-semibold">
+        What are you working on?
+      </span>
       <input
         value={task}
         maxLength={80}
-        placeholder="What are you working on?"
+        placeholder="Name one task"
         onChange={(e) => setTask(e.target.value)}
         onKeyDown={(e) => {
           if (e.key !== "Enter" && e.key !== "Escape") return;
@@ -700,33 +737,43 @@ function TaskInput() {
           e.preventDefault();
           e.currentTarget.blur();
         }}
-        className="w-full rounded-xl bg-parchment px-3 py-2 text-sm font-bold text-ink ring-1 ring-ink/10 outline-none placeholder:font-semibold placeholder:text-ink-soft/70 focus:ring-2 focus:ring-ember"
+        className={INPUT}
       />
     </label>
   );
 }
 
-/** The set as tomatoes (filled = done) and today's tally. */
+/**
+ * The set as dots, like the desk clock's (filled = done, ringed = the one running now), and
+ * today's tally.
+ */
 function SetRow({ s, now, inline = false }: { s: PomodoroState; now: number; inline?: boolean }) {
   const every = s.settings.longBreakEvery;
   const done = doneInSet(s);
   const today = todayCount(s, now);
   return (
-    <div className={`flex items-center gap-2 ${inline ? "" : "mt-3"}`}>
+    <div className={`flex items-center gap-2.5 ${inline ? "" : "mt-4"}`}>
       <span
         role="img"
         aria-label={`${done} of ${every} pomodoros done in this set; a long break after ${every}`}
-        className="flex items-center gap-0.5"
+        className="flex items-center gap-1.5"
       >
         {Array.from({ length: every }, (_, i) => (
-          <TomatoMark
+          <span
             key={i}
-            empty={i >= done}
-            className={`h-4 w-4 ${i === done && isFocusing(s) ? "animate-pulse" : ""}`}
+            className={`h-3.5 w-3.5 rounded-full border-2 ${
+              i < done
+                ? "border-black/80 bg-sun shadow-[0_2px_0_rgb(0_0_0/0.55)]"
+                : i === done && isFocusing(s)
+                  ? "border-sun bg-sun/20"
+                  : "border-walnut-muted/60"
+            }`}
           />
         ))}
       </span>
-      <span className="text-xs font-bold text-ink-soft">{today} today</span>
+      <span className={`tabular font-display text-xs font-semibold ${HUD_MUTED}`}>
+        {today} done today
+      </span>
     </div>
   );
 }
@@ -760,13 +807,12 @@ function TimerSettings({ onDone }: { onDone: () => void }) {
   return (
     <div ref={panel}>
       <header className="flex items-center gap-3">
-        <TomatoMark className="h-7 w-7 shrink-0" />
-        <h2 className="flex-1 font-display text-lg font-semibold">Timer settings</h2>
-        <button type="button" onClick={onDone} className={SMALL_DARK}>
+        <h2 className="flex-1 font-display text-[22px] leading-tight font-bold">Timer settings</h2>
+        <button type="button" onClick={onDone} className={W_BTN.primary}>
           Done
         </button>
       </header>
-      <div className="mt-3 space-y-1.5">
+      <div className="mt-4 space-y-1.5">
         <Stepper setting="focusMinutes" label="Pomodoro" format={minutes} fixed={focusing} />
         <Stepper setting="shortBreakMinutes" label="Short break" format={minutes} />
         <Stepper setting="longBreakMinutes" label="Long break" format={minutes} />
@@ -776,10 +822,10 @@ function TimerSettings({ onDone }: { onDone: () => void }) {
           format={(n) => `${n} pomodoros`}
         />
       </div>
-      <div className="mt-3 space-y-0.5 border-t border-ink/10 pt-2">
+      <div className={`mt-4 space-y-0.5 border-t-2 pt-3 ${DIVIDE}`}>
         <Toggle
           label="Strict"
-          hint={`Leaving the tab for more than ${AWAY_GRACE_MS / 1000} s voids the pomodoro. Off: the timer waits while you're away.`}
+          hint={`Leaving this tab for more than ${AWAY_GRACE_MS / 1000} seconds ends the pomodoro, and it won't count. Off: the timer waits while you're away.`}
           checked={settings.strict}
           fixed={focusing}
           onChange={(strict) => update({ strict })}
@@ -798,9 +844,14 @@ function TimerSettings({ onDone }: { onDone: () => void }) {
         />
       </div>
       {focusing && (
-        <p className="mt-2 rounded-xl bg-parchment px-3 py-2 text-xs text-ink-soft">
-          The pomodoro&apos;s length and Strict stay as they are until it ends: a pomodoro keeps the
-          rules it started with.
+        <p
+          className={`mt-3 flex gap-2.5 rounded-[14px] border-2 border-black/60 bg-walnut-key/70 px-3 py-2.5 text-xs leading-[1.125rem] font-medium ${HUD_MUTED}`}
+        >
+          <IconInfo size={16} strokeWidth={2.25} className="mt-px text-sun" />
+          <span>
+            The pomodoro&apos;s length and Strict stay as they are until it ends: a pomodoro keeps
+            the rules it started with.
+          </span>
         </p>
       )}
     </div>
@@ -825,11 +876,13 @@ function Stepper({
     next[setting] = clampSetting(setting, value + delta);
     usePomodoro.getState().updateSettings(next);
   };
-  const button = `grid h-7 w-7 place-items-center rounded-full text-base leading-none font-extrabold ring-1 ring-ink/15 transition hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent ${FOCUS_RING}`;
+  const button = `${W_ICON} disabled:hover:bg-walnut-key`;
   return (
     <div role="group" aria-label={label} className="flex items-center justify-between gap-3">
-      <span className={`text-sm font-extrabold ${fixed ? "text-ink-soft" : ""}`}>{label}</span>
-      <span className="flex items-center gap-1.5">
+      <span className={`font-display text-[15px] font-semibold ${fixed ? HUD_MUTED : ""}`}>
+        {label}
+      </span>
+      <span className="flex items-center gap-1">
         <button
           type="button"
           aria-label={`${label}: less`}
@@ -837,9 +890,12 @@ function Stepper({
           onClick={() => change(-step)}
           className={button}
         >
-          −
+          <LineIcon d="M5 12h14" size={16} strokeWidth={2.5} />
         </button>
-        <output aria-live="polite" className="w-24 text-center text-sm font-bold tabular-nums">
+        <output
+          aria-live="polite"
+          className="tabular w-24 text-center font-display text-[15px] font-bold text-sun"
+        >
           {format(value)}
         </output>
         <button
@@ -849,7 +905,7 @@ function Stepper({
           onClick={() => change(step)}
           className={button}
         >
-          +
+          <IconPlus size={16} strokeWidth={2.5} />
         </button>
       </span>
     </div>
@@ -876,18 +932,21 @@ function Toggle({
       aria-checked={checked}
       disabled={fixed}
       onClick={() => onChange(!checked)}
-      className={`flex w-full items-start gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent ${FOCUS_RING}`}
+      className={`-mx-2 flex w-[calc(100%+1rem)] items-start gap-3 rounded-[14px] px-2 py-2 text-left transition-colors duration-150 hover:bg-walnut-key/60 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:bg-transparent motion-reduce:transition-none ${FOCUS}`}
     >
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-extrabold">{label}</span>
-        <span className="block text-xs leading-snug text-ink-soft">{hint}</span>
+        <span className="block font-display text-[15px] leading-5 font-semibold">{label}</span>
+        <span className={`mt-0.5 block text-xs leading-[1.125rem] font-medium ${HUD_MUTED}`}>
+          {hint}
+        </span>
       </span>
+      {/* A chunky switch: leaf when on, with a cream knob. */}
       <span
         aria-hidden
-        className={`mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition ${checked ? "bg-sage" : "bg-ink/20"}`}
+        className={`mt-0.5 flex h-7 w-11 shrink-0 items-center rounded-full border-2 border-black/80 p-0.5 shadow-[0_2px_0_rgb(0_0_0/0.55)] transition-colors duration-150 motion-reduce:transition-none ${checked ? "bg-leaf" : "bg-walnut-key"}`}
       >
         <span
-          className={`h-4 w-4 rounded-full bg-cream shadow transition ${checked ? "translate-x-4" : ""}`}
+          className={`h-5 w-5 rounded-full border-2 border-black/80 bg-surface transition-transform duration-150 motion-reduce:transition-none ${checked ? "translate-x-4" : ""}`}
         />
       </span>
     </button>
@@ -952,7 +1011,7 @@ function LeaveDialog({ from, onClose }: { from: LeaveFrom; onClose: () => void }
 
   return (
     <div
-      className="studio-fade-in absolute inset-0 z-[24] grid place-items-center bg-ink/40 p-4 backdrop-blur-[3px]"
+      className="absolute inset-0 z-[24] grid place-items-center bg-walnut/50 p-4 transition-opacity duration-200 ease-out starting:opacity-0 motion-reduce:transition-none sm:p-6"
       onMouseDown={(e) => e.target === e.currentTarget && keep()}
     >
       <div
@@ -961,22 +1020,30 @@ function LeaveDialog({ from, onClose }: { from: LeaveFrom; onClose: () => void }
         aria-modal="true"
         aria-labelledby="leave-title"
         aria-describedby="leave-desc"
-        className="w-full max-w-sm rounded-3xl bg-cream p-6 text-ink shadow-[0_30px_80px_-20px_rgb(20_12_6/0.6)] ring-1 ring-ink/10 transition duration-300 ease-out starting:translate-y-3 starting:opacity-0"
+        className={`${PANEL} title-pop relative w-full max-w-sm p-6 text-walnut sm:p-7`}
       >
-        <TomatoMark className="h-10 w-10" />
-        <h2 id="leave-title" className="mt-3 font-display text-2xl font-semibold">
+        {/* A tilted clock sticker on the corner, like the title screen's badge. */}
+        <span
+          aria-hidden
+          className="absolute -top-4 -right-3 grid h-12 w-12 rotate-12 place-items-center rounded-full border-[3px] border-walnut bg-sun text-walnut shadow-[0_4px_0_#1f1a16]"
+        >
+          <IconClock size={22} strokeWidth={2.5} />
+        </span>
+        <h2 id="leave-title" className={`${TITLE} pr-6`}>
           {from === "table" ? "Leave the table?" : "Leave the library?"}
         </h2>
-        <p id="leave-desc" className="mt-2 text-[0.95rem] text-ink-soft">
-          <strong className="font-extrabold text-ink tabular-nums">{clockOf(s, now)} left.</strong>{" "}
-          In the Pomodoro method a pomodoro can&apos;t be split — this one won&apos;t count.
+        <p id="leave-desc" className={`mt-3 ${BODY}`}>
+          <strong className="tabular inline-flex rounded-full border-2 border-walnut bg-sun px-2 font-display font-semibold text-walnut">
+            {clockOf(s, now)} left.
+          </strong>{" "}
+          A pomodoro can&apos;t be split, so this one won&apos;t count.
         </p>
         <div className="mt-6 grid grid-cols-2 gap-2">
-          <button type="button" onClick={keep} className={PRIMARY}>
+          <button type="button" onClick={keep} className={BTN.primary}>
             Keep focusing
           </button>
-          <button type="button" onClick={leave} className={`${PLAIN} text-[#b5352b]`}>
-            Leave &amp; void
+          <button type="button" onClick={leave} className={BTN.danger}>
+            Leave anyway
           </button>
         </div>
       </div>
@@ -1021,11 +1088,14 @@ function leftTabText(awayMs: number) {
 function toastText(n: PomodoroNotice) {
   const grace = AWAY_GRACE_MS / 1000;
   if (n.kind === "warned")
-    return `You left for ${formatAway(n.awayMs)} — stay with it. Over ${grace} s and a pomodoro won't count.`;
+    return `You were away for ${formatAway(n.awayMs)}. Stay with it: after ${grace} s away, a pomodoro won't count.`;
   if (n.kind === "paused")
-    return `Welcome back — your pomodoro waited ${formatAway(n.awayMs)} for you.`;
-  return "Pomodoro ended early — it won't count. Start a fresh one whenever you're ready.";
+    return `Welcome back. Your pomodoro waited ${formatAway(n.awayMs)} for you.`;
+  return "Pomodoro ended early, so it won't count. Start a fresh one whenever you're ready.";
 }
+
+/** A word in passing, in the HUD's walnut. */
+const TOAST = `${HUD_CHIP} ${ENTER} max-w-full px-4 py-2.5 text-[13px] leading-5 font-medium`;
 
 /** Small messages under the timer card: a notice in passing, and "you're mid-pomodoro". */
 function Toasts() {
@@ -1043,22 +1113,19 @@ function Toasts() {
   }, [toast]);
 
   return (
-    <div role="status" className="flex w-[24rem] max-w-full flex-col items-center gap-2">
+    <div role="status" className="flex w-[24rem] max-w-full flex-col items-start gap-2">
       {toast && (
-        <p
-          key={toast.at}
-          className="rounded-2xl bg-ink/90 px-4 py-2.5 text-center text-sm font-bold text-cream shadow-xl backdrop-blur transition duration-300 ease-out starting:-translate-y-2 starting:opacity-0"
-        >
+        <p key={toast.at} className={TOAST}>
           {toastText(toast)}
         </p>
       )}
       {seatLockAt !== null && (
-        <p
-          key={seatLockAt}
-          className="rounded-2xl bg-ink/90 px-4 py-2.5 text-center text-sm font-bold text-cream shadow-xl backdrop-blur transition duration-300 ease-out starting:-translate-y-2 starting:opacity-0"
-        >
-          You&apos;re mid-pomodoro 🍅 Stay put until it rings —{" "}
-          <span className="text-lamp">Leave table</span> ends it early, and it won&apos;t count.
+        <p key={seatLockAt} className={TOAST}>
+          You&apos;re mid-pomodoro, so stay at the table until it rings.{" "}
+          <span className={HUD_MUTED}>
+            <span className="font-semibold text-walnut-text">Leave table</span> ends it early, and
+            it won&apos;t count.
+          </span>
         </p>
       )}
     </div>
@@ -1123,15 +1190,17 @@ function NoticeBody({ notice }: { notice: PomodoroNotice }) {
         type="button"
         onClick={() => startPomodoro()}
         aria-keyshortcuts="P"
-        className={PRIMARY}
+        className={BTN.primary}
       >
-        <span className={KBD_SM}>P</span>
+        <kbd className={KEY} aria-hidden>
+          P
+        </kbd>
         {text}
       </button>
     ) : null;
 
   if (notice.kind === "voided") {
-    eyebrow = "Pomodoro void";
+    eyebrow = "Pomodoro ended early";
     title = "That pomodoro didn't count";
     body = (
       <>
@@ -1147,7 +1216,7 @@ function NoticeBody({ notice }: { notice: PomodoroNotice }) {
           Start a fresh one when you&apos;re ready.
         </p>
         {notice.reason === "left-tab" && (
-          <p className="mt-2 text-xs">
+          <p className="mt-2 text-[13px] leading-5">
             Rather have it wait for you? Turn off Strict in the timer settings.
           </p>
         )}
@@ -1156,28 +1225,28 @@ function NoticeBody({ notice }: { notice: PomodoroNotice }) {
     actions = (
       <>
         {startButton("Start a new pomodoro")}
-        <button type="button" onClick={dismiss} className={SECONDARY}>
+        <button type="button" onClick={dismiss} className={BTN.secondary}>
           {seated ? "Not now" : "Got it"}
         </button>
       </>
     );
   } else if (notice.kind === "focusDone") {
     const long = notice.breakPhase === "longBreak";
-    eyebrow = long ? "Set complete" : "Ding!";
-    title = `Pomodoro ${notice.count} done 🍅`;
+    eyebrow = long ? "Set complete" : "Time for a break";
+    title = `Pomodoro ${notice.count} done`;
     body = long ? (
       <p>
-        That&apos;s {longBreakEvery} in a row. Take a {longBreakMinutes}-minute long break — walk
+        That&apos;s {longBreakEvery} in a row. Take a {longBreakMinutes}-minute long break: walk
         around, get some water, rest your eyes.
       </p>
     ) : (
       <p>
-        Time for a {shortBreakMinutes}-minute break — stand up, stretch, look away from the screen.
+        Take a {shortBreakMinutes}-minute break. Stand up, stretch and look away from the screen.
       </p>
     );
     actions = (
       <>
-        <button type="button" onClick={dismiss} className={PRIMARY}>
+        <button type="button" onClick={dismiss} className={BTN.primary}>
           Enjoy the break
         </button>
         <button
@@ -1186,7 +1255,7 @@ function NoticeBody({ notice }: { notice: PomodoroNotice }) {
             s.skipBreak();
             dismiss();
           }}
-          className={SECONDARY}
+          className={BTN.secondary}
         >
           Skip break
         </button>
@@ -1197,49 +1266,53 @@ function NoticeBody({ notice }: { notice: PomodoroNotice }) {
     const next = doneInSet(s) + 1;
     title = next === 1 ? "Ready for a fresh set?" : `Ready for pomodoro ${next}?`;
     body = seated ? (
-      <p>Pick up where you left off — the next pomodoro starts when you say so.</p>
+      <p>Pick up where you left off. The next pomodoro starts when you say so.</p>
     ) : (
       <p>Sit at a table to start the next pomodoro.</p>
     );
     actions = (
       <>
         {startButton("Start focus")}
-        <button type="button" onClick={dismiss} className={SECONDARY}>
+        <button type="button" onClick={dismiss} className={BTN.secondary}>
           {seated ? "Not yet" : "Got it"}
         </button>
       </>
     );
   }
 
+  const voided = notice.kind === "voided";
+  // A sticker stamp on the corner: a tick for a pomodoro done, the clock for a break over, a cross
+  // when it didn't count (the words say it too).
+  const Stamp = voided ? IconClose : notice.kind === "focusDone" ? IconCheck : IconClock;
+  const stampFill = voided ? WRONG_FILL : notice.kind === "focusDone" ? "bg-leaf" : "bg-sun";
   return (
     <section
-      role={notice.kind === "voided" ? "alert" : "status"}
+      role={voided ? "alert" : "status"}
       aria-labelledby="pomodoro-notice-title"
-      className={`${CARD} w-[26rem] max-w-full p-6 transition duration-300 ease-out starting:scale-95 starting:opacity-0`}
+      className={`${PANEL} title-pop pointer-events-auto relative w-[26rem] max-w-full p-6 pt-8 text-walnut`}
     >
-      <div className="flex items-center gap-3">
-        <TomatoMark
-          className={`h-11 w-11 shrink-0 ${notice.kind === "voided" ? "opacity-45 grayscale-[0.6]" : ""}`}
-        />
-        <div className="min-w-0">
-          <p
-            className={`text-[0.7rem] font-extrabold tracking-wide uppercase ${notice.kind === "breakDone" ? "text-sage-dark" : "text-[#c23b2c]"}`}
-          >
-            {eyebrow}
-          </p>
-          <h2
-            id="pomodoro-notice-title"
-            className="font-display text-xl leading-tight font-semibold"
-          >
-            {title}
-          </h2>
-        </div>
-      </div>
-      <div className="mt-3 text-[0.95rem] leading-snug text-ink-soft">{body}</div>
-      <div className="mt-5 flex flex-wrap gap-2 [&>*]:flex-1">{actions}</div>
+      <p
+        className={`absolute -top-4 left-6 ${voided ? RIBBON.replace("bg-tangerine", WRONG_FILL) : RIBBON}`}
+      >
+        {eyebrow}
+      </p>
+      <span
+        aria-hidden
+        className={`absolute -top-5 -right-4 grid h-14 w-14 rotate-12 place-items-center rounded-full border-[3px] border-walnut text-walnut shadow-[0_4px_0_#1f1a16] ${stampFill}`}
+      >
+        <Stamp size={26} strokeWidth={2.75} />
+      </span>
+      <h2
+        id="pomodoro-notice-title"
+        className="pr-8 font-display text-[26px] leading-tight font-bold text-walnut"
+      >
+        {title}
+      </h2>
+      <div className={`mt-2.5 ${BODY}`}>{body}</div>
+      <div className="mt-6 flex flex-wrap gap-2.5 [&>*]:flex-1">{actions}</div>
       {locked && (
-        <p className="mt-3 flex items-center justify-center gap-1 text-[0.7rem] font-bold text-ink-soft">
-          Hold <span className={KBD_SM}>Shift</span> to click
+        <p className="mt-4 flex items-center justify-center gap-1.5 font-display text-xs font-medium text-ink-soft">
+          Hold <kbd className={KEY_LIGHT}>Shift</kbd> to use the buttons
         </p>
       )}
     </section>
@@ -1251,88 +1324,57 @@ function NoticeBody({ notice }: { notice: PomodoroNotice }) {
 /* ------------------------------------------------------------------ */
 
 /**
- * The Pomodoro symbol: a tomato kitchen timer. `empty` is an outline (a pomodoro still to do).
- * With `shake`, it shakes when a phase rings, like the one on the table.
+ * The timer's mark: a clock that shakes when a phase rings, like the one on the table (it stays
+ * still with reduced motion).
  */
-function TomatoMark({
-  className,
-  empty = false,
-  shake = false,
-}: {
-  className?: string;
-  empty?: boolean;
-  shake?: boolean;
-}) {
-  const svg = useRef<SVGSVGElement>(null);
+function ClockMark({ onBreak = false }: { onBreak?: boolean }) {
+  const box = useRef<HTMLSpanElement>(null);
   const rings = usePomodoro((s) => s.rings);
   const seen = useRef(rings);
   useEffect(() => {
     if (rings === seen.current) return;
     seen.current = rings;
-    if (!shake || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    svg.current?.animate(
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    box.current?.animate(
       [0, -16, 13, -10, 7, -4, 2, 0].map((deg) => ({ transform: `rotate(${deg}deg)` })),
       { duration: 900, easing: "ease-out" },
     );
-  }, [rings, shake]);
+  }, [rings]);
   return (
-    <svg ref={svg} viewBox="0 0 32 32" aria-hidden className={className}>
-      <path
-        d="M16 8.6c-6.9 0-12 4.3-12 10.1C4 24.6 9.4 28.6 16 28.6s12-4 12-9.9C28 12.9 22.9 8.6 16 8.6z"
-        fill={empty ? "none" : TOMATO}
-        stroke={empty ? TOMATO : "#a8322a"}
-        strokeOpacity={empty ? 0.55 : 1}
-        strokeWidth={empty ? 2 : 0.8}
-      />
-      {!empty && (
-        <ellipse
-          cx="10.6"
-          cy="15.2"
-          rx="3"
-          ry="1.7"
-          fill="#fff"
-          opacity="0.38"
-          transform="rotate(-28 10.6 15.2)"
-        />
-      )}
-      <path
-        d="M16 6.8l.94 1.95 4-.15-3.42 1.05 1.54 1.85L16 10.2l-3.06 1.3 1.54-1.85-3.43-1.05 4.01.15z"
-        className={empty ? "fill-sage/50" : "fill-sage-dark"}
-      />
-      <path
-        d="M16 8.4c.1-1.6.6-2.9 1.7-3.9"
-        fill="none"
-        className={empty ? "stroke-sage/50" : "stroke-sage-dark"}
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
+    <span ref={box} aria-hidden className={`${CLOCK_BADGE} ${onBreak ? "bg-leaf" : "bg-sun"}`}>
+      <IconClock size={20} strokeWidth={2.5} />
+    </span>
   );
 }
 
-function GearIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4" fill="none" stroke="currentColor">
-      <circle cx="12" cy="12" r="7.6" strokeWidth="3" strokeDasharray="2.99 2.98" />
-      <circle cx="12" cy="12" r="5.7" strokeWidth="2" />
-      <circle cx="12" cy="12" r="1.9" strokeWidth="2" />
-    </svg>
-  );
-}
-
-function ExpandIcon() {
+/**
+ * A line icon for the few the shared set doesn't have (minus, full screen), drawn the same way:
+ * 24px grid, 1.75 stroke, currentColor.
+ */
+function LineIcon({
+  d,
+  size = 18,
+  strokeWidth = 2.25,
+}: {
+  d: string;
+  size?: number;
+  strokeWidth?: number;
+}) {
   return (
     <svg
       viewBox="0 0 24 24"
-      aria-hidden
-      className="h-4 w-4"
+      width={size}
+      height={size}
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
+      focusable="false"
+      aria-hidden
+      className="shrink-0"
     >
-      <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
+      <path d={d} />
     </svg>
   );
 }

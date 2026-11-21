@@ -1,26 +1,56 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { FacialParams } from "@ovr/shared";
+import {
+  IconCamera,
+  IconCheck,
+  IconClose,
+  IconInfo,
+  IconRefresh,
+  IconWarning,
+} from "@/components/ui/icons";
+import { BODY, BTN, HUD_BTN, ICON_BTN, PANEL, TAG } from "@/components/ui/styles";
 import { FACE_PREVIEW } from "@/components/world/FacePreview";
 import { useFaceTracking } from "@/hooks/useFaceTracking";
 import { exitPointerLock } from "@/lib/game/pointer";
 import { faceState, useTrackingStore } from "@/lib/facial-tracking/tracker";
 
-function CameraDot() {
+/** The "camera is live" light: a steady red dot (always next to words that say so). */
+export function CameraDot() {
   return (
-    <span className="relative flex h-2.5 w-2.5" aria-hidden>
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-60" />
-      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+    <span
+      className="inline-block h-3 w-3 shrink-0 rounded-full border-2 border-walnut bg-red-500"
+      aria-hidden
+    />
+  );
+}
+
+/**
+ * A chunky checkbox: the real input goes first, visually hidden with `peer sr-only`, then this box.
+ * Put both inside a `relative` label. Also used by the menu sheet's mouse settings.
+ */
+export function CheckBox() {
+  return (
+    <span
+      aria-hidden
+      className="grid h-7 w-7 shrink-0 place-items-center rounded-[9px] border-[2.5px] border-walnut bg-white text-transparent shadow-[0_2px_0_#1f1a16] transition-[background-color,color,transform] duration-150 peer-checked:bg-leaf peer-checked:text-walnut peer-focus-visible:ring-4 peer-focus-visible:ring-sun peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-walnut peer-active:translate-y-px motion-reduce:transition-none"
+    >
+      <IconCheck size={17} strokeWidth={3.25} />
     </span>
   );
 }
 
-/** HUD button that opens the tracking panel; shows a live dot while the camera is on. */
-export function TrackingButton() {
+/**
+ * While the camera is on, a small chip next to the HUD's Menu says so, for privacy; clicking it
+ * opens (or closes) the tracking panel. With the camera off, tracking starts from the menu's
+ * "Camera and face" row instead, so the HUD stays quiet.
+ */
+export function CameraOnChip() {
   const { active } = useFaceTracking();
   const open = useTrackingStore((s) => s.panelOpen);
   const setOpen = useTrackingStore((s) => s.setPanelOpen);
+  if (!active) return null;
   return (
     <button
       type="button"
@@ -29,12 +59,12 @@ export function TrackingButton() {
         setOpen(!open);
       }}
       aria-expanded={open}
-      title="Expression tracking"
-      className="pointer-events-auto flex h-10 items-center gap-2 rounded-full bg-cream/90 px-3.5 text-sm font-bold text-ink shadow-md ring-1 ring-ink/10 backdrop-blur transition hover:bg-cream focus-visible:outline-3 focus-visible:outline-ember"
+      title="Your camera is on for expression tracking"
+      className={`${HUD_BTN} pointer-events-auto h-10 active:bg-walnut`}
     >
-      {active ? <CameraDot /> : <span aria-hidden>🙂</span>}
-      <span className="hidden lg:inline">{active ? "Camera on" : "Face"}</span>
-      <span className="sr-only">Expression tracking</span>
+      <CameraDot />
+      Camera on
+      <span className="sr-only">: expression tracking settings</span>
     </button>
   );
 }
@@ -58,23 +88,25 @@ function Meters() {
     return () => clearInterval(id);
   }, []);
   return (
-    <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5" aria-label="Tracked values">
+    <ul className="grid grid-cols-2 gap-x-5 gap-y-2.5" aria-label="Tracked values">
       {METERS.map(({ key, label, signed }) => {
         const v = values?.[key] ?? 0;
         const left = signed ? 50 + Math.min(0, v) * 50 : 0;
         const width = signed ? Math.abs(v) * 50 : v * 100;
         return (
-          <li key={key} className="text-[0.7rem] font-bold text-ink-soft">
-            <span className="flex justify-between">
+          <li key={key} className="font-display text-xs leading-4 font-semibold text-ink-soft">
+            <span className="flex justify-between gap-2">
               {label}
-              <span className="tabular-nums">{v.toFixed(2)}</span>
+              <span className="tabular text-walnut">{v.toFixed(2)}</span>
             </span>
-            <span className="relative mt-0.5 block h-1.5 overflow-hidden rounded-full bg-ink/10">
-              {signed && <span className="absolute top-0 left-1/2 h-full w-px bg-ink/25" />}
+            <span className="relative mt-1 block h-3 overflow-hidden rounded-full border-2 border-walnut bg-canvas">
               <span
-                className="absolute top-0 h-full rounded-full bg-sage"
+                className={`absolute top-0 h-full ${signed ? "bg-sun" : "rounded-r-full bg-leaf"}`}
                 style={{ left: `${left}%`, width: `${width}%` }}
               />
+              {signed && (
+                <span className="absolute top-0 left-1/2 h-full w-0.5 -translate-x-1/2 bg-walnut" />
+              )}
             </span>
           </li>
         );
@@ -102,29 +134,51 @@ function SelfView() {
       muted
       playsInline
       aria-label="Your camera (stays on this device)"
-      className="aspect-[4/3] w-full -scale-x-100 rounded-xl bg-ink/80 object-cover"
+      className="aspect-[4/3] w-full -scale-x-100 rounded-[18px] border-[3px] border-walnut bg-walnut object-cover shadow-[0_4px_0_#1f1a16]"
     />
   );
 }
 
+/**
+ * One setting: what it is, a line on what it does, and its checkbox (styled like the menu sheet's).
+ * The whole row toggles it; its name is the label alone, the line under it its description.
+ */
 function Toggle({
   label,
+  hint,
   checked,
   onChange,
 }: {
   label: string;
+  hint?: string;
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
+  const id = useId();
   return (
-    <label className="flex items-center justify-between gap-3 text-sm font-bold">
-      {label}
+    <label className="relative flex min-h-12 cursor-pointer items-center justify-between gap-4 py-2.5">
+      <span className="min-w-0">
+        <span
+          id={`${id}-label`}
+          className="block font-display text-[14.5px] leading-5 font-semibold text-walnut"
+        >
+          {label}
+        </span>
+        {hint && (
+          <span id={`${id}-hint`} className="mt-0.5 block text-[13px] leading-5 text-ink-soft">
+            {hint}
+          </span>
+        )}
+      </span>
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4.5 w-4.5 accent-[var(--color-wood)]"
+        aria-labelledby={`${id}-label`}
+        aria-describedby={hint ? `${id}-hint` : undefined}
+        className="peer sr-only"
       />
+      <CheckBox />
     </label>
   );
 }
@@ -136,6 +190,8 @@ export function TrackingPanel() {
   const mirror = useTrackingStore((s) => s.mirror);
   const setMirror = useTrackingStore((s) => s.setMirror);
   const showFaceView = useTrackingStore((s) => s.showFaceView);
+  const headLook = useTrackingStore((s) => s.headLook);
+  const setHeadLook = useTrackingStore((s) => s.setHeadLook);
   const setShowFaceView = useTrackingStore((s) => s.setShowFaceView);
   const [showCamera, setShowCamera] = useState(true);
   const { status, error, calibration, active, start, stop, recalibrate } = useFaceTracking();
@@ -144,51 +200,61 @@ export function TrackingPanel() {
   return (
     <section
       aria-labelledby="tracking-title"
-      className="pointer-events-auto absolute top-18 right-4 z-[15] w-80 rounded-3xl bg-cream/95 p-5 text-ink shadow-[0_20px_50px_-20px_rgb(20_12_6/0.6)] ring-1 ring-ink/10 backdrop-blur"
+      className={`${PANEL} pointer-events-auto absolute top-18 right-4 z-[15] max-h-[calc(100dvh-5.5rem)] w-[22rem] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain p-5 text-walnut transition duration-200 ease-out starting:-translate-y-1.5 starting:opacity-0 motion-reduce:transition-none sm:p-6`}
     >
       <header className="flex items-start justify-between gap-3">
-        <div>
-          <h2 id="tracking-title" className="font-display text-lg leading-tight font-semibold">
-            Expression tracking
+        <div className="min-w-0">
+          <h2
+            id="tracking-title"
+            className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-display text-[23px] leading-tight font-bold text-walnut"
+          >
+            Camera and face
+            <span aria-hidden className={`${TAG.brass} -rotate-3 shadow-[0_2px_0_#1f1a16]`}>
+              Prototype
+            </span>
           </h2>
-          <span className="text-[0.68rem] font-extrabold tracking-wide text-ember uppercase">
-            Prototype · only you see it for now
-          </span>
+          <p className="mt-1.5 text-[13px] leading-5 font-medium text-ink-soft">
+            Expression tracking is a prototype. Only you see it for now.
+          </p>
         </div>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="-mt-1 -mr-1 rounded-full px-2 py-1 text-lg leading-none text-ink-soft hover:bg-ink/5"
+          className={`${ICON_BTN} -mt-1.5 -mr-2`}
           aria-label="Close"
         >
-          ×
+          <IconClose size={18} />
         </button>
       </header>
 
       {!active && (
-        <div className="mt-3 space-y-3 text-sm">
-          <p className="text-ink-soft">
-            Your avatar copies your head movement, blinks, smile, mouth and eyebrows. Your camera is
-            analysed on this device and the video is never uploaded or saved.
+        <div className="mt-5 space-y-4">
+          <p className={BODY}>
+            Your avatar copies your head movement, blinks, smile, mouth and eyebrows.
+          </p>
+          <p className="flex gap-2.5 rounded-[16px] border-2 border-walnut/25 bg-canvas px-3 py-2.5 text-[13px] leading-5 font-medium text-walnut">
+            <IconInfo size={18} strokeWidth={2.25} className="mt-px text-walnut" />
+            <span>
+              Your camera is analysed on this device. The video is never uploaded or saved, and the
+              camera only turns on when you choose.
+            </span>
           </p>
           {error && (
-            <p className="rounded-xl bg-red-50 px-3 py-2 text-[0.8rem] text-red-800 ring-1 ring-red-200">
-              {error}
+            <p className="flex gap-2.5 rounded-[16px] border-[2.5px] border-danger bg-[#fbe9e5] px-3 py-2.5 text-[13px] leading-5 font-semibold text-danger shadow-[0_3px_0_#a9504a]">
+              <IconWarning size={18} strokeWidth={2.25} className="mt-px" />
+              <span>{error}</span>
             </p>
           )}
-          <button
-            type="button"
-            onClick={() => void start()}
-            className="w-full rounded-full bg-ink px-4 py-2.5 font-bold text-cream transition hover:bg-wood-dark"
-          >
+          <button type="button" onClick={() => void start()} className={`${BTN.primary} w-full`}>
+            <IconCamera size={18} />
             {error ? "Try again" : "Turn on camera"}
           </button>
         </div>
       )}
 
       {active && (
-        <div className="mt-3 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-bold">
+        <div className="mt-5 space-y-4">
+          <div className="flex items-center gap-2 font-display text-[14.5px] leading-5 font-semibold text-walnut">
             <CameraDot />
             {status === "starting" && "Starting camera and face model…"}
             {status === "calibrating" && "Look at the screen with a relaxed face…"}
@@ -197,38 +263,59 @@ export function TrackingPanel() {
               "Can't see your face. Face the camera with light in front of you."}
           </div>
           {status === "calibrating" && (
-            <span className="block h-1.5 overflow-hidden rounded-full bg-ink/10">
+            <span className="block h-4 overflow-hidden rounded-full border-[2.5px] border-walnut bg-canvas shadow-[0_2px_0_#1f1a16]">
               <span
-                className="block h-full rounded-full bg-ember transition-[width]"
+                className="block h-full rounded-r-full bg-sun transition-[width] duration-150 motion-reduce:transition-none"
                 style={{ width: `${Math.round(calibration * 100)}%` }}
               />
             </span>
           )}
-          {showCamera && status !== "starting" && <SelfView />}
+          {showCamera && status !== "starting" && (
+            <div>
+              <SelfView />
+              <p className="mt-2 text-xs leading-4 font-medium text-ink-soft">
+                Only you see this preview. The video stays on this device.
+              </p>
+            </div>
+          )}
           {(status === "tracking" || status === "no-face") && <Meters />}
-          <div className="space-y-2 border-t border-ink/10 pt-3">
-            <Toggle label="Show my camera here" checked={showCamera} onChange={setShowCamera} />
+          <div className="divide-y-2 divide-walnut/10 rounded-[18px] border-2 border-walnut/25 bg-canvas px-3.5">
+            <Toggle
+              label="Show my camera here"
+              hint="A small preview in this panel."
+              checked={showCamera}
+              onChange={setShowCamera}
+            />
             <Toggle
               label="Show my avatar's face"
+              hint="A close-up of your avatar in the corner of the view."
               checked={showFaceView}
               onChange={setShowFaceView}
             />
-            <Toggle label="Mirror my movements" checked={mirror} onChange={setMirror} />
+            <Toggle
+              label="Mirror my movements"
+              hint="Your avatar moves like your reflection."
+              checked={mirror}
+              onChange={setMirror}
+            />
+            <Toggle
+              label="Look around with my head"
+              hint="Turning your head turns your view of the library too."
+              checked={headLook}
+              onChange={setHeadLook}
+            />
           </div>
-          <div className="grid grid-cols-2 gap-2 pt-1">
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={recalibrate}
               disabled={status === "starting"}
-              className="rounded-full bg-parchment px-3 py-2 text-sm font-bold ring-1 ring-ink/10 hover:ring-ink/30 disabled:opacity-50"
+              className={BTN.secondary}
             >
+              <IconRefresh size={16} />
               Recalibrate
             </button>
-            <button
-              type="button"
-              onClick={stop}
-              className="rounded-full bg-ink px-3 py-2 text-sm font-bold text-cream hover:bg-wood-dark"
-            >
+            <button type="button" onClick={stop} className={BTN.primary}>
               Turn off camera
             </button>
           </div>
@@ -247,10 +334,10 @@ export function FaceViewFrame() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute z-[6] rounded-2xl ring-4 ring-cream/90 shadow-lg"
+      className="pointer-events-none absolute z-[6] rounded-[16px] shadow-[0_8px_0_rgb(0_0_0/0.45)] ring-4 ring-black/80"
       style={{ width: size, height: size, right: margin, bottom: margin }}
     >
-      <span className="absolute -top-3 left-3 rounded-full bg-cream px-2 py-0.5 text-[0.68rem] font-extrabold text-ink shadow">
+      <span className="absolute -top-4 left-3 -rotate-2 rounded-full border-[2.5px] border-black/80 bg-tangerine px-2.5 py-0.5 font-display text-xs leading-4 font-semibold text-walnut shadow-[0_2px_0_rgb(0_0_0/0.55)]">
         Your avatar
       </span>
     </div>

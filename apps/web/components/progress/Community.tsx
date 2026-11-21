@@ -23,15 +23,15 @@ export function CommunityView({ c }: { c: Community }) {
   const enough = c.learners >= c.minGroup;
   return (
     <div className="space-y-6">
-      <section className={CARD} aria-label="About these numbers">
-        <p className="text-sm">
-          <span className="font-bold">{range}</span>
-          <span className="text-ink-soft">
+      <section aria-label="About these numbers" className="max-w-[68ch]">
+        <p className="tabular text-[15px] leading-6 text-walnut">
+          <span className="font-display font-semibold">{range}</span>
+          <span className="font-medium text-ink-soft">
             {" "}
             · {plural(c.learners, "learner")} · groups under {c.minGroup} hidden
           </span>
         </p>
-        <p className="mt-1 text-xs text-ink-soft">
+        <p className="mt-1.5 text-[13px] leading-5 font-medium text-ink-soft">
           Everything here is added up across learners who show on leaderboards. No names, no lesson
           titles, and any group smaller than {c.minGroup} is left out so no one can be picked out.
           Times are library time (Toronto).
@@ -71,7 +71,7 @@ function Subjects({ c }: { c: Community }) {
           }))}
         />
       ) : (
-        <p className="text-sm text-ink-soft">
+        <p className="text-[15px] leading-6 font-medium text-ink-soft">
           No subject has had {c.minGroup} or more learners this week yet.
         </p>
       )}
@@ -168,9 +168,9 @@ function Days({ c }: { c: Community }) {
 
 function HiddenNote() {
   return (
-    <p className="mt-2 flex items-center gap-2 text-xs text-ink-soft">
-      <span className="inline-block h-0.5 w-3 rounded-full bg-ink/25" aria-hidden />A short grey
-      dash marks a slot with too few learners to show.
+    <p className="mt-2 flex items-center gap-2 text-[13px] leading-5 font-medium text-ink-soft">
+      <span className="inline-block h-[3px] w-3 shrink-0 rounded-full bg-walnut/45" aria-hidden />A
+      short grey dash marks a slot with too few learners to show.
     </p>
   );
 }

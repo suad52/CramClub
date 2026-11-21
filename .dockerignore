@@ -1,0 +1,27 @@
+# Docker build context for deploy/Dockerfile.* (context: the repo root).
+# Secrets must never reach an image: env files are passed at run time (deploy/env/*.env).
+**/.env
+**/.env.*
+!**/.env.example
+deploy/env/
+deploy/.env
+
+# Installed or generated inside the image
+**/node_modules
+**/.next
+**/dist
+**/.data
+**/coverage
+**/*.tsbuildinfo
+apps/web/public/mediapipe
+apps/web/public/fonts/ems-tech.svg
+
+# Not needed to build or run the apps
+.git
+art/
+plan_*.png
+**/.DS_Store
+# Local state written by the Auth0 MCP server
+**/.auth0-mcp-*
+**/*.log
+.vercel
