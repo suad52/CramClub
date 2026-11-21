@@ -98,6 +98,8 @@ let room: LibraryRoom | null = null;
 let client: Client | null = null;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let attempt = 0;
+/** Who this tab joined as (from its ticket), to notice a sign-in or sign-out in any tab. */
+let joinedAs: { signedIn: boolean; name: string } | null = null;
 let unsubscribers: (() => void)[] = [];
 
 /** The seat the room last said "seat" to (before the state patch that shows it). */
@@ -441,6 +443,7 @@ async function connect(gen: number) {
   if (gen !== generation) return;
   if (ticket === "not_configured") return setStatus("offline");
   useNet.setState({ name: ticket.name || null });
+  joinedAs = { signedIn: ticket.signedIn, name: ticket.name };
   try {
     client ??= new Client(SERVER_URL);
     const options: JoinOptions = { ticket: ticket.ticket };
@@ -454,6 +457,31 @@ async function connect(gen: number) {
     if (gen !== generation) return;
     scheduleRetry(gen, isFull(error) ? "full" : "error");
   }
+}
+
+/** If this tab's player was joined as someone else (guest vs signed in), rejoin as who you are now. */
+async function rejoinIfAccountChanged() {
+  const was = joinedAs;
+  if (!room || !was) return;
+  try {
+    const res = await fetch("/api/account", { cache: "no-store", credentials: "same-origin" });
+    if (!res.ok) return;
+    const now = (await res.json()) as { signedIn?: boolean; displayName?: string | null };
+    if (!!now.signedIn === was.signedIn) return;
+  } catch {
+    return;
+  }
+  if (joinedAs !== was || !room) return;
+  const r = room;
+  detach();
+  try {
+    r.send("bye", {});
+  } catch {
+    // already closing
+  }
+  void r.leave();
+  attempt = 0;
+  void connect(generation);
 }
 
 /** Retry now rather than at the end of the backoff (the network or the tab came back). */
@@ -480,8 +508,23 @@ function watchLocalState() {
     if (document.visibilityState === "visible") retrySoon();
   };
   const onOnline = () => retrySoon();
-  // Leaving the page: say goodbye now so others see you go at once.
-  const onPageHide = () => void room?.leave();
+  // Leaving the page (closing it, or going to sign in): say "bye" first so the server drops you
+  // at once instead of holding your player for a reconnect, then leave.
+  const onPageHide = () => {
+    if (!room) return;
+    try {
+      room.send("bye", {});
+    } catch {
+      // The socket is already going; the reconnect hold covers it.
+    }
+    void room.leave();
+  };
+  // Signed in (or out) in another tab, or came back from the sign-in page in this one: if who
+  // you are changed, rejoin as the new you, so the old guest doesn't stay in the room.
+  const onFocusCheck = () => {
+    if (document.visibilityState === "visible") void rejoinIfAccountChanged();
+  };
+  window.addEventListener("focus", onFocusCheck);
   document.addEventListener("visibilitychange", onVisibility);
   window.addEventListener("online", onOnline);
   window.addEventListener("pagehide", onPageHide);
@@ -492,6 +535,7 @@ function watchLocalState() {
     () => document.removeEventListener("visibilitychange", onVisibility),
     () => window.removeEventListener("online", onOnline),
     () => window.removeEventListener("pagehide", onPageHide),
+    () => window.removeEventListener("focus", onFocusCheck),
   ];
 }
 

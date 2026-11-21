@@ -70,6 +70,11 @@ export interface ClientMessages {
   status: { status: StudyStatus };
   /** My avatar changed (Character Studio). */
   avatar: { avatar: string };
+  /**
+   * "I'm leaving on purpose" (closing the tab, going to sign in): sent just before the socket
+   * closes, so the server removes the player at once instead of holding them for a reconnect.
+   */
+  bye: Record<string, never>;
 }
 
 /** Messages the server sends to one client. */

@@ -48,6 +48,8 @@ interface Session {
   faceAt: number;
   /** Their socket broke the WebSocket protocol (an oversized or malformed frame). */
   brokeProtocol: boolean;
+  /** They said "bye" (leaving the page on purpose): no reconnect hold when the socket closes. */
+  leaving: boolean;
 }
 
 /** One learner may have this many tabs in the same room (each is its own player). */
@@ -115,6 +117,10 @@ export class LibraryRoom extends Room<{ state: LibraryState; client: LibraryClie
     this.onMessage("face", (client, msg) => this.onFace(client, msg));
     this.onMessage("status", (client, msg) => this.onStatus(client, msg));
     this.onMessage("avatar", (client, msg) => this.onAvatar(client, msg));
+    this.onMessage("bye", (client) => {
+      const session = this.sessions.get(client.sessionId);
+      if (session) session.leaving = true;
+    });
     this.clock.setInterval(() => this.switchOffSilentFaces(), 1000);
     logger.info(`[library ${this.roomId}] created`);
   }
@@ -134,6 +140,7 @@ export class LibraryRoom extends Room<{ state: LibraryState; client: LibraryClie
       tracker: newTracker(now),
       faceAt: 0,
       brokeProtocol: false,
+      leaving: false,
     });
     this.watchSocket(client);
     const spawn = SPAWN_POINTS[this.spawnIndex++ % SPAWN_POINTS.length]!;
@@ -167,7 +174,9 @@ export class LibraryRoom extends Room<{ state: LibraryState; client: LibraryClie
    */
   override onDrop(client: LibraryClient, code?: number): void {
     this.setFace(client.sessionId, null);
-    if (code === CloseCode.WITH_ERROR || this.sessions.get(client.sessionId)?.brokeProtocol) return;
+    const session = this.sessions.get(client.sessionId);
+    // Thrown out, broke the protocol, or said "bye" (left on purpose, e.g. to sign in): gone at once.
+    if (code === CloseCode.WITH_ERROR || session?.brokeProtocol || session?.leaving) return;
     this.allowReconnection(client, NET.RECONNECT_S).catch(() => {
       // never fully joined, or the room is closing: onLeave tidies up
     });
