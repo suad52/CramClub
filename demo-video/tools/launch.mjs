@@ -14,6 +14,12 @@
 //   node launch.mjs status                        list running demo Chromes
 //   node launch.mjs stop [main|bot|all] [--wipe]  kill it; --wipe deletes the temp profile too
 //   node launch.mjs gpu                            print the WebGL renderer of the main Chrome
+//
+// Extra Chrome flags (only when this call actually starts Chrome; a running one is reused as is):
+//   launchChrome("demo", { extraArgs: ["--use-file-for-fake-video-capture=/abs/selfie.y4m"] })
+//   DEMO_EXTRA_ARGS='--use-file-for-fake-video-capture=/abs/selfie.y4m' node launch.mjs start demo
+// DEMO_EXTRA_ARGS is split on whitespace, or parsed as JSON when it starts with "[". Unset = the
+// usual flags, nothing added. Stop the Chrome first (stop <name>, no --wipe) to change its flags.
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, unlinkSync } from "node:fs";
 import path from "node:path";
@@ -35,7 +41,17 @@ export const PROFILES = {
   bot: { port: 9556, width: 1280, height: 720 },
   // Recorder C (shots 10-14), runs alongside the others; 9557 is taken by the "demo" Chrome.
   c: { port: 9558, width: 1920, height: 1080 },
+  // Group B's /demo Chrome (takes/group-b, TAKE_CHROME=demo in group-c): its own learner.
+  demo: { port: 9557, width: 1920, height: 1080 },
 };
+
+/** Extra Chrome flags from DEMO_EXTRA_ARGS (whitespace-separated, or a JSON array). */
+export function envExtraArgs(v = process.env.DEMO_EXTRA_ARGS) {
+  if (!v || !v.trim()) return [];
+  const t = v.trim();
+  if (t.startsWith("[")) return JSON.parse(t).map(String);
+  return t.split(/\s+/);
+}
 
 const stateFile = (name) => path.join(WORK_DIR, `${name}.chrome.json`);
 
@@ -58,7 +74,7 @@ async function portAlive(port) {
   }
 }
 
-export function chromeArgs({ port, profileDir, width, height }) {
+export function chromeArgs({ port, profileDir, width, height, extraArgs = [] }) {
   return [
     "--headless=new",
     `--remote-debugging-port=${port}`,
@@ -94,6 +110,7 @@ export function chromeArgs({ port, profileDir, width, height }) {
     "--disable-extensions",
     "--disable-component-update",
     "--metrics-recording-only",
+    ...extraArgs,
     "about:blank",
   ];
 }
@@ -101,12 +118,17 @@ export function chromeArgs({ port, profileDir, width, height }) {
 /**
  * Starts the named Chrome detached (it outlives this script) unless one is already listening on
  * its port, then connects. `fresh` wipes the profile first (new learner, empty localStorage).
+ * `extraArgs` (default: DEMO_EXTRA_ARGS, else none) are added to the flags when Chrome is started.
  */
-export async function launchChrome(name = "main", { fresh = false, port, width, height } = {}) {
+export async function launchChrome(
+  name = "main",
+  { fresh = false, port, width, height, extraArgs } = {},
+) {
   const base = PROFILES[name] ?? PROFILES.main;
   port ??= base.port;
   width ??= base.width;
   height ??= base.height;
+  extraArgs ??= envExtraArgs();
   mkdirSync(WORK_DIR, { recursive: true });
   const profileDir = path.join(WORK_DIR, `profile-${name}`);
   if (fresh) {
@@ -114,7 +136,7 @@ export async function launchChrome(name = "main", { fresh = false, port, width, 
   }
   if (!(await portAlive(port))) {
     mkdirSync(profileDir, { recursive: true });
-    const child = spawn(CHROME_BIN, chromeArgs({ port, profileDir, width, height }), {
+    const child = spawn(CHROME_BIN, chromeArgs({ port, profileDir, width, height, extraArgs }), {
       detached: true,
       stdio: "ignore",
     });
@@ -122,7 +144,16 @@ export async function launchChrome(name = "main", { fresh = false, port, width, 
     writeFileSync(
       stateFile(name),
       JSON.stringify(
-        { name, pid: child.pid, port, profileDir, width, height, startedAt: Date.now() },
+        {
+          name,
+          pid: child.pid,
+          port,
+          profileDir,
+          width,
+          height,
+          extraArgs,
+          startedAt: Date.now(),
+        },
         null,
         1,
       ),
@@ -330,6 +361,7 @@ if (isMain) {
         `:${p.port}`,
         (await portAlive(p.port)) ? "running" : "stopped",
         readState(n)?.profileDir ?? "",
+        readState(n)?.extraArgs?.length ? readState(n).extraArgs.join(" ") : "",
       );
   } else if (cmd === "gpu") {
     const b = await connectChrome(PROFILES[name]?.port ?? 9555);

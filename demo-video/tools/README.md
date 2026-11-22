@@ -115,7 +115,11 @@ the way desktop Chrome behaves (default on; `browser.page({ lockShim: false })` 
 - `launchChrome(name = "main", { fresh })` → `Browser`. Starts Chrome detached (it outlives the
   script) unless already up. Viewport is verified/fixed to exactly 1920x1080 at DPR 1 (`bot`:
   1280x720). Flags: GPU (ANGLE Metal), fake media, autoplay without gesture, mute, no background
-  throttling, mock keychain (no macOS keychain prompt).
+  throttling, mock keychain (no macOS keychain prompt). `extraArgs: [...]` (or the env var
+  `DEMO_EXTRA_ARGS`, whitespace-separated or a JSON array) adds flags when that call starts Chrome,
+  e.g. `--use-file-for-fake-video-capture=/abs/selfie.y4m` for a fake camera playing a file; a
+  running Chrome is reused as is, so `stop <name>` (no `--wipe`) first. `demo` (:9557) is group B's
+  /demo profile.
 - `browser.page({ lockShim })` → the main tab (remembered by id, so every script gets the same
   tab and session; stray blank tabs are closed).
 - `browser.newContext()` → id of an isolated browser context (own cookies/storage) in the same
