@@ -39,6 +39,11 @@ apps/web/public/mediapipe/
 # generated: single-line font copied from node_modules (apps/web/scripts/copy-assets.mjs)
 apps/web/public/fonts/ems-tech.svg
 
+# Demo video media stays local (SCRIPT.md, STORYBOARD.md, README.md and tools/ are tracked)
+demo-video/clips/
+demo-video/frames/
+demo-video/*.mp4
+
 # Blender auto-backups
 *.blend1
 

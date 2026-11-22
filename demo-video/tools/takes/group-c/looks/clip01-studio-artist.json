@@ -1,0 +1,38 @@
+{
+  "state": {
+    "displayName": "Alex",
+    "avatar": {
+      "v": 2,
+      "build": 0,
+      "height": -0.3,
+      "skin": "porcelain",
+      "face": "round",
+      "eyes": "sparkle",
+      "eyeColor": "green",
+      "brows": "soft",
+      "browColor": "copper",
+      "mouth": "smile",
+      "lipColor": "coral",
+      "nose": "button",
+      "hair": "spacebuns",
+      "hairColor": "lavender",
+      "hairAccent": "lilac",
+      "top": "cardigan",
+      "topColor": "mustard",
+      "topAccent": "white",
+      "bottom": "skirt",
+      "bottomColor": "plum",
+      "shoes": "boots",
+      "shoesColor": "charcoal",
+      "accessoryColor": "rose",
+      "metal": "rose_gold",
+      "accessories": ["earrings", "hair_clip"],
+      "details": ["freckles", "blush"]
+    },
+    "savedAt": 1795307880702,
+    "headMode": "chibi",
+    "facePhoto": null,
+    "liveFace": false
+  },
+  "version": 3
+}

@@ -1,0 +1,30 @@
+BIO 130 - Lecture 14 notes: The electron transport chain (ETC)
+
+Where it happens
+- The ETC is the last stage of aerobic cellular respiration.
+- In eukaryotes it sits in the inner mitochondrial membrane. The folds of that membrane (cristae) give it a lot of surface area.
+- Before the ETC: glycolysis (cytoplasm) and the Krebs cycle (mitochondrial matrix) load the electron carriers NADH and FADH2.
+
+The chain itself
+- Four protein complexes, I to IV, plus two mobile carriers: ubiquinone (coenzyme Q) and cytochrome c.
+- NADH drops its electrons off at Complex I. FADH2 drops its electrons off at Complex II, so it skips Complex I.
+- Electrons move from carrier to carrier in a series of redox reactions, each step releasing a little energy.
+- Complexes I, III and IV use that energy to pump protons (H+) from the matrix into the intermembrane space.
+- Complex II does not pump protons. This is one reason FADH2 yields less ATP than NADH.
+
+Oxygen's job
+- Oxygen is the final electron acceptor. At Complex IV it takes the electrons and combines with protons to form water.
+- No oxygen means nowhere for the electrons to go: the chain backs up, NADH cannot be recycled, and most ATP production stops.
+- Cyanide blocks Complex IV, which is why it is so deadly.
+
+Making ATP (chemiosmosis)
+- Pumping protons builds an electrochemical gradient across the inner membrane (the proton-motive force).
+- Protons flow back into the matrix through ATP synthase, which works like a turbine.
+- ATP synthase uses that flow to join ADP and phosphate into ATP. This is called oxidative phosphorylation.
+- Oxidative phosphorylation makes most of the ATP from one glucose: roughly 26 to 28 of the 30 to 32 total.
+
+Things to remember for the midterm
+- The ETC itself does not make ATP. It builds the proton gradient; ATP synthase makes the ATP.
+- Electron carriers: NADH and FADH2 in, NAD+ and FAD out.
+- Final electron acceptor: oxygen. Product: water.
+- Uncouplers (like the protein thermogenin in brown fat) let protons leak back without passing through ATP synthase, so the energy is released as heat instead of ATP.
