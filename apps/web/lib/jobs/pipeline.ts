@@ -123,7 +123,7 @@ const sortRecorded = (list: LessonAudioRef[]) => [...list].sort((a, b) => a.scen
 export async function runLessonJob(
   control: JobControl,
   deps: PipelineDeps,
-): Promise<{ audio: LessonAudioRef[]; progress: string }> {
+): Promise<{ audio: LessonAudioRef[]; progress: string; voiceRefused?: number }> {
   const { job } = control;
   const storage = deps.storage;
   const guard = () => {
@@ -212,7 +212,13 @@ export async function runLessonJob(
 
   // 3. Narration, one stored MP3 per scene.
   let recorded = fresh ? [] : sortRecorded(job.checkpoint.recorded ?? []);
-  let narration = true;
+  // Why narration stopped, if it did. The lesson still finishes: for a scene without a stored
+  // clip the player asks for live narration and, if the voice is still down, reads it with the
+  // browser's voice (lib/learning-studio/useNarration.ts), so a voice that's down never costs
+  // the student the lesson.
+  let noVoice: string | null = null;
+  /** The voice account's refusal (401/402), for the worker log. */
+  let refused: number | null = null;
   if (recorded.length < total) {
     await step("generating_audio", `Recorded ${recorded.length} of ${total} scenes`);
     for (const [index, scene] of lesson.scenes.entries()) {
@@ -228,7 +234,15 @@ export async function runLessonJob(
           tts = await deps.synthesize(scene.narration);
         } catch (err) {
           if (err instanceof TtsNotConfiguredError) {
-            narration = false;
+            noVoice = "the voice isn't set up on the server";
+            break;
+          }
+          // 401/402: the voice account refused (out of credits, or the key is no longer valid).
+          // Trying again won't help until someone fixes the account.
+          const code = (err as { status?: number }).status;
+          if (code === 401 || code === 402) {
+            noVoice = "the narration voice isn't available right now";
+            refused = code;
             break;
           }
           throw err;
@@ -263,10 +277,13 @@ export async function runLessonJob(
     throw new JobFailure(`Some of the lesson's files didn't reach ${where(storage.driver)}.`, true);
   }
   const clips = recorded.length;
-  const progress = narration
-    ? `Saved the lesson and ${clips} narration ${clips === 1 ? "clip" : "clips"} to ${where(storage.driver)}`
-    : `Saved the lesson to ${where(storage.driver)} (no narration: the voice isn't set up on the server)`;
-  return { audio: recorded, progress };
+  const some = `${clips} narration ${clips === 1 ? "clip" : "clips"}`;
+  const progress = !noVoice
+    ? `Saved the lesson and ${some} to ${where(storage.driver)}`
+    : clips
+      ? `Saved the lesson and ${some} to ${where(storage.driver)} (no narration for the rest: ${noVoice})`
+      : `Saved the lesson to ${where(storage.driver)} (no narration: ${noVoice})`;
+  return { audio: recorded, progress, ...(refused && { voiceRefused: refused }) };
 }
 
 /** A safe message and whether trying again could help. Logs keep the detail, never secrets. */
@@ -348,7 +365,9 @@ export async function processClaimedJob(
   try {
     const result = await runLessonJob(control, deps);
     await completeJob(sql, job, result);
-    log(`job ${job.id} completed (${result.audio.length} clips)`);
+    log(
+      `job ${job.id} completed (${result.audio.length} clips)${result.voiceRefused ? `; narration stopped: ElevenLabs ${result.voiceRefused}` : ""}`,
+    );
     return "completed";
   } catch (err) {
     if (err instanceof LeaseLostError || (lost && err instanceof JobStopped)) {

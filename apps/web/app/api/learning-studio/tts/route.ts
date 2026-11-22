@@ -18,6 +18,13 @@ export async function POST(request: Request) {
   try {
     return Response.json(await synthesize(text));
   } catch (err) {
+    // The voice account refused (out of credits, or the key is no longer valid): answer 503 so
+    // the player stops asking for this page's visit and reads with the browser's voice instead.
+    const status = (err as { status?: number }).status;
+    if (status === 401 || status === 402) {
+      console.warn(`[learning-studio/tts] narration voice refused (${status})`);
+      return errorResponse("not_configured", "The narration voice isn't available right now.", 503);
+    }
     return studioErrorResponse(err, "tts");
   }
 }

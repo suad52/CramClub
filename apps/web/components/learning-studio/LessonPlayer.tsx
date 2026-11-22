@@ -239,7 +239,8 @@ export function Question({
   );
   const quote = q.quote && (
     <p className={`${s.smallGap} ${s.answer}`}>
-      <span className="font-display font-semibold">{QUOTE_LABEL[quoteFrom]}</span> “{q.quote}”
+      <span className="font-display font-semibold">{QUOTE_LABEL[q.quoteFrom ?? quoteFrom]}</span> “
+      {q.quote}”
     </p>
   );
   const badge = (q.check === "verified" || q.check === "fixed") && (

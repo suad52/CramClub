@@ -25,6 +25,8 @@ export interface BubblePlace {
   y: number;
   size: number;
   opacity: number;
+  /** Drawn over the scenery (no depth test) this frame. */
+  overlay?: boolean;
 }
 
 /** A bubble canvas pixel is drawn this many name-tag pixels tall, so its words read like a name. */
@@ -89,7 +91,10 @@ export function SpeechBubble({
     const h = p.size * HEIGHT_PER_TAG;
     s.scale.set(h * ASPECT, h, 1);
     s.position.y = p.y;
-    (s.material as SpriteMaterial).opacity = p.opacity;
+    const m = s.material as SpriteMaterial;
+    m.opacity = p.opacity;
+    // A render-time state, so it can change frame to frame without recompiling the material.
+    m.depthTest = !p.overlay;
     s.visible = true;
   });
 
@@ -106,6 +111,16 @@ const MIN_M = 0.16;
 const MAX_M = 0.8;
 const FADE_FROM = 18;
 const FADE_TO = 28;
+/**
+ * From the hall floor in front of her desk, the LIBRARIAN sign and a pendant lamp (about 1 m
+ * nearer than her, hanging at bubble height) cut words out of her bubble, so there it's drawn
+ * over the scenery. Only there: below the north gallery's underside (y 4.2), in front of the
+ * sign (1.2 m nearer than her) and between the side aisles (x ±7.4). Elsewhere it keeps the depth
+ * test, so it never shows through the gallery floor above her or the stacks.
+ */
+const OVER_BELOW_Y = 4.2;
+const OVER_FRONT_M = 1.2;
+const OVER_HALF_WIDTH = 7.4;
 
 /** Ms. Fenwick's chat bubble, above her head behind the desk. */
 export function FenwickBubble() {
@@ -120,6 +135,9 @@ export function FenwickBubble() {
     const d = camera.position.distanceTo(g.position);
     const p = place.current;
     p.size = MathUtils.clamp(d * PER_METRE, MIN_M, MAX_M);
+    const c = camera.position;
+    p.overlay =
+      c.y < OVER_BELOW_Y && c.z > eye.z + OVER_FRONT_M && Math.abs(c.x - eye.x) < OVER_HALF_WIDTH;
     // Not over her face in the conversation close-up (her panel has the words then).
     p.opacity = librarianPresence.open
       ? 0

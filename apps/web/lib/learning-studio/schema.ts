@@ -89,6 +89,11 @@ export const InteractionSchema = z
     /** Up to QUOTE_MAX_WORDS words copied word for word from the source, backing the answer. */
     quote: z.string().trim().max(200).optional(),
     /**
+     * Where this question's quote comes from, when a lesson mixes the student's notes with web
+     * pages (lib/learning-studio/quizCheck.ts labelNotesQuotes). Unset: the lesson's quizCheck.from.
+     */
+    quoteFrom: z.enum(["notes", "sources"]).optional(),
+    /**
      * Set by the self-check only: "verified" (an independent re-answer agreed), "fixed" (re-keyed
      * to the answer the source backs) or "unsure" (kept, flagged, so the lesson still has a check).
      */
@@ -238,7 +243,10 @@ export function parseLesson(data: unknown, totalPages: number): Lesson {
     if (seen.has(id)) id = `${id}-${i + 1}`;
     seen.add(id);
     const interaction = s.interaction && { ...s.interaction };
-    if (interaction) delete interaction.check;
+    if (interaction) {
+      delete interaction.check;
+      delete interaction.quoteFrom;
+    }
     return {
       ...s,
       id,

@@ -16,6 +16,7 @@ import { exitPointerLock, requestPointerLock } from "@/lib/game/pointer";
 import { formatClock, isFocusing, remainingMs, usePomodoro } from "@/lib/game/pomodoro";
 import { isLessonOverlayOpen, useBoardLessons } from "@/lib/learning-studio/boardLessons";
 import { useWhiteboardStore } from "@/lib/whiteboard/store";
+import { useChat } from "@/lib/chat/store";
 import { CONTROLS } from "@/lib/game/controls";
 import { DEFAULT_SETTINGS, type Quality, useGameStore } from "@/lib/game/store";
 import { CameraDot, CheckBox } from "./ExpressionTracking";
@@ -131,6 +132,9 @@ export function ClickToLook() {
   const librarianOpen = useGameStore((s) => s.librarianOpen);
   const boardOpen = useWhiteboardStore((s) => s.openId !== null);
   const lessonOpen = useBoardLessons((s) => s.fullscreen || s.pickerBoardId !== null);
+  // The library chat frees the mouse too, but stays open while you walk: clicking the hall must
+  // still capture the mouse then, so only the sticker goes (it sat over the hall while you typed).
+  const chatOpen = useChat((s) => s.open);
   const phase = useGameStore((s) => s.phase);
   const panelOpen =
     menuOpen || guideOpen || progressOpen || librarianOpen || boardOpen || lessonOpen;
@@ -152,7 +156,7 @@ export function ClickToLook() {
       className={`absolute inset-0 z-[5] flex items-center justify-center ${lockFailed ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
       aria-label={lockFailed ? "Drag to look around" : "Click to look around"}
     >
-      {lockFailed ? (
+      {chatOpen ? null : lockFailed ? (
         <span className={`${LOOK_HINT} absolute bottom-24 left-1/2 -translate-x-1/2`}>
           Hold the mouse button and drag to look around
         </span>

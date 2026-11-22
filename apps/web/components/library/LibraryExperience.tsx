@@ -149,7 +149,9 @@ export default function LibraryExperience() {
     s.setNearbyBoard(null);
     s.setNearbyLibrarian(false);
     s.setMenuOpen(false);
-    s.setGuideOpen(false);
+    // Closed without marking it seen (setGuideOpen(false) does that): the swoop opens it for a
+    // first visit (CameraRig).
+    useGameStore.setState({ guideOpen: false });
     s.setProgressOpen(false);
     s.setLibrarianOpen(false);
     s.setDevicesOpen(false);

@@ -87,6 +87,7 @@ rsync -az --delete \
   --exclude '.auth0-mcp-*' \
   --exclude '/art/' \
   --exclude '/plan_*.png' \
+  --exclude '/demo-video/' \
   -e "$RSH" \
   "$ROOT/" "$REMOTE:$DEPLOY_DIR/"
 

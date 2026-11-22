@@ -35,7 +35,7 @@ import {
 } from "@/lib/demo/settings";
 import { shushNow } from "@/lib/focus/watch";
 import { getSeat } from "@/lib/game/actions";
-import { type PomodoroState, lengthWord, usePomodoro } from "@/lib/game/pomodoro";
+import { type PomodoroState, isFocusing, lengthWord, usePomodoro } from "@/lib/game/pomodoro";
 import { useGameStore } from "@/lib/game/store";
 import { JOB_STATUS_LABELS } from "@/lib/jobs/types";
 import {
@@ -116,53 +116,64 @@ function DemoRibbon() {
     (s) => s.librarianOpen || s.progressOpen || s.studioOpen || s.menuOpen || s.guideOpen,
   );
   const { account } = useAccount();
+  // A pomodoro's desk view looks straight across at Theo, right under the ribbon: the keys move
+  // to the right-hand side then, still open (Finish now and Shush me are needed mid-pomodoro).
+  const focusing = usePomodoro(isFocusing);
   const playing = ready && phase === "playing";
+  const showPanel = playing && panelOpen && !covered;
   if (!ready || phase === "creator") return null;
   return (
-    <div className="pointer-events-none absolute top-4 left-1/2 z-[12] flex w-[29rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col items-center gap-2">
-      <div className={`${HUD_CHIP} pointer-events-auto flex items-center gap-1.5 p-1`}>
-        <span className="inline-flex -rotate-2 items-center gap-1.5 rounded-full border-2 border-black/80 bg-sun px-2.5 py-0.5 text-[13px] font-bold whitespace-nowrap text-walnut shadow-[0_2px_0_rgb(0_0_0/0.55)]">
-          <span
-            aria-hidden
-            className="h-2 w-2 rounded-full border-[1.5px] border-walnut bg-tangerine"
-          />
-          Demo mode
-        </span>
-        {playing && (
+    <>
+      <div className="pointer-events-none absolute top-4 left-1/2 z-[12] flex w-[29rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col items-center gap-2">
+        <div className={`${HUD_CHIP} pointer-events-auto flex items-center gap-1.5 p-1`}>
+          <span className="inline-flex -rotate-2 items-center gap-1.5 rounded-full border-2 border-black/80 bg-sun px-2.5 py-0.5 text-[13px] font-bold whitespace-nowrap text-walnut shadow-[0_2px_0_rgb(0_0_0/0.55)]">
+            <span
+              aria-hidden
+              className="h-2 w-2 rounded-full border-[1.5px] border-walnut bg-tangerine"
+            />
+            Demo mode
+          </span>
+          {playing && (
+            <button
+              type="button"
+              aria-expanded={panelOpen}
+              aria-controls="demo-controls"
+              onClick={() => useDemo.setState({ panelOpen: !panelOpen })}
+              className={`${CHIP_BTN} bg-walnut-key text-walnut-text hover:bg-[#4a423b]`}
+            >
+              Controls
+              <IconChevronDown
+                size={14}
+                strokeWidth={2.75}
+                className={`transition-transform duration-150 motion-reduce:transition-none ${panelOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+          )}
+          {account?.configured && !account.signedIn && (
+            <a
+              href={loginHref("/demo")}
+              className={`${CHIP_BTN} bg-walnut-key text-walnut-text hover:bg-[#4a423b]`}
+            >
+              Sign in
+            </a>
+          )}
           <button
             type="button"
-            aria-expanded={panelOpen}
-            aria-controls="demo-controls"
-            onClick={() => useDemo.setState({ panelOpen: !panelOpen })}
-            className={`${CHIP_BTN} bg-walnut-key text-walnut-text hover:bg-[#4a423b]`}
+            onClick={exitDemo}
+            className={`${CHIP_BTN} bg-cream text-walnut hover:bg-surface`}
           >
-            Controls
-            <IconChevronDown
-              size={14}
-              strokeWidth={2.75}
-              className={`transition-transform duration-150 motion-reduce:transition-none ${panelOpen ? "rotate-180" : ""}`}
-            />
+            <IconClose size={14} strokeWidth={2.75} />
+            Exit demo
           </button>
-        )}
-        {account?.configured && !account.signedIn && (
-          <a
-            href={loginHref("/demo")}
-            className={`${CHIP_BTN} bg-walnut-key text-walnut-text hover:bg-[#4a423b]`}
-          >
-            Sign in
-          </a>
-        )}
-        <button
-          type="button"
-          onClick={exitDemo}
-          className={`${CHIP_BTN} bg-cream text-walnut hover:bg-surface`}
-        >
-          <IconClose size={14} strokeWidth={2.75} />
-          Exit demo
-        </button>
+        </div>
+        {showPanel && !focusing && <DemoPanel />}
       </div>
-      {playing && panelOpen && !covered && <DemoPanel />}
-    </div>
+      {showPanel && focusing && (
+        <div className="pointer-events-none absolute top-20 right-4 z-[12] flex w-[29rem] max-w-[calc(100vw-2rem)] flex-col">
+          <DemoPanel />
+        </div>
+      )}
+    </>
   );
 }
 

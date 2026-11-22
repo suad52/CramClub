@@ -8,12 +8,13 @@ import {
   describeQuizCheck,
   groundQuote,
   indexSource,
+  labelNotesQuotes,
   parseVerdicts,
   quizCheckNote,
   quizCheckPrompt,
   quizItems,
 } from "./quizCheck";
-import { type Interaction, type Lesson, LessonSchema } from "./schema";
+import { type Interaction, type Lesson, LessonSchema, parseLesson } from "./schema";
 
 // The one Gemini call is faked: no test ever reaches the real API.
 const gemini = vi.hoisted(() => ({ generateContent: vi.fn() }));
@@ -329,5 +330,60 @@ describe("checkLessonQuiz (one Gemini call, faked)", () => {
     const out = await checkLessonQuiz(l, NOTES, { from: "notes" });
     expect(gemini.generateContent).not.toHaveBeenCalled();
     expect(out.quizCheck).toMatchObject({ checked: false, questions: 0 });
+  });
+});
+
+describe("labelNotesQuotes (a lesson made from the student's notes)", () => {
+  const checked = () => applyQuizCheck(twoQuestions(), null, NOTES, "sources");
+  const WEB = ["Oxygen is the final electron acceptor at the end of the chain in mitochondria."];
+  const quoteFrom = (l: Lesson) => [
+    l.scenes[1]!.interaction!.quoteFrom,
+    l.scenes[4]!.interaction!.quoteFrom,
+  ];
+
+  it("notes alone: every quote and the whole check read 'your notes'", () => {
+    const lesson = checked();
+    const before = clone(lesson);
+    const out = labelNotesQuotes(lesson, NOTES, 0);
+    expect(lesson).toEqual(before); // never mutated
+    expect(out.quizCheck?.from).toBe("notes");
+    expect(
+      quoteFrom(out)
+        .filter(Boolean)
+        .every((f) => f === "notes"),
+    ).toBe(true);
+  });
+
+  it("notes plus web pages: each quote says where it is; the check stays 'the sources'", () => {
+    const lesson = checked();
+    lesson.scenes[4]!.interaction!.quote = "Oxygen is the final electron acceptor at the end";
+    const out = labelNotesQuotes(lesson, NOTES, WEB.length);
+    expect(out.quizCheck?.from).toBe("sources"); // it was checked against both
+    expect(out.scenes[4]!.interaction!.quoteFrom).toBe("sources");
+    const notesQuote = out.scenes[1]!.interaction!;
+    if (notesQuote.quote) expect(notesQuote.quoteFrom).toBe("notes");
+  });
+
+  it("a quote cut with an ellipsis still counts as the notes'", () => {
+    const lesson = checked();
+    const words = NOTES.join(" ").split(/\s+/).slice(0, 26);
+    lesson.scenes[4]!.interaction!.quote = `${words.slice(0, 20).join(" ")}…`;
+    expect(labelNotesQuotes(lesson, NOTES, 1).scenes[4]!.interaction!.quoteFrom).toBe("notes");
+  });
+
+  it("leaves questions without a quote, and a lesson without a check, unlabelled", () => {
+    const bare = twoQuestions();
+    for (const sc of bare.scenes) if (sc.interaction) delete sc.interaction.quote;
+    const out = labelNotesQuotes(bare, NOTES, 0);
+    expect(quoteFrom(out)).toEqual([undefined, undefined]);
+    expect(out.quizCheck).toBeUndefined();
+  });
+
+  it("is never kept from the generator itself", () => {
+    const raw = clone(SAMPLE_LESSON) as unknown as {
+      scenes: { interaction?: { quoteFrom?: string } }[];
+    };
+    raw.scenes[4]!.interaction!.quoteFrom = "notes";
+    expect(parseLesson(raw, 3).scenes[4]!.interaction!.quoteFrom).toBeUndefined();
   });
 });

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type postgres from "postgres";
 import { isTransient } from "@/lib/ai/gemini";
 import { authConfigured } from "@/lib/auth/auth0";
+import { labelNotesQuotes } from "@/lib/learning-studio/quizCheck";
 import { checkLessonQuiz, generateLesson } from "@/lib/learning-studio/server";
 import type { Level } from "@/lib/learning-studio/schema";
 import { DAILY_CAPS, LIBRARY_TIME_ZONE as TZ, XP, subjectSlug } from "@/lib/learning/rules";
@@ -1161,8 +1162,15 @@ async function syncCloudLesson(
   await setStatus(sql, id, "completed", {
     lesson: sql.json(lesson as never),
     lesson_sources: sql.json(lessonSources),
-    reply: `Your lesson “${lesson.title}” is ready: ${lesson.scenes.length} scenes, made in the library's cloud${v.audio.length ? " with its narration recorded" : ""}.`,
+    reply: `Your lesson “${lesson.title}” is ready: ${lesson.scenes.length} scenes, made in the library's cloud${narrated(v.audio.length, lesson.scenes.length)}.`,
   });
+}
+
+/** The end of the Librarian's "lesson ready" line: how much of it has recorded narration. */
+function narrated(clips: number, scenes: number): string {
+  if (!clips) return "";
+  if (clips >= scenes) return " with its narration recorded";
+  return ` with narration recorded for ${clips} of ${scenes} scenes (your browser reads the rest)`;
 }
 
 const LEVELS: Level[] = ["beginner", "high-school", "university", "advanced"];
@@ -1222,7 +1230,9 @@ async function runLesson(sql: Sql, userId: string, id: string, planItemId: strin
     // The same quiz self-check as the Learning Studio and cloud lessons: one more call that
     // re-answers the questions from these pages alone; it never throws (the quiz ships as
     // written if it can't run).
-    const lesson = await checkLessonQuiz(drafted, pages, { from: "sources" });
+    const checked = await checkLessonQuiz(drafted, pages, { from: "sources" });
+    // A quote from the student's own notes reads "From your notes", not "From the sources".
+    const lesson = fromNotes ? labelNotesQuotes(checked, notePages, webPages.length) : checked;
     if (await cancelled(sql, id)) return;
     const lessonSources = [
       ...parts.map((p, i) => ({ page: i + 1, title: notesLabel(p), url: "", text: notePages[i]! })),

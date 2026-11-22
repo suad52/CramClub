@@ -247,6 +247,9 @@ function providers(
   storage: ObjectStorage,
   o: {
     ttsFailAt?: number;
+    /** The voice account refuses from this call on (ElevenLabs: 401 quota_exceeded, or 402). */
+    ttsOutAt?: number;
+    ttsOutStatus?: number;
     noTts?: boolean;
     lesson?: Lesson;
     verdicts?: Map<number, Verdict> | null;
@@ -290,6 +293,8 @@ function providers(
     async synthesize(text) {
       calls.tts++;
       if (o.noTts) throw new TtsNotConfiguredError("not set");
+      if (o.ttsOutAt !== undefined && calls.tts >= o.ttsOutAt)
+        throw Object.assign(new Error("ElevenLabs refused"), { status: o.ttsOutStatus ?? 401 });
       if (o.ttsFailAt === calls.tts)
         throw Object.assign(new Error("ElevenLabs 503"), { status: 503 });
       return {
@@ -461,6 +466,27 @@ describe("lesson pipeline", () => {
     const done = (await getLessonJob(db.sql, ADA, view.id))!.view;
     expect(done.audio).toEqual([]);
     expect(done.progress).toMatch(/no narration/);
+  });
+
+  it("finishes with the clips it has when the voice runs out of credits", async () => {
+    const view = await enqueue();
+    const out = providers(storage, { ttsOutAt: 2 });
+    expect(await processClaimedJob(db.sql, await claim(), out.deps)).toBe("completed");
+    expect(out.calls.tts).toBe(2);
+    const done = (await getLessonJob(db.sql, ADA, view.id))!.view;
+    expect(done.audio.map((a) => a.scene)).toEqual([0]);
+    expect(done.progress).toMatch(/no narration for the rest: the narration voice isn't available/);
+  });
+
+  it("finishes with no narration when the voice refuses from the first scene (402)", async () => {
+    const view = await enqueue();
+    const out = providers(storage, { ttsOutAt: 1, ttsOutStatus: 402 });
+    expect(await processClaimedJob(db.sql, await claim(), out.deps)).toBe("completed");
+    const done = (await getLessonJob(db.sql, ADA, view.id))!.view;
+    expect(done.audio).toEqual([]);
+    expect(done.progress).toMatch(
+      /\(no narration: the narration voice isn't available right now\)/,
+    );
   });
 
   it("fails with TinyFish's own safe message, and stops when the lease is lost", async () => {

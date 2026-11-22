@@ -298,3 +298,30 @@ export function quizCheckNote(c: QuizCheck | undefined): string | null {
   // wasn't found wrong, so it isn't counted as failing to hold up.
   return `The quiz was double-checked against ${src}: ${confirmed} of ${looked(c)} answers held up${aside}.`;
 }
+
+/**
+ * A lesson made from the student's notes (lib/librarian/server/tasks.ts runLesson), whose quiz
+ * was checked over the notes plus any web pages found for what they cover thinly, so the check
+ * ran with `from: "sources"`. Each quote is labelled by where it really is ("From your notes" or
+ * "From the sources"), and when no web pages were used at all, the whole check was against the
+ * notes, so the lesson's own label (and quizCheckNote's wording) says so too. Never mutates.
+ */
+export function labelNotesQuotes(
+  lesson: Lesson,
+  notePages: readonly string[],
+  webPages: number,
+): Lesson {
+  const notes = indexSource(notePages);
+  const scenes = lesson.scenes.map((s) => {
+    const q = s.interaction;
+    if (!q?.quote) return s;
+    const quoteFrom = groundQuote(q.quote, notes) !== undefined ? "notes" : "sources";
+    return { ...s, interaction: { ...q, quoteFrom } } satisfies Scene;
+  });
+  const onlyNotes = webPages === 0 && lesson.quizCheck;
+  return {
+    ...lesson,
+    scenes,
+    ...(onlyNotes && { quizCheck: { ...lesson.quizCheck!, from: "notes" as const } }),
+  };
+}
