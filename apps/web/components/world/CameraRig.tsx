@@ -5,7 +5,8 @@ import { useEffect, useRef } from "react";
 import { MathUtils, Matrix4, type PerspectiveCamera, Quaternion, Vector3 } from "three";
 import { CAMERA, LIBRARIAN, PLAYER, isCameraBlocked, wrapAngle } from "@ovr/shared";
 import { chatHasFocus } from "@/lib/chat/keys";
-import { getSeat, isBoardOpen } from "@/lib/game/actions";
+import { getSeat, isBoardOpen, isTimerPanelOpen } from "@/lib/game/actions";
+import { recaptureForWalking } from "@/lib/game/mouse";
 import { registerCanvas } from "@/lib/game/pointer";
 import { runtime } from "@/lib/game/runtime";
 import { useGameStore } from "@/lib/game/store";
@@ -258,27 +259,39 @@ export function CameraRig() {
       const store = useGameStore.getState();
       store.setPointerLocked(locked);
       // Esc releases the pointer: treat that as "pause" (but not when Shift freed the cursor, or
-      // when the lesson picker, a full-screen lesson, My Progress, the Librarian or the chat box
-      // took the mouse).
+      // sitting down did, or when the lesson picker, a full-screen lesson, My Progress, the
+      // Librarian, the chat box or a card such as "Give up Table 6?" took the mouse).
       if (
         !locked &&
+        !store.seatId &&
         !store.guideOpen &&
         !store.progressOpen &&
         !store.studioOpen &&
         !store.librarianOpen &&
         !store.cursorFree &&
         !isLessonOverlayOpen() &&
+        !isTimerPanelOpen() &&
         !chatHasFocus()
       )
         store.setMenuOpen(true);
       if (locked) store.setMenuOpen(false);
     };
+    // Seated, the mouse is the table's (lib/game/mouse.ts): sitting down lets it go, so the timer
+    // and the table's cards can be clicked straight away (drag the view to look around), and
+    // standing up captures it again for walking.
+    const offSeat = useGameStore.subscribe((s, prev) => {
+      if (!!s.seatId === !!prev.seatId) return;
+      if (s.seatId) {
+        if (document.pointerLockElement === el) document.exitPointerLock();
+      } else recaptureForWalking();
+    });
     document.addEventListener("mousedown", onDown);
     document.addEventListener("mouseup", onUp);
     document.addEventListener("mousemove", onMove);
     document.addEventListener("wheel", onWheel, { passive: true });
     document.addEventListener("pointerlockchange", onLockChange);
     return () => {
+      offSeat();
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("mouseup", onUp);
       document.removeEventListener("mousemove", onMove);

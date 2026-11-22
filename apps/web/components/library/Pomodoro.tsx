@@ -21,6 +21,7 @@ import {
   TITLE,
 } from "@/components/ui/styles";
 import { focusOnDesk, onSeatLockNudge, setTimerPanelOpen, standUp } from "@/lib/game/actions";
+import { useFreeMouse } from "@/lib/game/mouse";
 import { exitPointerLock, requestPointerLock } from "@/lib/game/pointer";
 import {
   AWAY_GRACE_MS,
@@ -1199,6 +1200,8 @@ function useSeatLockToast() {
 function NoticeCard() {
   const notice = usePomodoro((s) => s.notice);
   const card = noticeView(notice) === "card" ? notice : null;
+  // "Pomodoro lost" waits to be clicked, often after you've stood up: the mouse is free for it.
+  useFreeMouse("notice", card?.kind === "voided");
 
   useEffect(() => {
     if (!card || card.kind === "voided") return;

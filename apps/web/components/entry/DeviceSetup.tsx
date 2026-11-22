@@ -11,6 +11,7 @@ import { stopMicTest } from "@/lib/devices/micTest";
 import { useDevicePrefs } from "@/lib/devices/prefs";
 import { useDemo } from "@/lib/demo/mode";
 import { isTrackingActive, stopTracking, useTrackingStore } from "@/lib/facial-tracking/tracker";
+import { requestPointerLock } from "@/lib/game/pointer";
 import { useGameStore } from "@/lib/game/store";
 
 /**
@@ -35,12 +36,22 @@ export function DeviceSetup() {
   return <SetupScreen leaving={phase !== "setup"} />;
 }
 
-/** Go in: let the microphone go, keep the camera only if it's on, and swoop into the library. */
+/**
+ * Go in: let the microphone go, keep the camera only if it's on, and swoop into the library, in
+ * first person. Go in is a click or Enter, a user gesture, so the mouse is captured right here:
+ * the student can walk and look around the moment the swoop lands, with no "Click to look
+ * around" first. Mouse-look waits for "playing" (CameraRig), so the swoop itself isn't steered.
+ * If the browser refuses, the click-to-look sticker shows as before (quiet: no drag-look switch).
+ */
 function goIn() {
   stopMicTest();
   if (!isTrackingActive(useTrackingStore.getState().status)) stopTracking();
   useDevicePrefs.getState().markSetupDone();
-  useGameStore.getState().setPhase("entering");
+  const game = useGameStore.getState();
+  // Every visit starts looking out of your own eyes (V still switches to third person).
+  game.setCameraMode("first-person");
+  game.setPhase("entering");
+  requestPointerLock({ quiet: true });
 }
 
 /** Back to the title screen, with the camera and microphone off (the choices are kept). */

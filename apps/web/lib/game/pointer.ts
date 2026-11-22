@@ -1,3 +1,5 @@
+import { useGameStore } from "./store";
+
 /**
  * Pointer lock for mouse-look. The canvas registers itself here so HTML overlays (the
  * "click to look around" layer, the Resume button) can lock the pointer from their own clicks,
@@ -19,6 +21,8 @@ export function registerCanvas(el: HTMLCanvasElement | null, failed?: () => void
  */
 export function requestPointerLock({ quiet = false }: { quiet?: boolean } = {}) {
   if (!canvas || document.pointerLockElement === canvas) return;
+  // Seated, the mouse is the table's: it stays free (lib/game/mouse.ts).
+  if (useGameStore.getState().seatId) return;
   let reported = false;
   const fail = () => {
     if (reported || quiet) return;

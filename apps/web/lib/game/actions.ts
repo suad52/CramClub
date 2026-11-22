@@ -290,11 +290,15 @@ export function nudgeSeatLocked() {
 
 /**
  * The table timer's settings or "Leave the table?" dialog, which need a free mouse (and the
- * table hold's "who can join" choices, which work the same way).
+ * table hold's "who can join" choices and "Give up Table 6?", which work the same way). While one
+ * is open, letting go of the mouse is for it, not the player pausing (CameraRig).
  */
 const timerPanels = new Set<string>();
 
-export function setTimerPanelOpen(panel: "settings" | "leave" | "table", open: boolean) {
+/** The timer's panels, and the cards that have to be clicked (lib/game/mouse.ts useFreeMouse). */
+export type TimerPanel = "settings" | "leave" | "table" | "give-up" | "reserved" | "notice";
+
+export function setTimerPanelOpen(panel: TimerPanel, open: boolean) {
   if (open) timerPanels.add(panel);
   else timerPanels.delete(panel);
 }

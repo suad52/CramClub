@@ -12,6 +12,7 @@ import {
 import { BODY, BTN, FOCUS, HUD_CHIP, HUD_MUTED, PANEL, RIBBON } from "@/components/ui/styles";
 import { loginHref } from "@/lib/auth/links";
 import { getSeat, isBoardOpen, setTimerPanelOpen, standUp } from "@/lib/game/actions";
+import { useFreeMouse } from "@/lib/game/mouse";
 import { requestPointerLock } from "@/lib/game/pointer";
 import { formatClock } from "@/lib/game/pomodoro";
 import { useGameStore } from "@/lib/game/store";
@@ -61,8 +62,9 @@ import { EMAIL_INVITES_PER_HOLD, type TableInvitation, type TableStatus } from "
  * - Someone invited your verified email to their private table: a card says who, which table and
  *   until when, and "Show me" highlights the table's name (it doesn't walk you anywhere).
  *
- * Cards never take the mouse: with it captured, hold Shift to use their buttons (like the timer's
- * cards). Esc closes the top one while the mouse is free. In the judge demo (lib/demo) a hold is a
+ * Seated, the mouse is free (lib/game/mouse.ts), so the cards at your table can be clicked straight
+ * away; the ones that need an answer while you stand ("Table 6 is held", "Give up Table 6?") free
+ * it while they're up. Esc closes the top one while the mouse is free. In the judge demo (lib/demo) a hold is a
  * few minutes and its word comes a minute before the end (holdTextNow / warnMsNow).
  */
 
@@ -80,7 +82,6 @@ const W_CARD =
 const W_DIVIDE = "border-dashed border-walnut-text/20";
 const ENTER =
   "transition duration-200 ease-out starting:-translate-y-1.5 starting:opacity-0 motion-reduce:transition-none";
-const KEY_LIGHT = "kbd !h-5 !min-w-5 !px-1 !text-[0.68rem]";
 const STAMP =
   "absolute -top-5 -right-4 grid h-14 w-14 rotate-12 place-items-center rounded-full border-[3px] border-walnut text-walnut shadow-[0_4px_0_#1f1a16]";
 /** A big choice on the claim card: icon sticker, name, one line saying what it means. */
@@ -138,17 +139,6 @@ function IconMail({ size = 20, strokeWidth = 1.75 }: { size?: number; strokeWidt
 function listText(parts: string[]) {
   if (parts.length <= 2) return parts.join(" and ");
   return `${parts.slice(0, -1).join(", ")}, and ${parts.at(-1)}`;
-}
-
-/** "Hold Shift to use the buttons", while the mouse is captured for looking around. */
-function ShiftHint() {
-  const locked = useGameStore((s) => s.pointerLocked);
-  if (!locked) return null;
-  return (
-    <p className="mt-4 flex items-center justify-center gap-1.5 font-display text-xs font-medium text-ink-soft">
-      Hold <kbd className={KEY_LIGHT}>Shift</kbd> to use the buttons
-    </p>
-  );
 }
 
 /** Captures the mouse again for looking around (from a click), unless Shift is holding it free. */
@@ -408,7 +398,6 @@ function ClaimCard({ tableId }: { tableId: string }) {
           Not now
         </button>
       </div>
-      <ShiftHint />
     </section>
   );
 }
@@ -771,7 +760,6 @@ function SetupCard({ hold }: { hold: TableStatus }) {
       <button type="button" onClick={done} className={`${BTN.primary} mt-5 w-full`}>
         Done
       </button>
-      <ShiftHint />
     </section>
   );
 }
@@ -991,10 +979,10 @@ function LeaveTableDialog({ tableId }: { tableId: string }) {
   const left = useLeft(mine?.tableId === tableId ? mine : null);
   const minutes = Math.max(1, Math.ceil(left / 60_000));
 
-  const stay = () => {
-    cancelLeave();
-    recapture();
-  };
+  // Opened from E or a step while the mouse is captured: free it to be clicked. Standing up after
+  // "Give up" captures it again for walking; staying keeps it free at the table.
+  useFreeMouse("give-up", true);
+  const stay = () => cancelLeave();
   const giveUp = async () => {
     const then = useTables.getState().leaving?.then ?? null;
     // Even if the library can't be reached, they still get up (the hold then just runs out).
@@ -1052,6 +1040,7 @@ function LeaveTableDialog({ tableId }: { tableId: string }) {
 /** "Table 3 is reserved": a private table you can't use, and how to get in. */
 function ReservedCard() {
   const blocked = useTables((s) => s.blocked);
+  useFreeMouse("reserved", !!blocked);
   // Signed in, but Auth0 hasn't told us of a verified email (unverified, or an older sign-in).
   const noVerifiedEmail = useTables((s) => !!s.view?.signedIn && s.view.emailVerified === false);
   if (!blocked) return null;
@@ -1112,7 +1101,6 @@ function ReservedCard() {
           </a>
         )}
       </div>
-      <ShiftHint />
     </section>
   );
 }

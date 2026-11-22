@@ -136,9 +136,12 @@ export function ClickToLook() {
   // still capture the mouse then, so only the sticker goes (it sat over the hall while you typed).
   const chatOpen = useChat((s) => s.open);
   const phase = useGameStore((s) => s.phase);
+  // Seated, the mouse stays free for the table's buttons (lib/game/mouse.ts): no sticker over
+  // them, and dragging the view still looks around.
+  const seated = useGameStore((s) => !!s.seatId);
   const panelOpen =
     menuOpen || guideOpen || progressOpen || librarianOpen || boardOpen || lessonOpen;
-  if (!ready || phase !== "playing" || locked || panelOpen) return null;
+  if (!ready || phase !== "playing" || locked || seated || panelOpen) return null;
   if (cursorFree) {
     // Shift is held: get out of the way so every button can be clicked.
     return (

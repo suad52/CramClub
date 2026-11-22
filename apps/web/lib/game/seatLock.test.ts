@@ -72,4 +72,11 @@ describe("staying at the table during a pomodoro", () => {
     setTimerPanelOpen("leave", false);
     expect(isTimerPanelOpen()).toBe(false);
   });
+
+  it('counts "Give up Table 6?" too, so freeing the mouse for it isn\'t taken as pausing', () => {
+    setTimerPanelOpen("give-up", true);
+    expect(isTimerPanelOpen()).toBe(true);
+    setTimerPanelOpen("give-up", false);
+    expect(isTimerPanelOpen()).toBe(false);
+  });
 });
