@@ -9,6 +9,7 @@ import { BoardPanels } from "./BoardPanels";
 import { CameraRig } from "./CameraRig";
 import { Effects } from "./Effects";
 import { LibraryModel } from "./LibraryModel";
+import { TableLamps } from "./TableLamps";
 import { Dust, Lighting } from "./Lighting";
 import { LiveWhiteboards } from "./LiveWhiteboards";
 import { LocalPlayer } from "./LocalPlayer";
@@ -69,6 +70,8 @@ export function LibraryScene() {
         <LibraryModel quality={quality} />
         {/* Splits the rolling boards' panels out of the model so they can turn over. */}
         <BoardPanels />
+        {/* A table's lamps fade out while its board has a lesson, so the board can be seen. */}
+        <TableLamps />
         <ReadySignal />
       </Suspense>
       <Sky />
