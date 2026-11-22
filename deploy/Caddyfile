@@ -22,3 +22,11 @@
 		reverse_proxy web:3100
 	}
 }
+
+# REDIRECT_HOSTS (deploy.sh writes it, never empty): www.SITE_HOST, plus the old
+# <ip-with-dashes>.sslip.io address once SITE_HOST is a real domain. Each gets its own certificate
+# and sends visitors to the same path on SITE_HOST, so old links and typed "www." keep working.
+# Only SITE_HOST serves the app: one origin for Auth0, the CSRF check and the game server.
+{$REDIRECT_HOSTS} {
+	redir https://{$SITE_HOST}{uri} permanent
+}

@@ -47,6 +47,19 @@ if [[ ! "$SITE_HOST" =~ ^[A-Za-z0-9.-]+$ ]]; then
   exit 1
 fi
 
+# Hosts Caddy redirects to SITE_HOST (space-separated, never empty): the www. twin of SITE_HOST,
+# and the server's <ip-with-dashes>.sslip.io name when SITE_HOST is a real domain, so links to the
+# old address keep working. Give www. a DNS record too (an A record, or a CNAME to SITE_HOST).
+if [[ "$SITE_HOST" == www.* ]]; then
+  REDIRECT_HOSTS="${SITE_HOST#www.}"
+else
+  REDIRECT_HOSTS="www.$SITE_HOST"
+fi
+if [[ "$SERVER" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  SSLIP_HOST="${SERVER//./-}.sslip.io"
+  if [[ "$SITE_HOST" != "$SSLIP_HOST" ]]; then REDIRECT_HOSTS+=" $SSLIP_HOST"; fi
+fi
+
 SSH=(ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15)
 if [[ -n "$KEY" ]]; then SSH+=(-i "$KEY" -o IdentitiesOnly=yes); fi
 REMOTE="$DEPLOY_USER@$SERVER"
@@ -54,7 +67,7 @@ REMOTE="$DEPLOY_USER@$SERVER"
 RSH=""
 for arg in "${SSH[@]}"; do RSH+="'$arg' "; done
 
-echo "==> Deploying to $REMOTE:$DEPLOY_DIR as https://$SITE_HOST"
+echo "==> Deploying to $REMOTE:$DEPLOY_DIR as https://$SITE_HOST (redirects from: $REDIRECT_HOSTS)"
 "${SSH[@]}" "$REMOTE" "mkdir -p '$DEPLOY_DIR'"
 
 # The working tree (uncommitted changes included), minus dependencies, build output, local
@@ -77,12 +90,14 @@ rsync -az --delete \
   -e "$RSH" \
   "$ROOT/" "$REMOTE:$DEPLOY_DIR/"
 
-# deploy/.env is what Compose reads for SITE_HOST (so `docker compose ...` works by hand there).
-"${SSH[@]}" "$REMOTE" bash -s -- "$DEPLOY_DIR" "$SITE_HOST" <<'REMOTE_SCRIPT'
+# deploy/.env is what Compose reads for SITE_HOST and REDIRECT_HOSTS (so `docker compose ...`
+# works by hand there). ssh joins its arguments into one command line for the remote shell, so
+# each one is %q-quoted to arrive whole (REDIRECT_HOSTS contains spaces).
+"${SSH[@]}" "$REMOTE" "bash -s -- $(printf '%q ' "$DEPLOY_DIR" "$SITE_HOST" "$REDIRECT_HOSTS")" <<'REMOTE_SCRIPT'
 set -euo pipefail
 cd "$1/deploy"
 chmod 700 env && chmod 600 env/*.env
-printf 'SITE_HOST=%s\n' "$2" > .env
+printf 'SITE_HOST=%s\nREDIRECT_HOSTS="%s"\n' "$2" "$3" > .env
 chmod 600 .env
 docker compose up -d --build --remove-orphans
 docker image prune -f > /dev/null

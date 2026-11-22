@@ -15,7 +15,7 @@ caddy :80/:443 ─┬─ /game/* ─▶ game   :2567  (Colyseus; /game is stripp
 | `Dockerfile.worker`  | `FROM` the built web image (Compose passes it as the `web` build context), runs the `worker` script                                                      |
 | `Dockerfile.game`    | installs + `tsup`-builds `apps/game-server`, runs `node dist/index.js` on 2567                                                                           |
 | `docker-compose.yml` | the four services, health checks (`/api/health`, `/health`), `restart: unless-stopped`, volumes for certificates and local storage                       |
-| `Caddyfile`          | one site block `{$SITE_HOST}`, automatic HTTPS (Let's Encrypt)                                                                                           |
+| `Caddyfile`          | the app on `{$SITE_HOST}`; `{$REDIRECT_HOSTS}` (www., the old sslip.io name) redirect to it; automatic HTTPS (Let's Encrypt)                             |
 | `cloud-init.yaml`    | first boot: Docker + Compose, `deploy` user with your SSH key, ufw 22/80/443, 4 GB swap                                                                  |
 | `deploy.sh`          | rsync the working tree over SSH, `docker compose up -d --build`, wait for health                                                                         |
 | `env/*.env.example`  | templates for `env/web.env` (web + worker), `env/game.env`, optional `env/site.env`                                                                      |

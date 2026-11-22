@@ -95,6 +95,8 @@ services:
       - "443:443/udp"
     environment:
       SITE_HOST: ${SITE_HOST:?SITE_HOST is not set - run deploy/deploy.sh, or put SITE_HOST=your.host in deploy/.env}
+      # Space-separated hosts that redirect to SITE_HOST (www., the old sslip.io name); see Caddyfile.
+      REDIRECT_HOSTS: ${REDIRECT_HOSTS:?REDIRECT_HOSTS is not set - run deploy/deploy.sh, or put REDIRECT_HOSTS="www.your.host" in deploy/.env}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
