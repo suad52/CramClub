@@ -12,18 +12,26 @@ A cozy 3D library where you study beside other students, so you actually sit dow
 
 ## Inspiration
 
-Every one of us has had the same exam-season night: the notes are open, the phone is face down,
-and nothing happens. Then you go to the library, sit across from a stranger who is clearly
-working, and somehow you work too.
+Exam season has a way of shrinking your world down to a desk. When you're buried in readings and
+problem sets, going outside starts to feel like something you can't afford, and whole days pass
+where the only people you "see" are in a group chat. Plenty of students are so busy, or so locked
+in, that they barely leave their room, even though they still really want to be around people.
 
-That effect has a name, **body doubling**: having someone else quietly working near you makes it
-much easier to start and to keep going. People recreate it with "study with me" streams and
-silent video calls, but streams can't see you, and calls mean three hours on camera, which nobody
-enjoys and many people can't afford on their bandwidth.
+The usual fixes don't feel real. A video call means hours on camera, which is tiring and awkward,
+and a "study with me" stream is something you watch, not somewhere you are. What we missed was the
+realistic feeling of studying around other people: walking into a library, picking a seat, and
+looking up to see someone across the table working too. That quiet company (psychologists call it
+body doubling) makes it easier to start and to keep going.
 
-We wanted the library itself: somewhere you walk into, sit down next to real people, and feel
-the quiet pressure of everyone else studying, without anyone having to be on camera. And we
-wanted a librarian who could actually help.
+So we built that place. In Cram Club you walk into a cozy library as your own avatar, sit down next
+to real people, and study together. You never have to show your face: your avatar can follow your
+expressions if you want, but no video ever leaves your laptop. That also makes it an easy way to
+meet new people. Strangers end up at the same table, chat a little between pomodoros, and leave
+having studied alongside someone, the way you might in a real library, without the pressure of being
+on camera.
+
+And since studying alone also means getting stuck alone, we gave the library a librarian, Ms.
+Fenwick, who can actually help.
 
 ## What it does
 
