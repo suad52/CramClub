@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { withEveryCheckpoint } from "./checkpoints";
 import type { Lesson, Scene } from "./schema";
 import { type NarrationMode, type NarrationState, useNarration } from "./useNarration";
 import { trackLessonCompleted, trackLessonStarted } from "@/lib/learning/client";
@@ -56,7 +57,7 @@ export interface LessonPlayback {
  * (a cloud lesson's MP3s): those scenes play the file instead of asking for new speech.
  */
 export function useLessonPlayback(
-  lesson: Lesson,
+  given: Lesson,
   {
     startScene = 0,
     autoStart = false,
@@ -69,6 +70,8 @@ export function useLessonPlayback(
     audio?: Readonly<Record<number, string>>;
   } = {},
 ): LessonPlayback {
+  // Every section asks something before the next, lessons made before that rule included.
+  const lesson = useMemo(() => withEveryCheckpoint(given), [given]);
   const [index, setIndex] = useState(() =>
     Math.max(0, Math.min(startScene, lesson.scenes.length - 1)),
   );

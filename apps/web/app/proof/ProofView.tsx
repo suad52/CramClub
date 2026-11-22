@@ -1082,7 +1082,7 @@ function ServicesPanel({ r }: { r: ProofReport }) {
     },
     {
       sponsor: "Gemini",
-      what: "Writes Ms. Fenwick's answers, study plans and the lessons with their knowledge checks. A second, independent pass re-answers every quiz question without the answer key and quotes the notes or sources word for word; a question that doesn't hold up is fixed or set aside, and if the check can't run the lesson ships unchecked (GEMINI_QUIZ_CHECK_MODEL).",
+      what: "Writes Ms. Fenwick's answers, study plans and the lessons with their knowledge checks. A second, independent pass re-answers every quiz question without the answer key and quotes the notes or sources word for word; a question that doesn't hold up is fixed or swapped for an open reflection (every section of a lesson asks something), and if the check can't run the lesson ships unchecked (GEMINI_QUIZ_CHECK_MODEL).",
       count: `${n(s.lessonsWritten, "background lesson")} finished · ${n(s.librarianAnswers, "Librarian request")} answered`,
     },
     {

@@ -204,7 +204,9 @@ describe("applyQuizCheck", () => {
       NOTES,
       "notes",
     );
-    expect(out.scenes[1]!.interaction).toBeNull();
+    // Its section still asks something: an open reflection, which has no answer key to get wrong.
+    expect(out.scenes[1]!.interaction).toMatchObject({ type: "reflection" });
+    expect(out.scenes[1]!.interaction!.correctIndex).toBeUndefined();
     expect(out.scenes[4]!.interaction!.check).toBe("verified");
     expect(out.scenes).toHaveLength(SAMPLE_LESSON.scenes.length);
     expect(out.quizCheck).toMatchObject({ questions: 2, verified: 1, dropped: 1, unsure: 0 });
@@ -219,7 +221,7 @@ describe("applyQuizCheck", () => {
       "notes",
     );
     expect(graded(out)).toHaveLength(1);
-    expect(out.scenes[1]!.interaction).toBeNull();
+    expect(out.scenes[1]!.interaction).toMatchObject({ type: "reflection" });
     expect(out.scenes[4]!.interaction).toMatchObject({ check: "unsure", correctIndex: 2 });
     expect(out.quizCheck).toMatchObject({ verified: 0, dropped: 1, unsure: 1 });
 
@@ -261,7 +263,7 @@ describe("what the student is told", () => {
       "Every quiz answer was double-checked against your notes.",
     );
     expect(quizCheckNote({ ...base, verified: 2, dropped: 1, from: "sources" })).toBe(
-      "The quiz was double-checked against the sources: 2 of 3 answers held up and 1 question was set aside.",
+      "The quiz was double-checked against the sources: 2 of 3 answers held up and 1 question was swapped for a reflection.",
     );
     expect(describeQuizCheck({ ...base, verified: 1, fixed: 1, dropped: 1 })).toBe(
       "Double-checked the quiz: 2 of 3 confirmed, 1 answer corrected, 1 set aside",

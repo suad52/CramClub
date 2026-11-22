@@ -407,7 +407,7 @@ describe("lesson pipeline", () => {
     expect((await loadLesson(storage, view.id))?.quizCheck?.checked).toBe(true);
   });
 
-  it("stores the checked quiz: a question the sources don't back is set aside", async () => {
+  it("stores the checked quiz: a question the sources don't back is swapped for a reflection", async () => {
     const view = await enqueue();
     const lesson: Lesson = JSON.parse(JSON.stringify(SAMPLE_LESSON));
     lesson.scenes[1]!.interaction = {
@@ -424,7 +424,8 @@ describe("lesson pipeline", () => {
     const { deps } = providers(storage, { lesson, verdicts });
     expect(await processClaimedJob(db.sql, await claim(), deps)).toBe("completed");
     const stored = (await loadLesson(storage, view.id))!;
-    expect(stored.scenes[1]!.interaction).toBeNull();
+    // Its section still asks something, with no answer key to get wrong (checkpoints.ts).
+    expect(stored.scenes[1]!.interaction).toMatchObject({ type: "reflection" });
     expect(stored.scenes[4]!.interaction?.check).toBe("verified");
     expect(stored.quizCheck).toMatchObject({
       checked: true,

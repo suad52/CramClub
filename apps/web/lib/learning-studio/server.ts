@@ -9,6 +9,7 @@ import {
   isTransient,
   withTimeout,
 } from "@/lib/ai/gemini";
+import { withEveryCheckpoint } from "./checkpoints";
 import {
   QUIZ_CHECK_JSON_SCHEMA,
   QUOTE_MAX_WORDS,
@@ -148,7 +149,8 @@ const LESSON_JSON_SCHEMA = {
             },
           },
         },
-        required: ["id", "title", "narration", "visual", "sourceReferences"],
+        // Every scene asks something before the next (checkpoints.ts).
+        required: ["id", "title", "narration", "visual", "interaction", "sourceReferences"],
       },
     },
   },
@@ -189,15 +191,21 @@ Rules:
   comparison needs two column headings in "columns" and rows in "labels" written "left | right";
   diagram needs 2–8 labels; equation needs "expression" (plain text, no LaTeX); image needs "altText"
   describing an illustration. Keep labels short (under 6 words).
-- Include at least one knowledge check: a multiple-choice question (3–4 options, correctIndex 0-based,
-  explanation citing the page) on a scene where it fits. You may add one reflection question.
-  Each question has exactly one right option that the notes clearly support. Give every
+- EVERY scene ends with ONE interaction, so the student does something between sections, about what
+  that scene just taught (the last scene's may pull the whole lesson together). Mostly
+  multiple-choice questions (3–4 options, correctIndex 0-based, explanation citing the page). For a
+  single clear fact you may ask true-or-false instead: a multiple-choice question whose options are
+  exactly "True" and "False". At most one reflection question in the whole lesson (type
+  "reflection": an open question, with a short "suggestedAnswer"). Vary the kinds of question
+  (recall, apply it to an example, spot the difference) so they don't all feel the same.
+  Each multiple-choice question has exactly one right option that the notes clearly support. Give every
   multiple-choice question a "hint": one short sentence that points toward the right idea without
   giving the answer away (it is shown after a wrong first try). Give every question a "quote": up
   to ${QUOTE_MAX_WORDS} words copied exactly from the notes that back the answer (one unbroken
   stretch, no ellipsis, no changes).
 - The narration must make sense without its question: questions appear on screen after the
-  narration ends, so don't refer to them ("pick your answer below").
+  narration ends, so don't refer to them ("pick your answer below"), and never give away the
+  answer to the scene's own question in a way that makes it trivial.
 - sourceReferences: the page numbers ([page N] tags) that support the scene, with a short excerpt
   copied from that page. Never invent page numbers. Use only pages that exist.
 ${o.guidance ? `- ${o.guidance}\n` : ""}- If the notes are ambiguous, contradictory or incomplete, say so briefly in "warnings".
@@ -261,7 +269,7 @@ export async function generateLesson(o: {
   const prompt = lessonPrompt(o);
   const first = await generateJson(prompt, 90_000, o.model);
   try {
-    return parseLesson(first, o.pages.length);
+    return withEveryCheckpoint(parseLesson(first, o.pages.length));
   } catch (err) {
     if (!(err instanceof ZodError)) throw err;
     const problems = err.issues
@@ -277,7 +285,7 @@ export async function generateLesson(o: {
       o.model,
     );
     try {
-      return parseLesson(repaired, o.pages.length);
+      return withEveryCheckpoint(parseLesson(repaired, o.pages.length));
     } catch (again) {
       if (again instanceof ZodError)
         console.info(

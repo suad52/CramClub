@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { reflectionFor } from "./checkpoints";
 import type { Interaction, Lesson, QuizCheck, Scene } from "./schema";
 
 /**
@@ -10,8 +11,10 @@ import type { Interaction, Lesson, QuizCheck, Scene } from "./schema";
  *   the re-answer agrees with the key       → kept, check "verified"
  *   it disagrees, and only its answer has   → re-keyed to that answer, check "fixed" (the old
  *     words in the source to back it           explanation and hint argued for the old key: gone)
- *   it disagrees otherwise, or the source   → dropped; if that would leave the lesson with no
- *     backs no single option                   multiple-choice question, the best flagged one
+ *   it disagrees otherwise, or the source   → dropped, an open reflection asked in its place
+ *     backs no single option                   (checkpoints.ts: every section still asks
+ *                                              something); if that would leave the lesson with no
+ *                                              multiple-choice question, the best flagged one
  *                                              stays, check "unsure"
  *   no verdict came back for it             → kept as written, unmarked
  *
@@ -254,7 +257,8 @@ export function applyQuizCheck(
       return { ...s, interaction: { ...o.q, check: "unsure" } };
     }
     counts.dropped++;
-    return { ...s, interaction: null };
+    // No answer key we trust: the section asks an open question instead (no key to get wrong).
+    return { ...s, interaction: reflectionFor(s) };
   });
 
   return {
@@ -292,7 +296,7 @@ export function quizCheckNote(c: QuizCheck | undefined): string | null {
   const src = c.from === "sources" ? "the sources" : "your notes";
   if (confirmed === c.questions) return `Every quiz answer was double-checked against ${src}.`;
   const aside = c.dropped
-    ? ` and ${c.dropped} ${c.dropped === 1 ? "question was" : "questions were"} set aside`
+    ? ` and ${c.dropped} ${c.dropped === 1 ? "question was" : "questions were"} swapped for a reflection`
     : "";
   // Out of the questions that got a verdict: one the checker didn't answer (a partial reply)
   // wasn't found wrong, so it isn't counted as failing to hold up.
