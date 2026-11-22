@@ -1162,11 +1162,17 @@ async function syncCloudLesson(
   await setStatus(sql, id, "completed", {
     lesson: sql.json(lesson as never),
     lesson_sources: sql.json(lessonSources),
-    reply: `Your lesson “${lesson.title}” is ready: ${lesson.scenes.length} scenes, made in the library's cloud${narrated(v.audio.length, lesson.scenes.length)}.`,
+    reply: `Your lesson “${lesson.title}” is ready: ${lesson.scenes.length} scenes, made in the library's cloud${narrated(v.audio.length, lesson.scenes.length)}.${AT_A_TABLE}`,
   });
 }
 
 /** The end of the Librarian's "lesson ready" line: how much of it has recorded narration. */
+/**
+ * Lessons aren't played at her desk: they're saved, then played on a table's whiteboard (L at a
+ * table), so her "it's ready" says how.
+ */
+const AT_A_TABLE = " Save it, then sit at a table and press L to play it on the whiteboard.";
+
 function narrated(clips: number, scenes: number): string {
   if (!clips) return "";
   if (clips >= scenes) return " with its narration recorded";
@@ -1266,7 +1272,7 @@ async function runLesson(sql: Sql, userId: string, id: string, planItemId: strin
     await setStatus(sql, id, "completed", {
       lesson: sql.json(lesson as never),
       lesson_sources: sql.json(lessonSources),
-      reply,
+      reply: reply + AT_A_TABLE,
       ...(fromNotes && { completed_at: new Date() }),
     });
   } catch (err) {

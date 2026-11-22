@@ -1,8 +1,15 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useEffectEvent, useId, useRef, useState, useSyncExternalStore } from "react";
-import { LessonPlayerView } from "@/components/learning-studio/LessonPlayer";
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { DemoLibrarianFallback } from "@/components/demo/DemoFallbacks";
 import { PushToTalk } from "./PushToTalk";
 import {
@@ -29,7 +36,6 @@ import {
   IconGraduationCap,
   IconInfo,
   IconList,
-  IconPlay,
   IconPlus,
   IconRefresh,
   IconSearch,
@@ -58,7 +64,6 @@ import { sceneAudioUrl } from "@/lib/lessons/client";
 import { isFocusing, usePomodoro } from "@/lib/game/pomodoro";
 import { lessonKey } from "@/lib/learning/client";
 import { addLesson, loadLessons } from "@/lib/learning-studio/library";
-import { useLessonPlayback } from "@/lib/learning-studio/useLessonPlayback";
 import {
   EMPTY_NOTES,
   NOTES_ACCEPT,
@@ -99,10 +104,8 @@ import {
   type ReplyOption,
   ReplyOptions,
   SetupNotice,
-  SourceLink,
   StatusChip,
   StatusDot,
-  TEXT_LINK,
   TYPE_LABELS,
   domainOf,
 } from "./parts";
@@ -193,6 +196,11 @@ const GREETING_WAIT_MS = 1500;
 const HEADER_BTN = `${BTN.secondary} max-sm:px-3`;
 /** The same, compact (32px), for the dialogue box's top bar over the library. */
 const HEADER_BTN_SM = `inline-flex h-8 min-w-8 shrink-0 items-center justify-center gap-1.5 rounded-[10px] border-2 border-walnut bg-surface px-2 font-display text-[13px] font-semibold whitespace-nowrap text-walnut shadow-[0_2px_0_#1f1a16] transition-[background-color,box-shadow,transform] duration-150 ease-out hover:-translate-y-px hover:bg-canvas active:translate-y-[2px] active:shadow-[0_0_0_#1f1a16] motion-reduce:transition-none ${FOCUS}`;
+/**
+ * A keycap that fits the compact (32px) buttons: the full-size one (1.6rem plus its 2.5px
+ * shadow) fills a 32px button's whole inside and crowds its border.
+ */
+const KBD_SM = "kbd !h-5 !min-w-5 !px-1 !text-[0.68rem]";
 /** A reply option for when she asks something the student can't answer yet. */
 const UNSURE_ANSWER = "I'm not sure. Use your best judgement.";
 
@@ -205,7 +213,7 @@ type Reply =
   | { kind: "confirm"; mode: ResearchMode }
   | { kind: "plan" }
   | { kind: "lesson" }
-  | { kind: "play" }
+  | { kind: "save-lesson" }
   | { kind: "retry" }
   | { kind: "open"; id: string }
   | { kind: "new" };
@@ -268,8 +276,9 @@ export function LibrarianPanel({
   /** Polling hit trouble (it keeps trying). */
   const [pollTrouble, setPollTrouble] = useState<string | null>(null);
   const [planFormOpen, setPlanFormOpen] = useState(false);
-  const [playing, setPlaying] = useState(false);
   const [xp, setXp] = useState<Record<string, number>>({});
+  /** This task's lesson saved for a table (its reply, and the card's button, save it). */
+  const lessonSave = useSavedLesson(task);
   /** Lecture notes attached in the composer, not yet sent. */
   const [notes, setNotes] = useState<NotesDraft>(EMPTY_NOTES);
   const lastMessage = useRef<HTMLDivElement>(null);
@@ -311,10 +320,8 @@ export function LibrarianPanel({
   const greetingReady = home.data !== undefined || home.error !== undefined || greetingWaited;
   const serviceDown = home.error?.code === "not_configured";
   const inConversation = task !== null || messages.length > 0;
-  const showLesson = playing && task?.lesson;
-  /** The message box is there (not while she works, waits for a go-ahead, or a lesson plays). */
-  const composerOpen =
-    !showLesson && !(task && (task.busy || task.status === "awaiting_confirmation"));
+  /** The message box is there (not while she works or waits for a go-ahead). */
+  const composerOpen = !(task && (task.busy || task.status === "awaiting_confirmation"));
   const canAttach = composerOpen && !serviceDown && pending === null;
   // Mid-pomodoro in the library, the browser's file window would count as leaving the tab (and
   // can void the pomodoro), so the picker waits; dropping files still works.
@@ -435,7 +442,6 @@ export function LibrarianPanel({
     if (answering) session.say(message);
     else session.start(message);
     setDraft("");
-    setPlaying(false);
     setPlanFormOpen(false);
     setPollTrouble(null);
     run("send", async () =>
@@ -466,7 +472,6 @@ export function LibrarianPanel({
     useLibrarianSession.getState().start(notesTurn(attached.files.length, message));
     setDraft("");
     setNotes(EMPTY_NOTES);
-    setPlaying(false);
     setPlanFormOpen(false);
     setPollTrouble(null);
     setXp({});
@@ -497,7 +502,6 @@ export function LibrarianPanel({
   };
 
   const openTask = (id: string) => {
-    setPlaying(false);
     setPlanFormOpen(false);
     setPollTrouble(null);
     setXp({});
@@ -510,7 +514,6 @@ export function LibrarianPanel({
   const backToStart = () => {
     useLibrarianSession.getState().clear();
     setGreetingLive(false);
-    setPlaying(false);
     setPlanFormOpen(false);
     setFailure(null);
     setPollTrouble(null);
@@ -590,7 +593,6 @@ export function LibrarianPanel({
   const statusLabel = busy && task ? STATUS_LABELS[task.status] : (thinking ?? "Here to help");
   const tinyfishReady = configured?.tinyfish !== false;
   const withNotes = notes.files.length > 0;
-  const lessonOn = Boolean(showLesson);
 
   /* ---- Over the library: her newest line, what it answers, and the student's replies ---- */
 
@@ -744,7 +746,7 @@ export function LibrarianPanel({
         options.push({
           key: "lesson",
           label: pending === "lesson" ? "Asking…" : "Create interactive lesson",
-          detail: `Scenes to play right here, from ${from}`,
+          detail: `Scenes to play on a table's whiteboard, from ${from}`,
           primary: !!task.plan,
           disabled: !actionsOpen,
           action: { kind: "lesson" },
@@ -752,13 +754,24 @@ export function LibrarianPanel({
       }
     }
     if (task.lesson && task.status !== "generating_lesson") {
-      options.push({
-        key: "play",
-        label: "Play lesson",
-        detail: `${task.lesson.title} · ${task.lesson.scenes.length} scenes`,
-        primary: true,
-        action: { kind: "play" },
-      });
+      // Lessons aren't played at her desk: saved here, they play on a table's whiteboard (L).
+      options.push(
+        lessonSave.saved
+          ? {
+              key: "saved",
+              label: "Saved for a table",
+              detail: PLAY_AT_A_TABLE,
+              disabled: true,
+              action: { kind: "save-lesson" },
+            }
+          : {
+              key: "save",
+              label: "Save it for a table",
+              detail: `${task.lesson.title} · ${task.lesson.scenes.length} scenes`,
+              primary: true,
+              action: { kind: "save-lesson" },
+            },
+      );
     }
     if (task.status === "failed" && task.error?.retryable !== false) {
       options.push({
@@ -808,8 +821,8 @@ export function LibrarianPanel({
       case "lesson":
         taskAction("lesson");
         break;
-      case "play":
-        setPlaying(true);
+      case "save-lesson":
+        lessonSave.save();
         break;
       case "retry":
         taskAction("retry");
@@ -862,11 +875,11 @@ export function LibrarianPanel({
     if (e.key.length === 1 && composerOpen) focusComposer();
   });
   useEffect(() => {
-    if (!dialogue || lessonOn) return;
+    if (!dialogue) return;
     const onKey = (e: KeyboardEvent) => onDialogueKey(e);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dialogue, lessonOn]);
+  }, [dialogue]);
 
   // Each new line starts at the top of the box. If the reply that led to it went with the old
   // options, focus goes back to the box (so the keys above keep working).
@@ -936,7 +949,6 @@ export function LibrarianPanel({
       onBuildPlan={buildPlan}
       onClosePlanForm={() => setPlanFormOpen(false)}
       onLesson={(planItemId) => taskAction("lesson", planItemId ? { planItemId } : {})}
-      onPlay={() => setPlaying(true)}
       onSave={saveResource}
       onItem={itemAction}
       onNewRequest={backToStart}
@@ -990,10 +1002,6 @@ export function LibrarianPanel({
       attachId={attachId}
     />
   );
-  const lessonPane =
-    showLesson && task?.lesson ? (
-      <LessonPane key={lessonKey(task.lesson)} task={task} onExit={() => setPlaying(false)} />
-    ) : null;
   const closeButton = (compact: boolean) =>
     onClose && (
       <button
@@ -1008,7 +1016,7 @@ export function LibrarianPanel({
         <span aria-hidden className="hidden sm:inline">
           Close
         </span>
-        <kbd className="kbd hidden sm:inline-flex" aria-hidden>
+        <kbd className={`${compact ? KBD_SM : "kbd"} hidden sm:inline-flex`} aria-hidden>
           Esc
         </kbd>
       </button>
@@ -1045,7 +1053,7 @@ export function LibrarianPanel({
         >
           {drop.dragging && <NotesDropOverlay {...drop.overlay} />}
           <div className="flex shrink-0 items-center gap-1.5 px-3 pt-[1.125rem] pb-1 sm:px-4">
-            {earlier.length > 0 && !lessonPane && (
+            {earlier.length > 0 && (
               <button
                 type="button"
                 aria-expanded={historyOpen}
@@ -1079,7 +1087,7 @@ export function LibrarianPanel({
             </div>
           </div>
 
-          {lessonPane ?? (
+          {
             <>
               <div
                 ref={scroller}
@@ -1141,7 +1149,7 @@ export function LibrarianPanel({
               </div>
               {composer}
             </>
-          )}
+          }
         </div>
       </div>
     );
@@ -1191,7 +1199,7 @@ export function LibrarianPanel({
         </div>
       </header>
 
-      {lessonPane ?? (
+      {
         <>
           <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-6">
             <div className="mx-auto max-w-[760px] space-y-6">
@@ -1210,7 +1218,7 @@ export function LibrarianPanel({
           </div>
           {composer}
         </>
-      )}
+      }
     </div>
   );
 }
@@ -1958,7 +1966,6 @@ function TaskBody({
   onBuildPlan,
   onClosePlanForm,
   onLesson,
-  onPlay,
   onSave,
   onItem,
   onNewRequest,
@@ -1980,7 +1987,6 @@ function TaskBody({
   onBuildPlan: (details: PlanDetails) => void;
   onClosePlanForm: () => void;
   onLesson: (planItemId?: string) => void;
-  onPlay: () => void;
   onSave: (card: ResourceCard, saved: boolean) => Promise<void>;
   onItem: (item: PlanItem, action: ItemAction, date?: string) => void;
   onNewRequest: () => void;
@@ -2130,13 +2136,7 @@ function TaskBody({
             {lessonFrom ? ` · ${lessonFrom}` : ""}
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-            {!dialogue && (
-              <button type="button" className={BTN.primary} onClick={onPlay}>
-                <IconPlay size={18} strokeWidth={2.25} fill="currentColor" />
-                Play lesson
-              </button>
-            )}
-            <SaveLessonButton task={task} />
+            <SaveForTable task={task} />
           </div>
         </section>
       )}
@@ -2391,91 +2391,78 @@ function Activity({
 /* Lesson                                                              */
 /* ------------------------------------------------------------------ */
 
-/** "Save to my Learning Studio": a copy of the lesson in this browser's lesson list. */
-function SaveLessonButton({ task }: { task: LibrarianTask }) {
-  const lesson = task.lesson!;
-  const [saved, setSaved] = useState(() =>
-    loadLessons().some((l) => lessonKey(l.lesson) === lessonKey(lesson)),
-  );
-  if (saved) {
-    return (
-      <span
-        role="status"
-        className="inline-flex items-center gap-1.5 rounded-full border-2 border-walnut bg-leaf px-3 py-1 font-display text-sm leading-5 font-semibold text-walnut shadow-[0_2px_0_#1f1a16]"
-      >
-        <IconCheck size={15} strokeWidth={3} />
-        Saved to your Learning Studio
-      </span>
-    );
-  }
-  return (
-    <button
-      type="button"
-      className={BTN.secondary}
-      onClick={() => {
-        addLesson({
-          lesson,
-          chunks: task.lessonChunks,
-          sourceName:
-            task.type === "study_from_notes"
-              ? `Your notes with Ms. Fenwick's research: ${task.topic || lesson.title}`
-              : `Ms. Fenwick's research: ${task.topic || lesson.title}`,
-        });
-        setSaved(true);
-      }}
-    >
-      Save to my Learning Studio
-    </button>
-  );
+/** Where a saved lesson is played: not at her desk, on a table's whiteboard. */
+const PLAY_AT_A_TABLE = "Sit at a table and press L to play it on the whiteboard";
+
+/** Bumped when a lesson is saved here, so every view of it shows "Saved" at once. */
+let savedVersion = 0;
+const savedListeners = new Set<() => void>();
+function subscribeSaved(listener: () => void) {
+  savedListeners.add(listener);
+  return () => {
+    savedListeners.delete(listener);
+  };
 }
 
-/** The lesson in the Learning Studio's own player, with its sources underneath. */
-function LessonPane({ task, onExit }: { task: LibrarianTask; onExit: () => void }) {
-  const lesson = task.lesson!;
-  // A cloud lesson's narration is already recorded and stored: play it, don't make it again.
-  const cloud = task.cloudLesson;
-  const playback = useLessonPlayback(lesson, {
-    audio:
-      cloud?.status === "completed"
-        ? Object.fromEntries(cloud.audio.map((s) => [s, sceneAudioUrl(cloud.jobId, s)]))
-        : undefined,
-  });
+/**
+ * Whether the task's lesson is in this browser's lesson list (the one a table's lesson picker
+ * shows), and saving it there, with the narration the cloud already recorded for it, so the
+ * whiteboard plays her voice instead of making it again.
+ */
+function useSavedLesson(task: LibrarianTask | null) {
+  const version = useSyncExternalStore(
+    subscribeSaved,
+    () => savedVersion,
+    () => 0,
+  );
+  const key = task?.lesson ? lessonKey(task.lesson) : null;
+  const saved = useMemo(() => {
+    void version; // read the list again after a save
+    return !!key && loadLessons().some((l) => lessonKey(l.lesson) === key);
+  }, [key, version]);
+  const save = () => {
+    const lesson = task?.lesson;
+    if (!task || !lesson || saved) return;
+    const cloud = task.cloudLesson;
+    addLesson({
+      lesson,
+      chunks: task.lessonChunks,
+      sourceName:
+        task.type === "study_from_notes"
+          ? `Your notes with Ms. Fenwick's research: ${task.topic || lesson.title}`
+          : `Ms. Fenwick's research: ${task.topic || lesson.title}`,
+      audio:
+        cloud?.status === "completed"
+          ? Object.fromEntries(cloud.audio.map((s) => [s, sceneAudioUrl(cloud.jobId, s)]))
+          : undefined,
+    });
+    savedVersion++;
+    for (const l of savedListeners) l();
+  };
+  return { saved, save };
+}
+
+/** "Save it for a table": lessons are played on a table's whiteboard, not at her desk. */
+function SaveForTable({ task }: { task: LibrarianTask }) {
+  const { saved, save } = useSavedLesson(task);
   return (
-    <div className="flex min-h-0 flex-1 flex-col" data-lesson-player>
-      {/* Clips the player's screen-reader-only text, so it can't stretch the page past the window. */}
-      <div className="relative min-h-0 flex-1 overflow-clip">
-        <LessonPlayerView
-          playback={playback}
-          chunks={task.lessonChunks}
-          onExit={onExit}
-          exitLabel="Back to Ms. Fenwick"
-          headerActions={<SaveLessonButton task={task} />}
-          fill
-        />
-      </div>
-      {task.lessonSources.length > 0 && (
-        <section
-          aria-label="Lesson sources"
-          className="relative max-h-28 shrink-0 overflow-y-auto border-t-2 border-walnut/15 bg-canvas px-4 py-2.5 sm:px-6"
+    <>
+      {saved ? (
+        <span
+          role="status"
+          className="inline-flex items-center gap-1.5 rounded-full border-2 border-walnut bg-leaf px-3 py-1 font-display text-sm leading-5 font-semibold text-walnut shadow-[0_2px_0_#1f1a16]"
         >
-          <h3 className="font-display text-[13px] leading-5 font-semibold text-walnut">Sources</h3>
-          <ol className="mt-1 flex flex-wrap gap-x-5 gap-y-1 text-[13px] leading-5 font-medium">
-            {task.lessonSources.map((s) => (
-              <li key={s.page}>
-                <span className="tabular font-display font-semibold text-ink-soft">[{s.page}]</span>{" "}
-                {s.url ? (
-                  <SourceLink href={s.url} className={TEXT_LINK}>
-                    {s.title || domainOf(s.url)}
-                  </SourceLink>
-                ) : (
-                  // A page of the student's own notes: named, not linked.
-                  <span className="text-walnut">{s.title || "Your notes"}</span>
-                )}
-              </li>
-            ))}
-          </ol>
-        </section>
+          <IconCheck size={15} strokeWidth={3} />
+          Saved for a table
+        </span>
+      ) : (
+        <button type="button" className={BTN.primary} onClick={save}>
+          Save it for a table
+        </button>
       )}
-    </div>
+      <p className="font-display text-[13px] leading-5 font-medium text-ink-soft">
+        {saved ? `${PLAY_AT_A_TABLE}.` : `Then: ${PLAY_AT_A_TABLE.toLowerCase()}.`}
+      </p>
+    </>
   );
 }

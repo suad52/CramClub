@@ -14,6 +14,11 @@ export interface SavedLesson {
   lesson: Lesson;
   chunks: Chunk[];
   progress: { scene: number; completed: boolean };
+  /**
+   * Narration already recorded for it (scene index → audio URL), as Ms. Fenwick's cloud lessons
+   * have: played as it is, so it isn't voiced again. Scenes without one are voiced as usual.
+   */
+  audio?: Record<number, string>;
 }
 
 const KEY = "ovr.learning-studio.lessons.v1";

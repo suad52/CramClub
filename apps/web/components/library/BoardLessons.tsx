@@ -224,10 +224,12 @@ function JoinedLesson({ run }: { run: BoardLesson }) {
     [boardId, sourceId],
   );
   // Joining is always a click or key press, so the voice is allowed to start straight away.
+  // Narration recorded with the lesson (Ms. Fenwick's cloud lessons) plays as it is.
   const playback = useLessonPlayback(run.lesson, {
     startScene: run.completed ? 0 : run.sceneIndex,
     autoStart: true,
     onProgress,
+    audio: run.audio,
   });
   const { index, narration, showQuestion, complete, playing, go } = playback;
   const { play, pause } = narration;
@@ -878,8 +880,13 @@ function PickerDialog({ boardId }: { boardId: string }) {
   }, [close]);
 
   const store = useBoardLessons.getState();
-  const choose = (sourceId: string, lesson: Lesson, chunks: Chunk[]) => {
-    store.start(boardId, { sourceId, lesson, chunks });
+  const choose = (
+    sourceId: string,
+    lesson: Lesson,
+    chunks: Chunk[],
+    audio?: Readonly<Record<number, string>>,
+  ) => {
+    store.start(boardId, { sourceId, lesson, chunks, audio });
     // Look up and watch the board flip over.
     requestPointerLock({ quiet: true });
   };
@@ -1008,7 +1015,7 @@ function PickerDialog({ boardId }: { boardId: string }) {
                     ).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}
                     spine={spineColor(l.id)}
                     action={action}
-                    onChoose={() => choose(l.id, l.lesson, l.chunks)}
+                    onChoose={() => choose(l.id, l.lesson, l.chunks, l.audio)}
                   />
                 </li>
               ))}

@@ -22,6 +22,8 @@ export interface BoardLesson {
   lesson: Lesson;
   /** The notes it was made from, for the AI teacher's answers. */
   chunks: Chunk[];
+  /** Narration already recorded for it (scene index → audio URL), if it has some. */
+  audio?: Readonly<Record<number, string>>;
   /** The scene the lesson is on; it resumes here when someone joins. */
   sceneIndex: number;
   completed: boolean;
@@ -46,7 +48,7 @@ export interface BoardLessonStore {
   /** Puts a lesson on a board (replacing any lesson already there) and closes the picker. */
   start: (
     boardId: string,
-    entry: Pick<BoardLesson, "sourceId" | "lesson" | "chunks">,
+    entry: Pick<BoardLesson, "sourceId" | "lesson" | "chunks" | "audio">,
     now?: number,
   ) => void;
   /** Takes the lesson off a board (it flips back). Anyone joined to it leaves. */

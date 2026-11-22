@@ -53,6 +53,15 @@ describe("board lessons", () => {
     expect(store().joinedBoardId).toBeNull();
   });
 
+  it("a lesson saved from Ms. Fenwick brings its recorded narration to the board", () => {
+    const audio = { 0: "/api/lessons/job-1/audio/0", 2: "/api/lessons/job-1/audio/2" };
+    store().start(BOARD, { ...entry, sourceId: "saved-fenwick", audio }, 1000);
+    expect(store().boards[BOARD]?.audio).toEqual(audio);
+    // A lesson with nothing recorded is voiced as before.
+    store().start(OTHER, entry, 1000);
+    expect(store().boards[OTHER]?.audio).toBeUndefined();
+  });
+
   it("joining only works on a board with a lesson", () => {
     store().join(BOARD);
     expect(store().joinedBoardId).toBeNull();
