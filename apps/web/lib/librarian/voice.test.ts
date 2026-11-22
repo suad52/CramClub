@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { librarianPresence } from "./presence";
 import {
   MAX_SPOKEN,
   isSpeaking,
+  pickBackupVoice,
   revealedChars,
   sayAloud,
   speakable,
@@ -158,5 +160,162 @@ describe("revealedChars", () => {
     expect(revealedChars(text)).toBe(text.length);
     two.onended?.();
     expect(revealedChars(text)).toBeNull();
+  });
+});
+
+describe("pickBackupVoice", () => {
+  const voice = (name: string, lang: string) => ({ name, lang });
+
+  it("borrows a British woman's voice when the browser has one", () => {
+    const voices = [
+      voice("Samantha", "en-US"),
+      voice("Daniel", "en-GB"),
+      voice("Kate", "en-GB"),
+      voice("Google UK English Male", "en-GB"),
+    ];
+    expect(pickBackupVoice(voices)?.name).toBe("Kate");
+    expect(pickBackupVoice([...voices, voice("Google UK English Female", "en-GB")])?.name).toBe(
+      "Google UK English Female",
+    );
+  });
+
+  it("else any British voice, else any English one, else none", () => {
+    expect(pickBackupVoice([voice("Samantha", "en-US"), voice("Daniel", "en-GB")])?.name).toBe(
+      "Daniel",
+    );
+    expect(pickBackupVoice([voice("Thomas", "fr-FR"), voice("Samantha", "en_US")])?.name).toBe(
+      "Samantha",
+    );
+    expect(pickBackupVoice([voice("Thomas", "fr-FR")])).toBeNull();
+    expect(pickBackupVoice([])).toBeNull();
+  });
+});
+
+/** Stands in for the browser's own speech (Web Speech API). */
+class FakeUtterance {
+  voice: { name: string; lang: string } | null = null;
+  lang = "";
+  rate = 1;
+  pitch = 1;
+  onend: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  constructor(public text: string) {}
+}
+
+function fakeSpeech() {
+  return {
+    speaking: false,
+    pending: false,
+    said: [] as FakeUtterance[],
+    cancels: 0,
+    speak(u: FakeUtterance) {
+      this.said.push(u);
+    },
+    cancel() {
+      this.cancels++;
+    },
+    getVoices: () => [
+      { name: "Daniel", lang: "en-GB" },
+      { name: "Kate", lang: "en-GB" },
+    ],
+  };
+}
+
+describe("her backup voice", () => {
+  let speech: ReturnType<typeof fakeSpeech>;
+  let elevenLabs: { ok: boolean; status: number };
+
+  beforeEach(() => {
+    speech = fakeSpeech();
+    elevenLabs = { ok: false, status: 401 }; // out of credits
+    FakeAudio.made = [];
+    vi.stubGlobal("speechSynthesis", speech);
+    vi.stubGlobal("SpeechSynthesisUtterance", FakeUtterance);
+    vi.stubGlobal("Audio", FakeAudio);
+    vi.stubGlobal("requestAnimationFrame", () => 0);
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+    vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
+    vi.stubGlobal("fetch", async () => ({
+      ...elevenLabs,
+      json: async () => ({ audio: "AAAA", alignment: null }),
+    }));
+  });
+  afterEach(() => {
+    stopSpeaking();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("says the line in the browser's voice when ElevenLabs refuses it (out of credits)", async () => {
+    await sayAloud("Shh. There you are, dear. Let's not wander off again.");
+    expect(speech.said.map((u) => u.text)).toEqual([
+      "Shh. There you are, dear. Let's not wander off again.",
+    ]);
+    expect(speech.said[0]!.voice?.name).toBe("Kate");
+    // Her mouth moves while it talks, and the whole text shows.
+    expect(librarianPresence.speakUntil).toBeGreaterThan(performance.now());
+    expect(revealedChars("Shh. There you are, dear. Let's not wander off again.")).toBeNull();
+    // Done: her mouth stops.
+    speech.said[0]!.onend?.();
+    expect(librarianPresence.speakUntil).toBe(0);
+  });
+
+  it("says it in the browser's voice when the browser blocks her audio", async () => {
+    elevenLabs = { ok: true, status: 200 };
+    vi.stubGlobal(
+      "Audio",
+      class extends FakeAudio {
+        override play() {
+          return Promise.reject(new Error("NotAllowedError"));
+        }
+      },
+    );
+    await sayAloud("Eyes on the book, please, dear.");
+    expect(speech.said.map((u) => u.text)).toEqual(["Eyes on the book, please, dear."]);
+  });
+
+  it("uses ElevenLabs when it works, never the backup", async () => {
+    elevenLabs = { ok: true, status: 200 };
+    await sayAloud("Mm-hm. I see you, dear. Page, please.");
+    expect(FakeAudio.made).toHaveLength(1);
+    expect(speech.said).toEqual([]);
+  });
+
+  it("stays silent when muted (she only mouths it)", async () => {
+    vi.stubGlobal("localStorage", { getItem: () => "1", setItem: () => {} });
+    await sayAloud("Psst. Your desk misses you, dear.");
+    expect(speech.said).toEqual([]);
+    expect(librarianPresence.speakUntil).toBeGreaterThan(performance.now());
+  });
+
+  it("never talks over the browser saying something else, like a lesson's narration", async () => {
+    // Well after any line of hers was cut off (so "speaking" can't be her own line ending).
+    const later = performance.now() + 60_000;
+    vi.spyOn(performance, "now").mockImplementation(() => later);
+    speech.speaking = true;
+    await sayAloud("Shh. Back to it.");
+    expect(speech.said).toEqual([]);
+    expect(speech.cancels).toBe(0);
+    // She mouths it instead.
+    expect(librarianPresence.speakUntil).toBeGreaterThan(performance.now());
+    stopSpeaking();
+    expect(speech.cancels).toBe(0);
+  });
+
+  it("a newer line cuts off her backup line; asking for the same line again changes nothing", async () => {
+    await sayAloud("Shh. Back to it.");
+    await sayAloud("Shh. Back to it.");
+    expect(speech.said).toHaveLength(1);
+    // The browser still reports her first line as speaking just after she cancels it.
+    speech.speaking = true;
+    await sayAloud("Welcome back, dear. The book kept your place. Shh, now.");
+    expect(speech.cancels).toBe(1);
+    expect(speech.said.map((u) => u.text)).toEqual([
+      "Shh. Back to it.",
+      "Welcome back, dear. The book kept your place. Shh, now.",
+    ]);
+    // A late "done" from the cut-off line doesn't stop her mouth on the new one.
+    speech.said[0]!.onerror?.();
+    expect(librarianPresence.speakUntil).toBeGreaterThan(performance.now());
   });
 });

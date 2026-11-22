@@ -6,8 +6,9 @@ import { SPEAK_MS, librarianPresence } from "./presence";
  * The Librarian's voice: every line she says, spoken with ElevenLabs (through /api/librarian/speak,
  * so the key stays on the server). Her jaw follows the audio's loudness, and the line's text can
  * be revealed in step with her words (`revealedChars`, from the per-character timings the endpoint
- * returns). A newer line cuts off the one she's saying. Without a key, or when muted, she mouths
- * the line instead.
+ * returns). A newer line cuts off the one she's saying. When ElevenLabs can't say a line (no key,
+ * out of credits, an error, too slow, or audio blocked) she says it in her backup voice, the
+ * browser's own speech, so she's never silent; muted, she only mouths it.
  *
  * She says up to MAX_SPOKEN characters of a line (whole sentences), so a huge reply doesn't burn
  * credits. The endpoint takes at most PART_MAX characters a request, so a longer line is said in
@@ -19,7 +20,7 @@ const MUTE_KEY = "ovr.librarian.muted";
 export const MAX_SPOKEN = 600;
 /** The most /api/librarian/speak takes in one request. */
 const PART_MAX = 400;
-/** How long fetching her voice may take before she gives up and just mouths the line. */
+/** How long fetching her voice may take before her backup voice says the line instead. */
 const START_TIMEOUT_MS = 7000;
 /** The text runs this far (s) ahead of her voice, so it never trails behind it. */
 const TEXT_LEAD = 0.06;
@@ -27,6 +28,10 @@ const TEXT_LEAD = 0.06;
 const CHARS_PER_SECOND = 15;
 /** With no voice she mouths a line about as fast as the dialogue box types it out (~45 a second). */
 const MOUTH_MS_PER_CHAR = 24;
+/** Her backup voice's pace (ms a character), to time her mouth by until it says it's done. */
+const BACKUP_MS_PER_CHAR = 65;
+/** The longest her mouth keeps moving for one backup line, in case the browser never says done. */
+const BACKUP_MAX_MS = 20_000;
 
 interface Clip {
   el: HTMLAudioElement;
@@ -151,6 +156,7 @@ export function revealedChars(text: string): number | null {
 export function stopSpeaking() {
   const u = utterance;
   utterance = null;
+  stopBackup();
   if (u) {
     u.ctrl.abort();
     u.clip?.el.pause();
@@ -248,17 +254,126 @@ function mouth(line: string) {
     performance.now() + Math.min(6000, Math.max(SPEAK_MS, line.length * MOUTH_MS_PER_CHAR));
 }
 
+/*
+ * Her backup voice, for when ElevenLabs can't say a line: the browser's own speech (Web Speech
+ * API), so she's never silent. It doesn't sound like her: a British woman's voice where the
+ * browser has one, a touch slow and warm. Muted still means silent. She never talks over the
+ * browser saying something else (a lesson's narration falls back to the same speech, in
+ * lib/learning-studio/useNarration.ts): then she just mouths the line. And she only ever cancels
+ * her own backup line, never someone else's speech.
+ */
+
+/** Voices she'd pick first, best first: a British woman's, by the names browsers give them. */
+const BACKUP_NAMES = [
+  /google uk english female/i,
+  /\b(serena|kate|martha|stephanie)\b/i,
+  /microsoft (libby|sonia|hazel|maisie|susan)/i,
+];
+const BRITISH = /^en[-_]gb/i;
+const ENGLISH = /^en([-_]|$)/i;
+
+/** What pickBackupVoice reads of a voice (SpeechSynthesisVoice has these). */
+export interface BackupVoiceLike {
+  name: string;
+  lang: string;
+}
+
+/** The voice she borrows: a British woman's if there is one, else any British, else any English. */
+export function pickBackupVoice<V extends BackupVoiceLike>(voices: readonly V[]): V | null {
+  for (const name of BACKUP_NAMES) {
+    const v = voices.find((x) => name.test(x.name) && BRITISH.test(x.lang));
+    if (v) return v;
+  }
+  return (
+    voices.find((x) => BRITISH.test(x.lang)) ?? voices.find((x) => ENGLISH.test(x.lang)) ?? null
+  );
+}
+
+/** The line her backup voice is saying (only hers is ever cancelled), and the message it's for. */
+let backup: SpeechSynthesisUtterance | null = null;
+let backupFor: string | null = null;
+/** When she last cancelled her own backup line (some browsers say "speaking" a moment after). */
+let backupStoppedAt = -Infinity;
+/** How long after cancelling her own line the browser's "speaking" is still taken to be hers. */
+const BACKUP_SETTLE_MS = 500;
+
+function speech(): SpeechSynthesis | null {
+  return typeof speechSynthesis === "undefined" ? null : speechSynthesis;
+}
+
+// Browsers load their voices lazily: asking once now means they're there by her first line.
+speech()?.getVoices();
+
+/** Stops her backup voice, if it's talking (and only hers). */
+function stopBackup() {
+  if (!backup) return;
+  backup = null;
+  backupFor = null;
+  backupStoppedAt = performance.now();
+  try {
+    speech()?.cancel();
+  } catch {
+    // Nothing to stop.
+  }
+}
+
+/** She says `line` (for message `text`) in her backup voice; false if the browser can't. */
+function sayBackup(text: string, line: string): boolean {
+  const synth = speech();
+  if (!synth || typeof SpeechSynthesisUtterance === "undefined") return false;
+  // The browser is saying something else (a lesson's narration): don't talk over it. Right after
+  // she cancelled her own line, "speaking" may still be that line, which is fine to replace.
+  const ownLineEnding = performance.now() - backupStoppedAt < BACKUP_SETTLE_MS;
+  if (!backup && !ownLineEnding && (synth.speaking || synth.pending)) return false;
+  try {
+    stopBackup();
+    const u = new SpeechSynthesisUtterance(line);
+    const voice = pickBackupVoice(synth.getVoices());
+    if (voice) u.voice = voice;
+    u.lang = voice?.lang ?? "en-GB";
+    u.rate = 0.95;
+    u.pitch = 1.05;
+    const done = () => {
+      if (backup !== u) return;
+      backup = null;
+      backupFor = null;
+      librarianPresence.speakUntil = 0;
+    };
+    u.onend = done;
+    u.onerror = done;
+    backup = u;
+    backupFor = text;
+    // Her mouth moves while it talks (and she counts as busy, so she won't shush over herself).
+    librarianPresence.speakUntil =
+      performance.now() +
+      Math.min(BACKUP_MAX_MS, Math.max(SPEAK_MS, line.length * BACKUP_MS_PER_CHAR));
+    synth.speak(u);
+    return true;
+  } catch {
+    backup = null;
+    backupFor = null;
+    return false;
+  }
+}
+
+/** No ElevenLabs voice for this line: her backup voice says it, else she mouths it. */
+function fallBack(text: string, line: string) {
+  if (!sayBackup(text, line)) mouth(line);
+}
+
 /**
  * Says `text` in her voice, cutting off any line she's saying. Resolves once she has started (or
  * fallen back to mouthing it). Asking for the line she's already saying changes nothing.
  */
 export async function sayAloud(text: string) {
   if (utterance && utterance.text === text) return;
+  if (backup && backupFor === text) return;
   stopSpeaking();
   const { clean, toText } = normalize(text);
   const line = speakable(clean);
   if (!line) return;
-  if (!available || isMuted()) return mouth(line);
+  if (isMuted()) return mouth(line);
+  if (!available) return fallBack(text, line);
   const u: Utterance = {
     text,
     clean,
@@ -275,7 +390,7 @@ export async function sayAloud(text: string) {
   const timeout = setTimeout(() => {
     if (utterance !== u || u.started) return;
     stopSpeaking();
-    mouth(line);
+    fallBack(text, line);
   }, START_TIMEOUT_MS);
   try {
     await play(u, 0);
@@ -294,9 +409,10 @@ async function play(u: Utterance, i: number) {
     return;
   }
   if (!clip) {
-    // No voice for this part: she mouths the line if she hadn't started it, and the text shows.
+    // No voice for this part (out of credits, an error): if she hadn't started the line, her
+    // backup voice says it; the text shows either way.
     stopSpeaking();
-    if (i === 0) mouth(u.line);
+    if (i === 0) fallBack(u.text, u.line);
     return;
   }
   const next = u.parts[i + 1];
@@ -314,10 +430,10 @@ async function play(u: Utterance, i: number) {
   try {
     await clip.el.play();
   } catch {
-    // Autoplay blocked: she mouths the line and the text shows.
+    // Autoplay blocked: her backup voice tries (else she mouths it), and the text shows.
     if (utterance !== u) return;
     stopSpeaking();
-    mouth(u.line);
+    fallBack(u.text, u.line);
     return;
   }
   if (utterance !== u) return;
