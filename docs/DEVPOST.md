@@ -63,10 +63,11 @@ Fenwick, who can actually help.
 - **Lessons on the whiteboard.** She turns a topic, or your own uploaded notes, into a narrated
   interactive lesson that plays on the table's rolling whiteboard. Lessons keep being made in the
   cloud after you close the tab.
-- **Quizzes that check themselves.** Every quiz question is answered a second time from the
-  sources alone, without the answer key. If the answer key was wrong, it's fixed or the question
-  is dropped. A wrong answer gets a hint and one more try, and the right answer comes with a quote
-  from your notes that really is in your notes.
+- **Quizzes that check themselves.** Every section of a lesson ends with a question. Each quiz
+  question is answered a second time from the sources alone, without the answer key. If the answer
+  key was wrong, it's fixed, or the question becomes an open reflection. A wrong answer gets a hint
+  and one more try, and the right answer comes with a quote from your notes that really is in your
+  notes.
 - **For judges:** `/demo` seats you at a table with a pretend study buddy and short timings, and
   `/proof` tests the Tiger Data, Vultr and Auth0 pieces live.
 
@@ -84,8 +85,8 @@ Fenwick, who can actually help.
   value, reduced to eight numbers.
 - **Backend:** Next.js API routes, `postgres.js` to Tiger Data, a separate lesson worker process,
   all in Docker Compose on one Vultr server behind Caddy.
-- **Tests:** Vitest across the monorepo (875 web tests and 41 game server tests at our last run),
-  with every outside API faked and opt-in suites against the real database.
+- **Tests:** Vitest across the monorepo (1,070 web tests, 67 game server tests and 48 shared tests
+  at our last run), with every outside API faked and opt-in suites against the real database.
 
 ```text
 browser ──https / wss──▶ Caddy (Vultr) ──▶ Next.js web ──▶ Tiger Data, Gemini, TinyFish, ElevenLabs
@@ -143,7 +144,8 @@ Tiger Data is where every minute of studying is recorded, and it's also our job 
 ### ElevenLabs
 
 - Ms. Fenwick's voice, including her shushes; lesson narration stored as MP3s; and push-to-talk
-  with Speech to Text.
+  with Speech to Text. If ElevenLabs can't speak (no credits, an error, or blocked audio), the
+  browser's own voice says her line, so a shush is never silent.
 
 ### TinyFish
 
@@ -166,7 +168,8 @@ Tiger Data is where every minute of studying is recorded, and it's also our job 
   fix was a hierarchical aggregate created with no data and a 7-day end offset.
 - **Quiz checking that doesn't make things worse.** A strict checker can throw out good questions.
   We only re-key a question when the checker has a word-for-word quote and the generator doesn't,
-  always keep at least one question, and fail open on timeouts.
+  swap a question that doesn't hold up for an open reflection, so every section still asks
+  something, and fail open on timeouts.
 - **Movement you can trust.** The server keeps every move inside the building, on a walk surface
   from the shared floor plan and within a walking-speed budget, and checks every seat claim, so
   nobody teleports into your seat.
