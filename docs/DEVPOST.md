@@ -29,8 +29,9 @@ wanted a librarian who could actually help.
 
 **Cram Club** is a browser-based 3D university library you study in together.
 
-- **Walk in as yourself.** Make an avatar in the Character Studio, walk the library (five zones,
-  about 10,700 books), and sit at a table, a desk, a window seat or a sofa. Up to 15 students
+- **Walk in as yourself.** Make an avatar in the Character Studio, walk the Grand Reading Hall and
+  its upper gallery (more than 27,000 books), and sit at one of 12 long study tables or a gallery
+  desk. Up to 15 students
   share a room in real time.
 - **Study beside someone.** Sit down and the idle card tells you who's studying near you. Hold a
   table for yourself or a Study Circle, open it to everyone, or invite friends by email.
@@ -143,7 +144,9 @@ Tiger Data is where every minute of studying is recorded, and it's also our job 
 
 ### GoDaddy Registry
 
-- {{TODO: our .club domain}}: see [DOMAIN.md](DOMAIN.md).
+- Cram Club lives at **[cramclub.study](https://cramclub.study)**, a free GoDaddy Registry domain: a
+  `.study` name for a study library. Caddy on the Vultr server serves it over HTTPS, and `www` and
+  our first address redirect to it ([DOMAIN.md](DOMAIN.md)).
 
 ## Challenges we ran into
 
@@ -171,8 +174,6 @@ Tiger Data is where every minute of studying is recorded, and it's also our job 
   server, and a move in **15.4 ms (p50)**, with 0 of 300 lost (local loopback, not internet
   latency).
 - A judge-facing `/proof` page that tests our security claims live instead of describing them.
-- Ms. Fenwick passes {{TODO: measure}} of our 20-question eval and declines {{TODO: measure}} of
-  its 3 cheating requests ([scripts/eval/fenwick](../scripts/eval/fenwick/README.md)).
 
 ## What we learned
 
@@ -187,7 +188,7 @@ Tiger Data is where every minute of studying is recorded, and it's also our job 
 
 - Proximity voice at tables, and shared whiteboards everyone at the table can draw on.
 - Group challenges for Study Circles ("our table studied 10 hours this week").
-- Measure real-world latency from students' homes to the Vultr server: {{TODO: measure}}.
+- Measure real-world latency from students' homes to the Vultr server.
 - Phone and tablet support.
 
 ## Built with

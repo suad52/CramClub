@@ -29,8 +29,9 @@ lessons, reads them aloud and, kindly, shushes you when you drift.
 
 **Study together**
 
-- A hand-built 3D library (five zones, about 10,700 books) in the browser. Walk with WASD, sit at
-  tables, desks, window seats and sofas, first or third person.
+- A hand-built 3D library in the browser: the Grand Reading Hall and its upper gallery, with more
+  than 27,000 books. Walk with WASD, sit at one of 12 long study tables or a gallery desk, first or
+  third person.
 - Multiplayer with Colyseus: up to 15 students per library room, server-validated movement and
   seating, join tickets that work exactly once.
 - **Library chat.** Press Enter to chat with everyone in your library room (first names only);

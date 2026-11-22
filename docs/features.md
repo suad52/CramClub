@@ -14,8 +14,8 @@ of every phase.
 | Feature                         | Status | Notes                                                                                                  |
 | ------------------------------- | ------ | ------------------------------------------------------------------------------------------------------ |
 | Landing page + Enter Library    | Done   | Feature list marks later phases "Coming soon"                                                          |
-| Cozy stylized library           | Done   | 32 × 24 m hall, five zones, ~10,700 books, sunlit windows, fire, lamps                                 |
-| Five study zones                | Done   | Collaborative Tables, Quiet Study, Resource Stacks, Reading Lounge, Main Hall                          |
+| Cozy stylized library           | Done   | 28 × 18 m Grand Reading Hall (12.6 m ceiling), ~27,800 books, arched windows, lamps                    |
+| Two zones                       | Done   | Grand Reading Hall (12 long tables) and the Upper Gallery (3 desks, reached by the lift)               |
 | WASD / arrow movement           | Done   | Camera-relative; R toggles walking faster; hold Shift to free the mouse; can't pass walls or furniture |
 | Third-person camera             | Done   | Over-the-shoulder, scroll zoom, pulls in instead of clipping through shelves                           |
 | First-person camera + toggle    | Done   | V or the HUD button; smooth zoom between modes; own body hidden in first person                        |
