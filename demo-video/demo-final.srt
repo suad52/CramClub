@@ -1,0 +1,137 @@
+1
+00:00:00,600 --> 00:00:01,933
+Studying alone is hard.
+
+2
+00:00:02,000 --> 00:00:03,967
+Cram Club makes starting easier.
+
+3
+00:00:04,533 --> 00:00:08,433
+Make your character, so you can show up
+next to people without a webcam.
+
+4
+00:00:08,767 --> 00:00:10,433
+A quick camera and mic check first.
+
+5
+00:00:10,500 --> 00:00:13,767
+The camera's optional,
+and video never leaves your computer.
+
+6
+00:00:14,267 --> 00:00:16,300
+Then walk into the Grand Reading Hall.
+
+7
+00:00:16,367 --> 00:00:18,267
+Everyone here is a real student.
+
+8
+00:00:18,567 --> 00:00:19,600
+There's a library chat.
+
+9
+00:00:19,667 --> 00:00:21,700
+If nobody answers you within ten seconds,
+
+10
+00:00:21,767 --> 00:00:23,733
+Ms. Fenwick, the librarian, steps in.
+
+11
+00:00:23,800 --> 00:00:25,467
+Nobody gets left on read.
+
+12
+00:00:25,967 --> 00:00:28,933
+Sit at any table to hold it
+for an hour, open or private.
+
+13
+00:00:29,033 --> 00:00:32,100
+Press P, and your desk clock
+starts a pomodoro.
+
+14
+00:00:32,433 --> 00:00:35,433
+Judges can jump straight in at /demo.
+
+15
+00:00:35,700 --> 00:00:38,367
+Turn your camera on
+and your character copies your face.
+
+16
+00:00:38,433 --> 00:00:41,733
+Only eight numbers leave your laptop,
+never video.
+
+17
+00:00:42,067 --> 00:00:46,233
+Look away for eight seconds
+and Ms. Fenwick shushes you, kindly, by name.
+
+18
+00:00:46,633 --> 00:00:49,000
+Ask her anything.
+She researches it with TinyFish,
+
+19
+00:00:49,067 --> 00:00:50,333
+credible sources first,
+
+20
+00:00:50,400 --> 00:00:52,733
+and answers with every source shown.
+
+21
+00:00:53,333 --> 00:00:55,667
+She turns it into a narrated
+whiteboard lesson.
+
+22
+00:00:55,733 --> 00:00:57,067
+There's a quiz question
+
+23
+00:00:57,133 --> 00:01:00,000
+and you get a hint, then another try.
+
+24
+00:01:00,333 --> 00:01:04,433
+Or open the Learning Studio book
+to turn your own notes into a lesson.
+
+25
+00:01:04,600 --> 00:01:08,633
+Finish a pomodoro and you get
+real focus minutes and XP.
+
+26
+00:01:08,867 --> 00:01:11,367
+Track your XP and streaks,
+which forgive one bad day,
+
+27
+00:01:11,467 --> 00:01:13,333
+plus community charts.
+
+28
+00:01:13,667 --> 00:01:16,700
+And it's real: private Vultr storage
+with signed links,
+
+29
+00:01:16,767 --> 00:01:18,967
+Tiger Data records that check themselves,
+
+30
+00:01:19,033 --> 00:01:21,400
+and single-use game tickets.
+
+31
+00:01:22,367 --> 00:01:25,567
+Cram Club. Start studying, next to someone.
+
