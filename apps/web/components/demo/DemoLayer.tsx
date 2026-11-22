@@ -9,7 +9,6 @@ import {
   IconClock,
   IconClose,
   IconPlay,
-  IconVolume,
 } from "@/components/ui/icons";
 import { FOCUS, HUD_CHIP, HUD_MUTED } from "@/components/ui/styles";
 import { loginHref } from "@/lib/auth/links";
@@ -33,7 +32,6 @@ import {
   finishKind,
   secondsUntilReal,
 } from "@/lib/demo/settings";
-import { shushNow } from "@/lib/focus/watch";
 import { getSeat } from "@/lib/game/actions";
 import { type PomodoroState, isFocusing, lengthWord, usePomodoro } from "@/lib/game/pomodoro";
 import { useGameStore } from "@/lib/game/store";
@@ -43,7 +41,6 @@ import {
   isReservable,
   offerClaim,
   releaseTable,
-  showToast,
   tableName,
   useTables,
 } from "@/lib/tables/client";
@@ -57,13 +54,13 @@ import {
  *
  * - the table timer: start a 1-minute pomodoro, finish it now (for real in its last seconds, when
  *   the server agrees it ran its length; earlier a marked preview that earns nothing), skip a break;
- * - "Shush me": Ms. Fenwick's drifting-off line on request;
  * - hold or give up your table (the usual table cards, with demo-length holds);
  * - a background lesson (a real cloud lesson; the saved example if it's slow or can't be made);
  * - "How it works" (/proof) in a new tab (not mid-pomodoro: a new tab is leaving this one).
  *
  * A line under the keys says what's going on (and that Theo is pretend). Like the timer's cards it
- * never takes the mouse: with it captured, hold Shift to click.
+ * never takes the mouse: seated (where the demo mostly is) it's free anyway, and walking, with it
+ * captured, hold Shift to click.
  */
 
 /** The demo's chunky keys on the walnut sticker. */
@@ -117,7 +114,7 @@ function DemoRibbon() {
   );
   const { account } = useAccount();
   // A pomodoro's desk view looks straight across at Theo, right under the ribbon: the keys move
-  // to the right-hand side then, still open (Finish now and Shush me are needed mid-pomodoro).
+  // to the right-hand side then, still open (Finish now is needed mid-pomodoro).
   const focusing = usePomodoro(isFocusing);
   const playing = ready && phase === "playing";
   const showPanel = playing && panelOpen && !covered;
@@ -234,15 +231,6 @@ function DemoPanel() {
     >
       <ul className="grid grid-cols-3 gap-1.5">
         <TimerKey p={p} seated={!!seatId} now={now} />
-        <Key
-          icon={<IconVolume size={15} strokeWidth={2.5} />}
-          label="Shush me"
-          hint="Ms. Fenwick shushes you as if you'd drifted off: her voice and a caption"
-          onClick={() => {
-            if (!shushNow())
-              showToast("Ms. Fenwick is talking with someone. Try again in a moment.");
-          }}
-        />
         {held ? (
           <Key
             icon={<IconBoard size={15} strokeWidth={2.5} />}

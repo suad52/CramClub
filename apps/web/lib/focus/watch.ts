@@ -60,8 +60,8 @@ import { useFocusStore } from "./store";
  * arrives later from session-complete (session.ts showSessionXp()).
  *
  * The judge demo (lib/demo) only shortens things: its 1-minute pomodoro counts someone nearby
- * after DEMO_COMPANION_MIN_MS, and its "Make Ms. Fenwick shush me" is shushNow() (her line and
- * head turn on request, outside her limits, which it leaves as they were).
+ * after DEMO_COMPANION_MIN_MS. It has no shush on request: she shushes judges the same way as
+ * everyone else, when they drift off or come back from a near miss.
  */
 
 const LOOK_MS = 1000;
@@ -114,17 +114,6 @@ function say(reason: ShushReason, now: number) {
   librarianPresence.shushUntil = performance.now() + LOOK_AT_YOU_MS;
   useFocusStore.setState({ caption: { line, at: now } });
   void sayAloud(line);
-}
-
-/**
- * The judge demo's "Make Ms. Fenwick shush me": her drifting-off line now, in her voice (muted
- * mouths it) with the caption and her head turned your way. Not counted against her limits.
- * False when she's busy talking with someone (her panel is open, or she's mid-line).
- */
-export function shushNow(): boolean {
-  if (librarianBusy()) return false;
-  say("drifted", Date.now());
-  return true;
 }
 
 /** Sets only what changed (it's read by React and by the desk clock every frame). */

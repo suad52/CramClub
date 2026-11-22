@@ -388,7 +388,7 @@ demo** puts everything back.
   across from you. He is never counted as a real player (the HUD's player count stays honest).
 - Quick timings: 1-minute pomodoros, 15-second breaks, a 30-second long break after 2, and
   3-minute table holds (with the "1 minute left" warning).
-- **Demo controls:** start a pomodoro, finish it, hold or give up the table, "Shush me".
+- **Demo controls:** start a pomodoro, finish it, hold or give up the table.
   Finishing early is a **preview** (no XP, and today's tally doesn't move). Waiting until 10 seconds or less are
   left turns the key into **Finish now**, a real, server-validated pomodoro that earns +10 XP.
 - **Saved fallbacks:** if Ms. Fenwick, a background lesson or the Learning Studio is still working
@@ -412,7 +412,7 @@ and 403 unsigned against the live bucket.
 | 0:00–0:20 | Open `/demo`. Turn the camera on in the "Before you go in" check, then Go in: you're seated at Table 1, Theo (demo) across from you.          | "Studying alone is hard. Cram Club is a library you can walk into from anywhere."          |
 | 0:20–0:45 | Demo controls › Start pomodoro. Point at the desk clock and the "1 person is studying near you" line.                                         | "Body doubling: you focus better when someone's working beside you."                       |
 | 0:45–1:10 | Smile, turn your head: your avatar follows (the camera you turned on before going in). Point at "Seen at desk".                               | "Only eight numbers leave the laptop, never video. That's 77 times less than a webcam."    |
-| 1:10–1:30 | Look away for 8 seconds (or press Shush me). Ms. Fenwick turns and shushes you by name.                                                       | "She keeps you honest, kindly. Three times a pomodoro at most."                            |
+| 1:10–1:30 | With face tracking on, look away for 8 seconds. Ms. Fenwick turns and shushes you by name.                                                    | "She keeps you honest, kindly. Three times a pomodoro at most."                            |
 | 1:30–2:00 | Talk to Ms. Fenwick: "Explain the electron transport chain." Show the research steps and sources.                                             | "TinyFish reads the web, credible sources first; Gemini answers only from what she found." |
 | 2:00–2:25 | Play the lesson on the whiteboard. Answer the quiz wrong, get the hint, then right: "From your notes: …" and "Double-checked by Ms. Fenwick". | "Every quiz is answered twice, the second time without the answer key."                    |
 | 2:25–2:40 | With 10 s left, Finish now. The "You showed up" card: +10 XP, seen %, studied alongside Theo.                                                 | "Real, server-validated focus time, stored in Tiger Data."                                 |
